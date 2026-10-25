@@ -1,6 +1,0 @@
-'use strict';
-// Approximate generic raw-food values: kcal and protein per 100 g/ml; eggs per piece.
-// These are modelling assumptions, not retailer labels or verified nutrition claims.
-const NUTRIENTS={tomato:[18,.9],cucumber:[15,.7],pepper:[26,1],onion:[40,1.1],garlic:[149,6.4],potato:[77,2],carrot:[41,.9],zucchini:[17,1.2],spinach:[23,2.9],mushroom:[22,3.1],cabbage:[25,1.3],lemon:[29,1.1],parsley:[36,3],dill:[43,3.5],rice:[360,7],lentil:[350,25],bean:[330,22],chickpea:[139,7],pasta:[350,12],bread:[250,8],flour:[364,10],oats:[370,13],phyllo:[300,8],cheese:[265,15],yogurt:[61,3.5],egg:[72,6.3],chicken:[120,23],mince:[240,18],fish:[148,20],oil:[828,0],salt:[0,0],paprika:[282,14],peppercorn:[251,10],savory:[272,7],canned:[22,1],walnut:[654,15],apple:[52,.3],banana:[89,1.1],honey:[304,.3]};
-function nutrition(r){let kcal=0,protein=0;for(const[k,v]of Object.entries(r.ing)){const f=k==='egg'?v:v/100;kcal+=NUTRIENTS[k][0]*f;protein+=NUTRIENTS[k][1]*f;}return{kcal:Math.round(kcal/2),protein:Math.round(protein/2*10)/10};}
-function nutritionMatches(r,s){const n=nutrition(r);return(!s.maxCalories||n.kcal<=s.maxCalories)&&(!s.maxTime||r.time<=s.maxTime)&&(s.goal!=='protein'||n.protein>=25)&&(s.goal!=='light'||n.kcal<=500)&&(s.goal!=='quick'||r.time<=30);}

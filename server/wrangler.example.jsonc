@@ -1,0 +1,20 @@
+{
+  "name": "na-masata-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "vars": {
+    "APP_ORIGIN": "https://hristiyantsb.github.io",
+    "APP_URL": "https://hristiyantsb.github.io/na-masata/",
+    "SUPABASE_URL": "REPLACE_WITH_PROJECT_URL",
+    "OFF_USER_AGENT": "REPLACE_WITH_APP_NAME_VERSION_AND_CONTACT",
+    "STRIPE_MENU_MONTHLY": "REPLACE_WITH_PRICE_ID_9_EUR_MONTH",
+    "STRIPE_MENU_YEARLY": "REPLACE_WITH_PRICE_ID_90_EUR_YEAR",
+    "STRIPE_PLUS_MONTHLY": "REPLACE_WITH_PRICE_ID_29_EUR_MONTH",
+    "STRIPE_PLUS_YEARLY": "REPLACE_WITH_PRICE_ID_290_EUR_YEAR",
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "na-masata", "database_id": "REPLACE_WITH_DATABASE_ID" },
+  ],
+  "triggers": { "crons": ["17 * * * *"] },
+}

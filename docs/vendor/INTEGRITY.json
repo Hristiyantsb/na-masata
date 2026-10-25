@@ -1,0 +1,7 @@
+{
+  "package": "@zxing/browser",
+  "version": "0.2.1",
+  "file": "zxing-browser.min.js",
+  "sha256": "066bc34edfcdd4a33f0964aeec967752a0dea1ccaf36e58e319ac9fcb5070f6a",
+  "change": "Removed optional sourceMappingURL comment; runtime unchanged."
+}
