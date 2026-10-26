@@ -51,6 +51,8 @@ import {
 } from './fitness.js';
 import { foodPicker, foodCopyForm } from './fitness-views.js';
 import { createAuth } from './auth.js';
+import { createDiarySync } from './diary-sync.js';
+import { convertQuantity } from './servings.js';
 import { accountView } from './account-view.js';
 import { CONFIG } from './config.js';
 import { initPwa, pwaState, installApp, checkAppUpdate } from './pwa.js';
@@ -96,8 +98,20 @@ const auth = createAuth(CONFIG);
 setTokenProvider(() => auth.token());
 let cloud = null,
   cloudBusy = false;
+let diaryStatus = {status:'idle',pending:0};
+let applyingRemote = false;
+const diarySync = createDiarySync(storage, request, (status) => {diaryStatus=status;});
+async function connectDiary() {
+  if (!auth.user() || !CONFIG.apiBase) return;
+  await diarySync.start(auth.user().id, () => structuredClone(state.diary), (entries) => {
+    const merged = entries.map(e => diaryEntry(e));
+    applyingRemote = true;
+    try { state.diary = merged; persist(); } finally { applyingRemote = false; }
+    if (location.hash === '#diary') render();
+  });
+}
 function showAccount(email = '') {
-  modal(accountView(auth, email, cloud));
+  modal(accountView(auth, email, cloud, diaryStatus));
 }
 async function cloudWrite(value) {
   if (cloudBusy || !cloud) return;
@@ -117,6 +131,7 @@ async function cloudWrite(value) {
 function persist() {
   const saved = saveState(storage, state);
   if (!saved) toast('Няма място за запазване. Изтегли резервно копие от Настройки.', true);
+  if (saved && !applyingRemote && auth.user() && CONFIG.apiBase) diarySync.track(state.diary);
   return saved;
 }
 function toast(text, error = false) {
@@ -173,8 +188,20 @@ function updateFoodPreview() {
   const form = dialog.querySelector('[data-form="food"]');
   if (!form) return;
   const preview = form.querySelector('[data-food-preview]');
-  const amount = Number(form.querySelector('[name="amount"]').value);
-  const scale = amount / Number(form.dataset.basis);
+  let scale = 0;
+  try {
+    const quantity = convertQuantity({
+      amount: form.querySelector('[name="amount"]').value,
+      measure: form.querySelector('[name="measure"]').value,
+      unit: form.dataset.unit, basis: Number(form.dataset.basis),
+      servingQuantity: form.querySelector('[name="servingQuantity"]')?.value,
+      confirmed: !!form.querySelector('[name="servingConfirmed"]')?.checked,
+    });
+    scale = quantity.amount / Number(form.dataset.basis);
+  } catch {
+    preview.textContent = 'Въведи и потвърди грамажа, за да видиш изчисленията.';
+    return;
+  }
   if (!Number.isFinite(scale) || scale <= 0) {
     preview.textContent = '';
     return;
@@ -211,7 +238,7 @@ function updateFoodPreview() {
 function modal(content, wide = false) {
   if (!dialog.open) focusBeforeDialog = document.activeElement;
   dialog.classList.toggle('wide', wide);
-  dialog.innerHTML = `<div class="dialog-bar"><span>на масата.</span>${button(icon('close'), 'close-dialog', 'aria-label="Затвори"', 'icon-button')}</div><div class="dialog-content">${content}</div>`;
+  dialog.innerHTML = `<div class="dialog-bar"><span>На маса</span>${button(icon('close'), 'close-dialog', 'aria-label="Затвори"', 'icon-button')}</div><div class="dialog-content">${content}</div>`;
   if (!dialog.open) dialog.showModal();
   dialog.querySelector('.dialog-content').scrollTop = 0;
   updateFoodPreview();
@@ -252,7 +279,7 @@ function exportFile(name, content, type = 'text/plain;charset=utf-8') {
 }
 function shoppingText() {
   return (
-    'НА МАСАТА — СПИСЪК ЗА ПАЗАРУВАНЕ\nПримерни цени за цели опаковки.\n\n' +
+    'НА МАСА — СПИСЪК ЗА ПАЗАРУВАНЕ\nПримерни цени за цели опаковки.\n\n' +
     state.settings.stores
       .map((s) => {
         const rows = groceries(state).filter((r) => r.packs && r.store === s);
@@ -352,11 +379,19 @@ const actions = {
   account: () => showAccount(),
   'auth-out': async () => {
     cloud = null;
+    diarySync.stop();
     try {
       await auth.signOut();
     } finally {
       showAccount();
     }
+  },
+  'auth-apple': async () => {
+    await auth.appleSignIn();
+  },
+  'diary-sync-now': async () => {
+    await diarySync.flush();
+    showAccount();
   },
   'cloud-read': async () => {
     if (cloudBusy) return;
@@ -601,20 +636,20 @@ const actions = {
     persist();
     render();
   },
-  'export-shopping': () => exportFile('na-masata-pokupki.txt', shoppingText()),
+  'export-shopping': () => exportFile('na-masa-pokupki.txt', shoppingText()),
   'copy-shopping': async () => {
     try {
       await navigator.clipboard.writeText(shoppingText());
       toast('Списъкът е копиран.');
     } catch {
-      exportFile('na-masata-pokupki.txt', shoppingText());
+      exportFile('na-masa-pokupki.txt', shoppingText());
       toast('Списъкът е изтеглен като файл.');
     }
   },
   'export-plan': () =>
     exportFile(
-      'na-masata-menu.txt',
-      'НА МАСАТА\n\n' +
+      'na-masa-menu.txt',
+      'НА МАСА\n\n' +
         state.plan
           .map((e) => `Ден ${e.day + 1} · ${e.slot}: ${recipe(e.id).name} (${e.people} порции)`)
           .join('\n') +
@@ -760,7 +795,7 @@ const actions = {
         .replaceAll('"', '""') +
       '"';
     exportFile(
-      'na-masata-dnevnik.csv',
+      'na-masa-dnevnik.csv',
       '\ufeff' +
         [
           keys.map(cell).join(','),
@@ -851,9 +886,9 @@ const actions = {
   },
   backup: () =>
     exportFile(
-      'na-masata-backup.json',
+      'na-masa-backup.json',
       JSON.stringify(
-        { app: 'na-masata', version: 3, exportedAt: new Date().toISOString(), state },
+        { app: 'na-masa', version: 3, exportedAt: new Date().toISOString(), state },
         null,
         2,
       ),
@@ -907,6 +942,7 @@ document.addEventListener('submit', async (event) => {
       case 'auth-verify': {
         await auth.verify(form.dataset.email, String(f.get('code') || '').trim());
         cloud = null;
+        await connectDiary();
         showAccount();
         break;
       }
@@ -1081,13 +1117,19 @@ document.addEventListener('submit', async (event) => {
         break;
       }
       case 'food': {
+        const quantity = convertQuantity({
+          amount: f.get('amount'), measure: f.get('measure'),
+          unit: form.dataset.unit, basis: Number(form.dataset.basis),
+          servingQuantity: f.get('servingQuantity'),
+          confirmed: f.get('servingConfirmed') === 'yes',
+        });
         const e = diaryEntry({
-          ...Object.fromEntries(f),
+          ...Object.fromEntries(f), ...quantity,
           id: form.dataset.id || undefined,
           basis: Number(form.dataset.basis),
           source: form.dataset.source,
           brand: form.dataset.brand,
-          servingLabel: form.dataset.serving,
+          servingLabel: String(f.get('servingLabel') || ''),
           barcode: form.dataset.barcode,
         });
         const existing = state.diary.findIndex((v) => v.id === e.id);
@@ -1125,8 +1167,13 @@ document.addEventListener('submit', async (event) => {
   }
 });
 document.addEventListener('change', async (event) => {
-  const el = event.target,
-    action = el.dataset.change;
+  const el = event.target;
+  if (el.closest?.('[data-form="food"]') && (el.name === 'measure' || el.name === 'servingConfirmed')) {
+    const details = el.closest('form').querySelector('[data-serving-details]');
+    if (details) details.hidden = el.closest('form').querySelector('[name="measure"]')?.value !== 'именувана порция';
+    updateFoodPreview();
+  }
+  const action = el.dataset.change;
   if (!action) return;
   try {
     switch (action) {
@@ -1213,6 +1260,45 @@ document.addEventListener('change', async (event) => {
   }
 });
 document.addEventListener('input', (event) => {
+  const el = event.target;
+  if (el.closest?.('[data-form="food-search"]') && el.name === 'query' && picker.tab === 'products') {
+    picker.query = el.value.slice(0,100);
+    clearTimeout(foodSearchTimer);
+    lookupController?.abort();
+    if (!CONFIG.apiBase) return;
+    if (picker.query.trim().length < 2) {
+      picker.products = []; picker.status = 'Въведи поне две букви.';
+      return;
+    }
+    const q = picker.query.trim();
+    foodSearchTimer = setTimeout(async () => {
+      const controller = new AbortController();
+      lookupController = controller;
+      picker.status = 'Търсим в Open Food Facts…';
+      const input = dialog.querySelector('[data-form="food-search"] [name="query"]');
+      if (input && input.value.trim() === q) {
+        const status = dialog.querySelector('.food-search-status');
+        if(status) status.textContent = picker.status;
+      }
+      try {
+        const result = await searchProducts(q, controller.signal);
+        if (controller.signal.aborted || picker.query.trim() !== q || !dialog.open || picker.tab !== 'products') return;
+        picker.products = result.products || [];
+        picker.status = picker.products.length ? '' : 'Няма намерени продукти.';
+        showFoodPicker();
+        const focused = dialog.querySelector('[data-form="food-search"] [name="query"]');
+        focused?.focus({preventScroll:true});focused?.setSelectionRange(q.length,q.length);
+      } catch (error) {
+        if (controller.signal.aborted || picker.query.trim() !== q) return;
+        picker.status = error.message || 'Търсенето е временно недостъпно.';
+        showFoodPicker();
+        const focused = dialog.querySelector('[data-form="food-search"] [name="query"]');
+        focused?.focus({preventScroll:true});focused?.setSelectionRange(q.length,q.length);
+      }
+    },450);
+  }
+  if (el.closest?.('[data-form="food"]') && (el.name === 'amount' || el.name === 'servingQuantity')) updateFoodPreview();
+  if (el.closest?.('[data-form="food"]') && el.name === 'servingLabel') updateFoodPreview();
   const search = event.target;
   if (
     search.name === 'query' &&
@@ -1237,7 +1323,6 @@ document.addEventListener('input', (event) => {
   }
 
   if (event.target.closest('[data-form=food]')) updateFoodPreview();
-  const el = event.target;
   if (wizard && el.dataset.input === 'budget-range') {
     wizard.draft.budget = Number(el.value);
     const input = document.getElementById('budget');
@@ -1281,6 +1366,13 @@ window.addEventListener('hashchange', () => {
   window.scrollTo(0, 0);
 });
 window.addEventListener('pagehide', () => scanner.stop());
+window.addEventListener('online', () => diarySync.flush());
+void (async () => {
+  try {
+    if (await auth.completeAppleSignIn()) { await connectDiary(); toast('Успешен вход с Apple.'); return; }
+    if (await auth.restore()) { await connectDiary(); }
+  } catch (error) { toast(error.message || 'Не успяхме да възстановим входа.', true); }
+})();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) scanner.stop();
 });

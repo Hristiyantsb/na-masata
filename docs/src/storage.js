@@ -1,4 +1,5 @@
 import { defaults, normalizeState } from './domain.js';
+// Keep this legacy storage key: renaming it would strand existing saved recipes and diaries.
 export const STORAGE_KEY = 'na-masata-v3';
 export function loadState(storage) {
   try {
@@ -30,7 +31,7 @@ export function saveState(storage, state) {
 export function parseBackup(text) {
   if (text.length > 5_000_000) throw Error('Копието е твърде голямо.');
   const b = JSON.parse(text);
-  if (b.app !== 'na-masata' || ![1, 3].includes(b.version))
-    throw Error('Файлът не е резервно копие на „На масата“.');
+  if (!['na-masata', 'na-masa'].includes(b.app) || ![1, 3].includes(b.version))
+    throw Error('Файлът не е резервно копие на „На маса“.');
   return normalizeState(b.state);
 }

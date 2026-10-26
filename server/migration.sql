@@ -11,3 +11,6 @@ CREATE TABLE IF NOT EXISTS product_cache (barcode TEXT PRIMARY KEY,payload TEXT 
 CREATE TABLE IF NOT EXISTS product_search_cache (query TEXT PRIMARY KEY,payload TEXT NOT NULL,expires_at INTEGER NOT NULL);
 -- Optional explicit cloud backups. A null payload is a deletion tombstone, not food data.
 CREATE TABLE IF NOT EXISTS user_backups (user_id TEXT PRIMARY KEY, revision TEXT NOT NULL, payload TEXT, updated_at TEXT NOT NULL);
+
+-- Per-user entry upserts and deletes. Existing installations must run this migration.
+CREATE TABLE IF NOT EXISTS user_diary (user_id TEXT NOT NULL, id TEXT NOT NULL, payload TEXT NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY(user_id,id));
