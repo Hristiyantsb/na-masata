@@ -1323,16 +1323,29 @@ document.addEventListener('input', (event) => {
   }
 
   if (event.target.closest('[data-form=food]')) updateFoodPreview();
+  if (wizard && el.dataset.input === 'wizard-time') {
+    const options = [0, 20, 30, 45, 60, 120];
+    const index = Number(el.value);
+    if (!Number.isInteger(index) || index < 0 || index >= options.length) return;
+    wizard.draft.maxTime = options[index];
+    el.style.setProperty('--nm-range', (index * 20) + '%');
+    el.setAttribute('aria-valuetext', options[index] ? options[index] + ' минути' : 'Без ограничение');
+    const label = root.querySelector('[data-time-value]');
+    if (label) label.textContent = options[index] ? 'до ' + options[index] + ' мин' : 'колкото е нужно';
+    wizard.error = '';
+    return;
+  }
   if (wizard && el.dataset.input === 'budget-range') {
     wizard.draft.budget = Number(el.value);
     const input = document.getElementById('budget');
     if (input) input.value = el.value;
+    el.style.setProperty('--nm-range', (Math.max(0,Math.min(100,(Number(el.value)-10)/290*100))) + '%');
     return;
   }
   if (wizard && el.name === 'budget') {
     wizard.draft.budget = Number(el.value);
     const slider = document.querySelector('[data-input="budget-range"]');
-    if (slider) slider.value = el.value;
+    if (slider) { slider.value = el.value; slider.style.setProperty('--nm-range', (Math.max(0,Math.min(100,(Number(el.value)-10)/290*100))) + '%'); }
   }
   if (wizard && el.name === 'maxCalories') wizard.draft.maxCalories = Number(el.value);
   if (el.dataset.input === 'recipe-search') {
