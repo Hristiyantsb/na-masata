@@ -26,7 +26,7 @@ test('guest diary remains local with backup until explicit import consent',async
  await sync.start('account-1',()=>local,items=>{merged=items});
  assert.equal(sync.status().needsImport,true);
  assert.equal(merged,null);
- assert.deepEqual(JSON.parse(storage.get('na-masa-presync-backup:account-1')),local);
+ assert.deepEqual(JSON.parse(store.get('na-masa-presync-backup:account-1')),local);
  sync.adoptLocal(local,items=>{merged=items});
  assert.deepEqual(merged.map(e=>e.name).sort(),['local','remote']);
  sync.stop();
