@@ -156,11 +156,15 @@ export default {
     }
     if (origin && origin !== allowedOrigin) return respond({ error: 'origin' }, 403);
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
-    if (url.pathname === '/health')
+    if (url.pathname === '/health' && request.method === 'GET')
       return respond({
         status: 'ok',
-        version: '0.6.0',
-        billingConfigured: !!(env.STRIPE_SECRET_KEY && env.DB),
+        version: '0.6.1',
+        // Booleans only: never return secrets or environment details.
+        databaseConfigured: !!env.DB,
+        authConfigured: !!(env.SUPABASE_URL && env.SUPABASE_ANON_KEY),
+        billingConfigured: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET && env.DB),
+        productLookupConfigured: !!(env.OFF_USER_AGENT && env.DB),
         photoAnalysisAvailable: false,
       });
     if (!env.DB) return respond({ error: 'unconfigured' }, 503);
