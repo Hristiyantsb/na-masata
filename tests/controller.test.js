@@ -115,6 +115,18 @@ test('actual controller wires diary picker, save/reuse/copy/clear/undo and exist
   assert.match(dialog.textContent, /не са активирани/);
   await click('app-update');
   assert.ok(dialog.querySelector('[data-action=confirm-app-update]'));
+  await click('add-food', { meal: 'Закуска' });
+  const beforeQuick = saved().diary.length;
+  assert.ok(dialog.querySelector('[data-action=quick-repeat-food]'));
+  await click('quick-repeat-food', { index: '0' });
+  const added = saved().diary.at(-1);
+  assert.equal(saved().diary.length, beforeQuick + 1);
+  assert.equal(added.meal, 'Закуска');
+  assert.equal(added.amount, 200);
+  assert.equal(added.carbs, 4);
+  assert.notEqual(added.id, state.diary[0].id);
+  await click('undo-fitness');
+  assert.equal(saved().diary.length, beforeQuick);
   globalThis.setTimeout = realTimeout;
   globalThis.FormData = NativeFormData;
 });

@@ -645,6 +645,18 @@ const actions = {
       }),
     );
   },
+  'quick-repeat-food': (el) => {
+    if (picker.tab === 'products' || state.diary.length >= 20000) return;
+    const previous = pickedRows()[Number(el.dataset.index)];
+    if (!previous) return;
+    const entry = diaryEntry({ ...previous, id: crypto.randomUUID(), date, meal: picker.meal });
+    const next = { ...state, diary: [...state.diary, entry] };
+    if (!saveState(storage, next)) throw Error('Няма място за запазване. Изтегли резервно копие.');
+    el.disabled = true;
+    rememberDiary();
+    state = next;
+    finishFitness('Добавено: ' + entry.name + ' · ' + num(entry.amount, 1) + ' ' + entry.unit);
+  },
   'quick-food': () =>
     modal(
       foodForm(date, 'Междинно', {
