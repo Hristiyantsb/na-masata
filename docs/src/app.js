@@ -38,7 +38,7 @@ import {
   privacyView,
   extraGroceryForm,
 } from './views.js';
-import { wizardView } from './onboarding.js';
+import { wizardView, previewRecipes } from './onboarding.js';
 import { esc, icon, button, money, num, field } from './ui.js';
 import { Scanner } from './scanner.js';
 import { lookupBarcode } from './api.js';
@@ -192,7 +192,7 @@ function startWizard() {
     return;
   }
   closeDialog();
-  wizard = { draft: structuredClone(state.settings), step: 0, error: '' };
+  wizard = { draft: structuredClone(state.settings), step: state.onboarded ? 1 : 0, error: '' };
   render();
   window.scrollTo(0, 0);
 }
@@ -288,8 +288,24 @@ const actions = {
   'close-dialog': closeDialog,
   wizard: startWizard,
   'wizard-cancel': () => {
+    if (!state.onboarded && !state.plan.length) return;
     wizard = null;
     render();
+  },
+  'wizard-explore': () => {
+    // Guest mode: no forced account or checkout to sample the recipe catalogue.
+    if (state.onboarded || state.plan.length) return;
+    state.onboarded = true;
+    persist();
+    wizard = null;
+    navigate('recipes');
+    render();
+  },
+  'wizard-recipe': (el) => {
+    if (!wizard) return;
+    const r = recipe(el.dataset.id);
+    if (!r || !previewRecipes(wizard.draft).some((item) => item.id === r.id)) return;
+    modal(recipeDetail(r, { ...state, settings: wizard.draft }), true);
   },
   'wizard-back': () => {
     if (wizard.step) {
@@ -303,7 +319,9 @@ const actions = {
     }
   },
   'wizard-step': (el) => {
-    wizard.step = Number(el.dataset.index);
+    const index = Number(el.dataset.index);
+    if (!Number.isInteger(index) || index < 0 || index > 8) return;
+    wizard.step = index;
     wizard.error = '';
     render();
     window.scrollTo(0, 0);
@@ -316,6 +334,10 @@ const actions = {
     else d[key] = ['days', 'maxTime'].includes(key) ? Number(value) : value;
     wizard.error = '';
     render();
+    // Keep keyboard focus on the selected option after replacing the screen.
+    Array.from(root.querySelectorAll('[data-action="wizard-pick"]'))
+      .find((node) => node.dataset.key === key && node.dataset.value === value)
+      ?.focus({ preventScroll: true });
   },
   counter: (el) => {
     wizard.draft.people = Math.max(1, Math.min(12, wizard.draft.people + Number(el.dataset.delta)));
@@ -584,24 +606,26 @@ document.addEventListener('submit', async (event) => {
   try {
     switch (form.dataset.form) {
       case 'wizard': {
-        if (busy) return;
-        const d = wizard.draft,
-          step = wizard.step;
-        if (step === 2) d.budget = Number(f.get('budget'));
-        if (step === 6 && d.maxCalories) d.maxCalories = Number(f.get('maxCalories'));
+        if (busy || !wizard) return;
+        const d = wizard.draft;
+        const step = wizard.step;
+        if (step === 6) d.budget = Number(f.get('budget'));
         let error = '';
-        if (step === 0 && !d.stores.length) error = 'Избери поне един магазин.';
-        if (step === 1 && !d.slots.length) error = 'Избери поне едно хранене.';
-        if (step === 2 || step === 6) error = settingsErrors(d)[0] || '';
+        if (step === 5 && !d.slots.length) error = 'Избери поне едно хранене.';
+        if (step === 6 && !d.stores.length) error = 'Избери поне един магазин.';
+        if (step === 6 || step === 7 || step === 8) error ||= settingsErrors(d)[0] || '';
+        if (step === 7 && !previewRecipes(d).length)
+          error ||= 'Промени времето, уредите или предпочитанията си, за да видиш рецепти.';
         if (error) {
           wizard.error = error;
           render();
           return;
         }
-        if (step < 7) {
-          wizard.step++;
+        if (step < 8) {
+          wizard.step += 1;
           wizard.error = '';
           render();
+          root.querySelector('.nm-heading')?.focus({ preventScroll: true });
           window.scrollTo(0, 0);
           return;
         }
@@ -613,8 +637,8 @@ document.addEventListener('submit', async (event) => {
         submit.disabled = true;
         submit.textContent = 'Подреждаме менюто…';
         await new Promise((resolve) => setTimeout(resolve, 30));
-        const next = { ...state, settings: structuredClone(d) },
-          result = generatePlan(next);
+        const next = { ...state, settings: structuredClone(d) };
+        const result = generatePlan(next);
         if (!result.plan) throw Error(result.reason);
         snapshot();
         state.settings = next.settings;
@@ -624,7 +648,7 @@ document.addEventListener('submit', async (event) => {
         navigate('plan');
         render();
         window.scrollTo(0, 0);
-        toast('Твоето меню е готово.');
+        toast('Масата е готова. Добър апетит!');
         break;
       }
       case 'extra': {
