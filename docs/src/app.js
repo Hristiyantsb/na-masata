@@ -161,12 +161,36 @@ function closeDialog() {
   dialogRecipe = null;
   focusBeforeDialog?.focus?.();
 }
+function updateFoodPreview() {
+  const form = dialog.querySelector('[data-form="food"]');
+  if (!form) return;
+  const preview = form.querySelector('[data-food-preview]');
+  const amount = Number(form.querySelector('[name="amount"]').value);
+  const scale = amount / Number(form.dataset.basis);
+  if (!Number.isFinite(scale) || scale <= 0) {
+    preview.textContent = '';
+    return;
+  }
+  const targets = { kcal: state.dailyTarget, ...state.macroTargets };
+  preview.innerHTML =
+    '<p class="eyebrow">ЗА ИЗЯДЕНОТО КОЛИЧЕСТВО</p>' +
+    ['kcal', 'protein', 'carbs', 'fat']
+      .map((key) => {
+        const input = form.querySelector(`[name="${key}"]`);
+        const value = input.value.trim() === '' ? null : Number(input.value) * scale;
+        const label = key === 'kcal' ? 'Калории' : NUTRIENTS[key].label;
+        const unit = key === 'kcal' ? 'ккал' : 'г';
+        return `<p><b>${label}: ${value === null || !Number.isFinite(value) ? 'неизвестно' : num(value, 1) + ' ' + unit}</b>${value !== null && Number.isFinite(value) && targets[key] > 0 ? ' · ' + num((value / targets[key]) * 100, 1) + '% от дневната цел' : ''}</p>`;
+      })
+      .join('');
+}
 function modal(content, wide = false) {
   if (!dialog.open) focusBeforeDialog = document.activeElement;
   dialog.classList.toggle('wide', wide);
   dialog.innerHTML = `<div class="dialog-bar"><span>на масата.</span>${button(icon('close'), 'close-dialog', 'aria-label="Затвори"', 'icon-button')}</div><div class="dialog-content">${content}</div>`;
   if (!dialog.open) dialog.showModal();
   dialog.querySelector('.dialog-content').scrollTop = 0;
+  updateFoodPreview();
 }
 function openRecipe(id, index = null) {
   const r = recipe(id);
@@ -1153,6 +1177,7 @@ document.addEventListener('change', async (event) => {
   }
 });
 document.addEventListener('input', (event) => {
+  if (event.target.closest('[data-form=food]')) updateFoodPreview();
   const el = event.target;
   if (wizard && el.dataset.input === 'budget-range') {
     wizard.draft.budget = Number(el.value);
