@@ -103,3 +103,41 @@ test('weekly menu groups every slot by day and exposes move/repeat actions', () 
   for (const el of locked.querySelectorAll('[data-action="move-meal"],[data-action="repeat-meal"]'))
     assert.ok(el.hasAttribute('disabled'));
 });
+
+test('custom shopping names remain escaped and missing prices are explicitly disclosed', () => {
+  const state = defaults();
+  state.extras = [
+    {
+      id: 'row1',
+      name: '<img src=x onerror=alert(1)>',
+      amount: 1,
+      unit: 'бр.',
+      price: null,
+      store: 'Lidl',
+      checked: false,
+    },
+  ];
+  const d = safeMarkup(views.shoppingView(state));
+  assert.equal(d.querySelectorAll('img').length, 0);
+  assert.match(d.body.textContent, /1 продукта без цена/);
+  assert.equal(d.querySelectorAll('[data-change="extra-checked"]').length, 1);
+  safeMarkup(views.extraGroceryForm(state, state.extras[0]));
+});
+test('portion forms appear only for planned meals and cannot edit a locked menu', () => {
+  const state = defaults();
+  state.plan = generatePlan(state).plan;
+  const r = RECIPES.find((r) => r.id === state.plan[0].id);
+  assert.equal(
+    dom(views.recipeDetail(r, state)).querySelectorAll('[data-form="servings"]').length,
+    0,
+  );
+  const d = dom(views.recipeDetail(r, state, 0));
+  assert.equal(d.querySelectorAll('[data-form="servings"]').length, 1);
+  assert.equal(d.querySelector('[data-form="servings"]').querySelectorAll('option').length, 12);
+  state.locked = true;
+  assert.ok(
+    dom(views.recipeDetail(r, state, 0))
+      .querySelector('[data-form="servings"] select')
+      .hasAttribute('disabled'),
+  );
+});

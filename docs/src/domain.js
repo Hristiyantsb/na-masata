@@ -54,6 +54,7 @@ export function defaults() {
     notes: {},
     cooked: {},
     diary: [],
+    extras: [],
     dailyTarget: 0,
   };
 }
@@ -320,6 +321,11 @@ export function normalizeState(raw) {
       throw Error('Невалидна дневна цел.');
     d.dailyTarget = raw.dailyTarget;
   }
+  if (raw.extras !== undefined && (!Array.isArray(raw.extras) || raw.extras.length > 200))
+    throw Error('Твърде много допълнителни продукти.');
+  d.extras = (raw.extras || []).map(extraGrocery);
+  if (new Set(d.extras.map((e) => e.id)).size !== d.extras.length)
+    throw Error('Дублирани допълнителни продукти.');
   return d;
 }
 export function recipeJSON(r) {
@@ -356,6 +362,66 @@ export function rearrangePlan(state, from, to, mode = 'move') {
   if (mode === 'move') result.plan[from].id = state.plan[to].id;
   delete result.cooked[to];
   if (mode === 'move') delete result.cooked[from];
+  result.checked = {};
+  return result;
+}
+
+export const SHOPPING_UNITS = ['бр.', 'опаковки', 'г', 'кг', 'мл', 'л'];
+export function extraGrocery(input) {
+  if (!input || typeof input !== 'object') throw Error('Невалиден продукт.');
+  const name = typeof input.name === 'string' ? input.name.trim() : '';
+  const amount = Number(input.amount);
+  const price = input.price === '' || input.price == null ? null : Number(input.price);
+  if (!name || name.length > 100) throw Error('Името трябва да е от 1 до 100 знака.');
+  if (
+    !Number.isFinite(amount) ||
+    amount <= 0 ||
+    amount > 100000 ||
+    !SHOPPING_UNITS.includes(input.unit)
+  )
+    throw Error('Провери количеството и единицата.');
+  if (price !== null && (!Number.isFinite(price) || price < 0 || price > 100000))
+    throw Error('Провери общата цена за този ред.');
+  if (!STORES.includes(input.store)) throw Error('Избери магазин.');
+  if (
+    input.id !== undefined &&
+    (typeof input.id !== 'string' || !/^[a-zA-Z0-9_-]{1,100}$/.test(input.id))
+  )
+    throw Error('Невалиден идентификатор.');
+  return {
+    id: input.id || crypto.randomUUID(),
+    name,
+    amount,
+    unit: input.unit,
+    price,
+    store: input.store,
+    checked: input.checked === true,
+  };
+}
+export function shoppingSummary(state) {
+  const extras = state.extras || [];
+  const fromMenu = total(state);
+  const extraCost = extras.reduce((s, e) => s + (e.price ?? 0), 0);
+  return {
+    fromMenu,
+    extraCost,
+    knownTotal: fromMenu + extraCost,
+    unknownPrices: extras.filter((e) => e.price === null).length,
+  };
+}
+export function changeServings(state, index, people) {
+  if (state.locked) throw Error('Отключи менюто преди промяна.');
+  if (
+    !Number.isInteger(index) ||
+    !state.plan[index] ||
+    !Number.isInteger(people) ||
+    people < 1 ||
+    people > 12
+  )
+    throw Error('Избери от 1 до 12 порции.');
+  const result = planSnapshot(state);
+  result.plan[index].people = people;
+  delete result.cooked[index];
   result.checked = {};
   return result;
 }

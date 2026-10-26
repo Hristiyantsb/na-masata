@@ -280,3 +280,60 @@ test('repeat preserves household portions and invalid or locked changes fail', a
   state.locked = true;
   assert.throws(() => rearrangePlan(state, 0, 1, 'move'), /Отключи/);
 });
+
+test('custom grocery rows preserve unknown prices, aggregate known costs and survive backup', async () => {
+  const { extraGrocery, shoppingSummary } = await import('../docs/src/domain.js');
+  const state = defaults();
+  state.extras = [
+    extraGrocery({ name: 'Кафе', amount: 2, unit: 'опаковки', price: '', store: 'Lidl' }),
+    extraGrocery({ name: 'Ябълки', amount: 1.5, unit: 'кг', price: 4.5, store: 'Kaufland' }),
+  ];
+  assert.equal(state.extras[0].price, null);
+  assert.deepEqual(shoppingSummary(state), {
+    fromMenu: 0,
+    extraCost: 4.5,
+    knownTotal: 4.5,
+    unknownPrices: 1,
+  });
+  assert.deepEqual(normalizeState(state).extras, state.extras);
+  const legacy = defaults();
+  delete legacy.extras;
+  assert.deepEqual(normalizeState(legacy).extras, []);
+  const duplicate = structuredClone(state);
+  duplicate.extras.push(duplicate.extras[0]);
+  assert.throws(() => normalizeState(duplicate), /Дублирани/);
+});
+test('custom groceries reject unsafe IDs and invalid prices, amounts or stores', async () => {
+  const { extraGrocery } = await import('../docs/src/domain.js');
+  const input = { name: 'Хляб', amount: 1, unit: 'бр.', price: 2, store: 'Lidl' };
+  for (const edit of [
+    { name: '' },
+    { amount: 0 },
+    { amount: Infinity },
+    { unit: 'unknown' },
+    { price: -1 },
+    { price: NaN },
+    { store: 'Unknown' },
+    { id: '" onclick="bad' },
+  ])
+    assert.throws(() => extraGrocery({ ...input, ...edit }));
+  const clean = extraGrocery({ ...input, evil: 'drop' });
+  assert.equal(clean.evil, undefined);
+});
+test('per-meal servings scale ingredients once, preserve other meals and honor lock', async () => {
+  const { changeServings, quantities } = await import('../docs/src/domain.js');
+  const state = defaults();
+  state.plan = [{ id: RECIPES[0].id, day: 0, slot: 'Вечеря', people: 2 }];
+  state.cooked = { 0: true };
+  state.checked = { rice: true };
+  const before = quantities(state.plan),
+    next = changeServings(state, 0, 6),
+    after = quantities(next.plan);
+  for (const k of Object.keys(before)) assert.equal(after[k], before[k] * 3);
+  assert.equal(state.plan[0].people, 2);
+  assert.deepEqual(next.checked, {});
+  assert.deepEqual(next.cooked, {});
+  for (const count of [0, 13, 2.5, NaN]) assert.throws(() => changeServings(state, 0, count));
+  state.locked = true;
+  assert.throws(() => changeServings(state, 0, 4), /Отключи/);
+});

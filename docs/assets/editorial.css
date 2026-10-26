@@ -760,3 +760,103 @@ footer {
     break-inside: avoid;
   }
 }
+.extra-groceries {
+  margin: 32px 0;
+  border-top: 2px solid var(--line);
+}
+.extra-groceries .section-bar p {
+  font-size: 13px;
+}
+.extra-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.extra-row > label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.extra-row input {
+  width: 19px;
+  height: 19px;
+  accent-color: var(--green);
+  flex-shrink: 0;
+}
+.extra-row label span {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+.extra-row label small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.extra-row.checked label b {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+.extra-price {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.servings-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 15px 0;
+}
+.servings-form label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.servings-form select {
+  min-height: 44px;
+  padding: 8px 18px;
+  border: 1px solid var(--line);
+  background: var(--white);
+  border-radius: 5px;
+}
+.servings-form .form-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+.connection-status {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  background: var(--soft);
+  padding: 10px 14px;
+  margin: 0 0 20px;
+  font-size: 13px;
+  border-left: 3px solid var(--green);
+}
+.connection-status[hidden] {
+  display: none;
+}
+@media (max-width: 700px) {
+  .extra-row {
+    gap: 7px;
+  }
+  .extra-row .icon-button {
+    min-width: 32px;
+    width: 32px;
+  }
+  .extra-groceries .section-bar {
+    flex-wrap: wrap;
+  }
+  .extra-row label b {
+    font-size: 14px;
+  }
+  .extra-price {
+    font-size: 12px;
+  }
+}

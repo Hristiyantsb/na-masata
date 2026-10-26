@@ -19,6 +19,7 @@ for (const file of files) {
       throw Error(`Missing import in ${file}: ${match[1]}`);
   }
 }
+execFileSync(process.execPath, ['--check', 'docs/sw.js']);
 const html = fs.readFileSync('docs/index.html', 'utf8');
 if (/on(click|change|submit)=/.test(html)) throw Error('Inline event handler');
 for (const m of html.matchAll(/(?:src|href)="([^"#]+)"/g)) {

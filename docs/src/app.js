@@ -8,6 +8,9 @@ import {
   generatePlan,
   planSnapshot,
   rearrangePlan,
+  changeServings,
+  extraGrocery,
+  shoppingSummary,
   total,
   groceries,
   diaryEntry,
@@ -33,12 +36,14 @@ import {
   pricingView,
   settingsView,
   privacyView,
+  extraGroceryForm,
 } from './views.js';
 import { wizardView } from './onboarding.js';
 import { esc, icon, button, money, num, field } from './ui.js';
 import { Scanner } from './scanner.js';
 import { lookupBarcode } from './api.js';
 import { CONFIG } from './config.js';
+import { initPwa, pwaState, installApp, checkAppUpdate } from './pwa.js';
 const root = document.getElementById('app'),
   dialog = document.getElementById('dialog'),
   toastEl = document.getElementById('toast');
@@ -62,6 +67,7 @@ let loaded = loadState(storage),
   state = loaded.state,
   undo = null,
   deletedEntry = null,
+  deletedGrocery = null,
   wizard = null,
   query = '',
   favorites = false,
@@ -74,8 +80,9 @@ let loaded = loadState(storage),
   busy = false;
 const scanner = new Scanner();
 function persist() {
-  if (!saveState(storage, state))
-    toast('Няма място за запазване. Изтегли резервно копие от Настройки.', true);
+  const saved = saveState(storage, state);
+  if (!saved) toast('Няма място за запазване. Изтегли резервно копие от Настройки.', true);
+  return saved;
 }
 function toast(text, error = false) {
   toastEl.textContent = text;
@@ -110,13 +117,53 @@ function render() {
       plan: () => planView(state, undo),
       recipes: () => recipesView(state, query, favorites),
       shopping: () => shoppingView(state),
+      'install-app': async () => {
+        if (await installApp()) return;
+        modal(
+          `<h2 class="dialog-title">На началния екран</h2><p><b>iPhone / Safari:</b> отвори менюто за споделяне и избери „Добави към началния екран“.</p><p><b>Android / Chrome:</b> отвори менюто ⋮ и избери „Инсталиране на приложението“ или „Добавяне към началния екран“.</p><p class="fine">Наличността и името на командата зависят от браузъра. Отвори приложението онлайн веднъж, за да се подготви за офлайн работа. Данните остават на това устройство.</p>`,
+        );
+      },
+      'check-update': async () => {
+        await checkAppUpdate();
+        toast('Проверяваме за нова версия. Ако има готова, ще се появи бутон „Обнови“.');
+      },
+      'app-update': () =>
+        modal(
+          `<h2 class="dialog-title">Нова версия е готова</h2><p>Запазените меню, покупки и дневник ще останат. Страницата ще се презареди; незапазените полета ще се затворят.</p>${button('Обнови сега', 'confirm-app-update', '', 'button primary')}`,
+        ),
+      'confirm-app-update': () => {
+        persist();
+        document.dispatchEvent(new CustomEvent('apply-app-update'));
+      },
+      'extra-add': () => modal(extraGroceryForm(state)),
+      'extra-edit': (el) => {
+        const e = state.extras.find((e) => e.id === el.dataset.id);
+        if (e) modal(extraGroceryForm(state, e));
+      },
+      'extra-delete': (el) => {
+        deletedGrocery = state.extras.find((e) => e.id === el.dataset.id);
+        state.extras = state.extras.filter((e) => e.id !== el.dataset.id);
+        persist();
+        render();
+        toast('Продуктът е премахнат.');
+        toastEl.innerHTML = `Продуктът е премахнат. ${button('Върни', 'extra-undo', '', 'toast-undo')}`;
+      },
+      'extra-undo': () => {
+        if (deletedGrocery && !state.extras.some((e) => e.id === deletedGrocery.id)) {
+          state.extras.push(deletedGrocery);
+          deletedGrocery = null;
+          persist();
+          render();
+        }
+        toast('Продуктът е възстановен.');
+      },
       pantry: () => pantryView(state),
       diary: () => diaryView(state, date),
       plans: () => pricingView(interval),
-      settings: () => settingsView(state),
+      settings: () => settingsView(state, pwaState()),
       privacy: privacyView,
     };
-  root.innerHTML = shell(page, (views[page] || views.plan)());
+  root.innerHTML = shell(page, (views[page] || views.plan)(), pwaState());
 }
 function closeDialog() {
   scanner.stop();
@@ -186,7 +233,14 @@ function shoppingText() {
       })
       .filter(Boolean)
       .join('\n\n') +
-    `\n\nОбщо: ${money(total(state))}`
+    '\n\nДОПЪЛНИТЕЛНИ ПРОДУКТИ\n' +
+    state.extras
+      .map(
+        (e) =>
+          `${e.checked ? '[✓]' : '[ ]'} ${e.name}: ${num(e.amount, 2)} ${e.unit} · ${e.store} — ${e.price === null ? 'без цена' : money(e.price)}`,
+      )
+      .join('\n') +
+    `\n\nИзвестна сума: ${money(shoppingSummary(state).knownTotal)}${shoppingSummary(state).unknownPrices ? ` + ${shoppingSummary(state).unknownPrices} продукта без цена` : ''}`
   );
 }
 function chooseMealDestination(el, mode) {
@@ -369,6 +423,7 @@ const actions = {
   },
   'uncheck-all': () => {
     state.checked = {};
+    state.extras.forEach((e) => (e.checked = false));
     persist();
     render();
   },
@@ -572,6 +627,34 @@ document.addEventListener('submit', async (event) => {
         toast('Твоето меню е готово.');
         break;
       }
+      case 'extra': {
+        if (!form.dataset.id && state.extras.length >= 200)
+          throw Error('Списъкът може да съдържа до 200 допълнителни продукта.');
+        const previous = state.extras.find((e) => e.id === form.dataset.id);
+        const e = extraGrocery({
+          ...Object.fromEntries(f),
+          id: form.dataset.id || undefined,
+          checked: previous?.checked || false,
+        });
+        if (previous) state.extras = state.extras.map((v) => (v.id === e.id ? e : v));
+        else state.extras.push(e);
+        persist();
+        closeDialog();
+        render();
+        toast('Продуктът е запазен.');
+        break;
+      }
+      case 'servings': {
+        const index = Number(form.dataset.index),
+          next = changeServings(state, index, Number(f.get('people')));
+        snapshot();
+        Object.assign(state, next);
+        persist();
+        render();
+        openRecipe(state.plan[index].id, index);
+        toast('Порциите и покупките са преизчислени.');
+        break;
+      }
       case 'note':
         state.notes[form.dataset.id] = String(f.get('note') || '').slice(0, 4000);
         persist();
@@ -675,6 +758,15 @@ document.addEventListener('change', async (event) => {
           render();
         }
         break;
+      case 'extra-checked': {
+        const e = state.extras.find((e) => e.id === el.dataset.id);
+        if (e) {
+          e.checked = el.checked;
+          persist();
+          render();
+        }
+        break;
+      }
       case 'diary-date':
         if (el.value) {
           date = el.value;
@@ -770,3 +862,23 @@ window.addEventListener('storage', (e) => {
 if (!state.onboarded && !state.plan.length) startWizard();
 else render();
 if (loaded.warning) toast(loaded.warning, true);
+
+// Status changes do not rebuild the page or discard an in-progress form.
+document.addEventListener('pwa-state', () => {
+  const readiness = document.getElementById('offline-readiness');
+  if (readiness) {
+    const s = pwaState();
+    readiness.textContent = s.ready
+      ? 'Офлайн копието е готово на това устройство.'
+      : s.error
+        ? 'Не успяхме да подготвим офлайн копие. Приложението остава достъпно онлайн.'
+        : 'Офлайн копието се подготвя при онлайн зареждане.';
+  }
+  const el = document.getElementById('connection-status');
+  if (el) {
+    const s = pwaState();
+    el.innerHTML = `${s.offline ? '<span>Без интернет · локален режим</span>' : ''}${s.update ? button('Нова версия · Обнови', 'app-update', '', 'quiet') : ''}`;
+    el.hidden = !s.offline && !s.update;
+  }
+});
+initPwa();
