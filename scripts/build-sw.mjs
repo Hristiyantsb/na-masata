@@ -6,7 +6,7 @@ const assets = ['index.html', 'manifest.webmanifest'];
 for (const dir of ['src', 'assets', 'vendor']) {
   for (const file of fs.readdirSync(path.join(root, dir), { recursive: true })) {
     const relative = dir + '/' + file;
-    if (/\.(js|css|svg|png|woff2)$/.test(file) && fs.statSync(path.join(root, relative)).isFile())
+    if (/\.(js|css|svg|png|woff2|webp)$/.test(file) && fs.statSync(path.join(root, relative)).isFile())
       assets.push(relative);
   }
 }
@@ -19,7 +19,7 @@ const output = template
   .replace('__ASSETS__', JSON.stringify(assets, null, 2));
 if (process.argv.includes('--check')) {
   if (!fs.existsSync('docs/sw.js') || fs.readFileSync('docs/sw.js', 'utf8') !== output)
-    throw Error('Offline bundle is stale. Run npm run build:offline and commit docs/sw.js.');
+    throw Error(`Offline bundle is stale. Expected version: ${output.match(/const VERSION = '([^']+)'/)[1]}. Run npm run build:offline and commit docs/sw.js.`);
   console.log(`PASS: offline release matches ${assets.length} local assets.`);
 } else {
   fs.writeFileSync('docs/sw.js', output);
