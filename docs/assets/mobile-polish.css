@@ -1,30 +1,125 @@
+/* Mobile-first final pass — the rest of the app, not the dedicated onboarding. */
+html { color-scheme:light; }
+body:not(.onboarding) { overscroll-behavior-x:none; overflow-x:clip; }
+body:not(.onboarding) main { min-width:0; }
+body:not(.onboarding) main, body:not(.onboarding) .dialog-content { overflow-wrap:anywhere; }
+body:not(.onboarding) button:focus-visible,
+body:not(.onboarding) input:focus-visible,
+body:not(.onboarding) select:focus-visible,
+body:not(.onboarding) textarea:focus-visible,
+body:not(.onboarding) a:focus-visible {
+ outline:2px solid #0b7551; outline-offset:3px;
+}
+body:not(.onboarding) .button.primary {
+ box-shadow:0 4px 14px #013c2614;
+ transition:transform .2s ease,background-color .2s ease,box-shadow .2s ease;
+}
+body:not(.onboarding) .button.primary:active {transform:scale(.985);}
+body:not(.onboarding) dialog {
+ max-height:min(94dvh,940px);
+ overflow-y:auto;
+ overscroll-behavior:contain;
+ scrollbar-width:thin;
+}
+body:not(.onboarding) dialog::backdrop {background:#001c1566;}
+body:not(.onboarding) .dialog-bar {background:#fff;}
+body:not(.onboarding) .dialog-content {min-width:0;}
+@media(max-width:700px){
+  body:not(.onboarding) main {
+    padding-left:max(17px,env(safe-area-inset-left));
+    padding-right:max(17px,env(safe-area-inset-right));
+    padding-bottom:calc(100px + env(safe-area-inset-bottom));
+  }
+  body:not(.onboarding) .topbar {
+    min-height:48px;
+    margin-bottom:18px;
+    align-items:center;
+    padding-bottom:6px;
+  }
+  body:not(.onboarding) .mobile-wordmark .brand-wordmark {width:145px;}
+  body:not(.onboarding) .preview-label {font-size:10px;}
+  body:not(.onboarding) .page-heading {margin-bottom:19px;gap:11px;}
+  body:not(.onboarding) .page-heading h1 {
+    font-size:clamp(28px,7.1vw,38px);
+    line-height:1.11;
+    letter-spacing:-.045em;
+  }
+  body:not(.onboarding) .page-heading>.button {min-height:43px;}
+  body:not(.onboarding) .week-overview,
+  body:not(.onboarding) .shopping-overview,
+  body:not(.onboarding) .diary-overview {
+    border-radius:19px;
+  }
+  body:not(.onboarding) .mobile-nav {
+    padding:7px max(6px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));
+    background:#ffffffF7;
+    border-top:1px solid #dce8df;
+    box-shadow:0 -8px 30px #013c260c;
+    display:flex;
+    justify-content:space-between;
+  }
+  body:not(.onboarding) .mobile-nav>a {
+    flex:1;min-width:0;min-height:49px;padding:7px 1px 4px;
+    display:flex;flex-direction:column;gap:3px;align-items:center;
+    justify-content:center;border-radius:12px;
+    color:#637d70;font-size:10px;font-weight:700;
+  }
+  body:not(.onboarding) .mobile-nav>a svg {width:21px;height:21px;}
+  body:not(.onboarding) .mobile-nav>a[aria-current='page'] {
+    background:#e9f4ec;color:#013c26;
+  }
+  body:not(.onboarding) .button.primary,
+  body:not(.onboarding) .button.outline {min-height:44px;}
+  body:not(.onboarding) .icon-button {min-width:42px;min-height:42px;}
+  /* Prevent Safari's unexpected keyboard zoom when editing quantities and diary food. */
+  body:not(.onboarding) .field input,
+  body:not(.onboarding) .field select,
+  body:not(.onboarding) .field textarea,
+  body:not(.onboarding) .search-field input,
+  body:not(.onboarding) .date-field input,
+  body:not(.onboarding) .barcode-form input,
+  body:not(.onboarding) .budget-field input,
+  body:not(.onboarding) .servings-form select {
+    font-size:16px;
+  }
+  body:not(.onboarding) dialog {
+    width:100vw;max-width:100vw;max-height:min(95dvh,950px);
+    margin:auto 0 0;
+    border-radius:24px 24px 0 0;
+    border-left:0;border-right:0;border-bottom:0;
+    padding-bottom:max(12px,env(safe-area-inset-bottom));
+  }
+  body:not(.onboarding) dialog.wide {width:100vw;max-width:100vw;}
+  body:not(.onboarding) .dialog-content {padding:20px 17px;}
+  body:not(.onboarding) .dialog-bar {padding:12px 17px;}
+  body:not(.onboarding) .dialog-title {font-size:clamp(26px,7vw,33px);}
+  body:not(.onboarding) .form-grid {min-width:0;}
+  body:not(.onboarding) .form-grid>* {min-width:0;}
+  body:not(.onboarding) .nutrition-strip {gap:8px;}
+  body:not(.onboarding) .nutrition-strip b {font-size:21px;}
+  body:not(.onboarding) .scanner-frame {min-height:220px;}
+  body:not(.onboarding) #toast {bottom:calc(76px + env(safe-area-inset-bottom));}
+}
+@media(max-width:390px){
+ body:not(.onboarding) .mobile-nav>a {font-size:9px;}
+ body:not(.onboarding) .recipe-card .recipe-meta {font-size:10px;}
+ body:not(.onboarding) .diary-entry b {font-size:12px;}
+ body:not(.onboarding) .diary-entry small {font-size:11px;}
+ body:not(.onboarding) .shopping-check small {font-size:11px;}
+}
+@media(prefers-reduced-motion:reduce){
+ body:not(.onboarding) .button.primary {transition:none;}
+}
+@media print {
+ body:not(.onboarding) main {padding-bottom:0;}
+}
 
-/* Mobile finishing pass: safe-area-friendly, crisp brand, larger touch targets.
-   These styles intentionally follow editorial.css so they override legacy theme. */
-:root { --paper:#fff; --white:#fff; --green:#013c26; --ink:#153c2d; --line:#dfebe2; --soft:#f1f7f2; --radius:16px; }
-html { background:#013c26; overscroll-behavior-y:none; }
-body { background:#fff; min-height:100dvh; }
-#app { min-height:100dvh; background:#fff; }
-.button, button, select, input { touch-action:manipulation; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px solid #20835b; outline-offset:3px; }
-@media (max-width:700px) {
-  html, body { width:100%; max-width:100%; overflow-x:hidden; }
-  main { padding-bottom:calc(86px + env(safe-area-inset-bottom)); }
-  .mobile-nav { position:fixed; bottom:0; left:0; right:0; padding-bottom:max(4px,env(safe-area-inset-bottom)); background:#fff; box-shadow:0 -8px 30px rgba(1,60,38,.065); border-top:1px solid #e5eee7; z-index:15; }
-  .mobile-nav a { min-height:56px; font-size:11px; }
-  .mobile-nav a[aria-current='page'] { color:#013c26; font-weight:700; }
-  .topbar { position:sticky; top:0; z-index:10; background:#fff; }
-  .planned-meal, .recipe-card, .shopping-group { border-radius:15px; }
-  .planned-meal .meal-row, .shopping-row, .diary-entry { min-height:60px; }
-  .meal-actions { flex-wrap:wrap; row-gap:6px; }
-  .meal-actions > div { margin-left:auto; }
-  dialog { max-height:calc(100dvh - 20px); }
-  .brand-wordmark { image-rendering:auto; }
-  button, a { -webkit-tap-highlight-color:transparent; }
+/* Retained live refinements from the concurrent mobile release. */
+
+@media(max-width:700px){
+ body:not(.onboarding) .topbar{position:sticky;top:0;z-index:10;background:#fff;}
+ body:not(.onboarding) .planned-meal,.recipe-card,.shopping-group{border-radius:15px;}
+ body:not(.onboarding) .planned-meal .meal-row,.shopping-row,.diary-entry{min-height:60px;}
+ body:not(.onboarding) .meal-actions{flex-wrap:wrap;row-gap:6px;}
+ body:not(.onboarding) .meal-actions>div{margin-left:auto;}
 }
-@media (max-width:380px) {
-  .mobile-nav a { min-width:0; }
-  .recipe-meta { font-size:11px; }
-  .topbar { gap:8px; }
-}
-@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; } }

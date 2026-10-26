@@ -14,18 +14,20 @@ test('PWA metadata uses На маса and solid green launch background',()=>{
  assert.equal(manifest.name,'На маса');
  assert.equal(manifest.background_color,'#013c26');
  const svg=readFileSync(new URL('../docs/assets/favicon.svg',import.meta.url),'utf8');
- assert.match(svg,/<rect width="128" height="128" rx="25" fill="#013c26"\/>/);
+ assert.match(svg,/<rect width="128" height="128" fill="#013c26"\/>/);
 });
-test('existing cloud diary keeps recovery snapshot of local-only entries',async()=>{
+test('guest diary remains local with backup until explicit import consent',async()=>{
  const store=new Map();
  const storage={getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)};
  const id=crypto.randomUUID(),another=crypto.randomUUID();
  const local=[{id,name:'local'}],remote=[{id:another,name:'remote'}];
- let merged=[];
+ let merged=null;
  const sync=createDiarySync(storage,async path=>path==='/diary'?{items:remote}:{},()=>{});
  await sync.start('account-1',()=>local,items=>{merged=items});
- assert.equal(merged.length,1);
- assert.equal(merged[0].name,'remote');
- assert.deepEqual(JSON.parse(storage.getItem('na-masa-presync-backup:account-1')),local);
+ assert.equal(sync.status().needsImport,true);
+ assert.equal(merged,null);
+ assert.deepEqual(JSON.parse(store.get('na-masa-presync-backup:account-1')),local);
+ sync.adoptLocal(local,items=>{merged=items});
+ assert.deepEqual(merged.map(e=>e.name).sort(),['local','remote']);
  sync.stop();
 });

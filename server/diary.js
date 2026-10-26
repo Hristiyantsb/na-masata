@@ -2,10 +2,20 @@ import { diaryEntry } from '../docs/src/domain.js';
 /** Authenticated, per-user diary rows. Each mutation is idempotent and cannot affect another user. */
 export async function diaryRoute(request, env, userId, respond, pathname) {
   if (request.method === 'GET' && pathname === '/diary') {
-    const rows = await env.DB.prepare('SELECT payload FROM user_diary WHERE user_id=? ORDER BY id').bind(userId).all();
-    return respond({ items:(rows.results || []).map(row => JSON.parse(row.payload)) });
+    const params = new URL(request.url).searchParams;
+    const after = params.get('after') || '';
+    if (after && !/^[0-9a-f-]{36}$/i.test(after)) return respond({error:'invalid_cursor'},400);
+    const limit = 200;
+    const rows = await env.DB.prepare('SELECT id,payload FROM user_diary WHERE user_id=? AND id>? ORDER BY id LIMIT ?')
+      .bind(userId,after,limit+1).all();
+    const results = rows.results || [];
+    const page = results.slice(0,limit);
+    return respond({
+      items:page.map(row => JSON.parse(row.payload)),
+      nextCursor:results.length>limit ? page[page.length-1].id : null
+    });
   }
-  const match = /^\/diary\/([a-f\d-]{36})$/i.exec(pathname);
+  const match = /^\/diary\/([0-9a-f-]{36})$/i.exec(pathname);
   if(!match)return respond({error:'not_found'},404);
   const id=match[1];
   if(request.method==='DELETE'){

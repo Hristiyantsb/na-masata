@@ -1,106 +1,57 @@
-# Предаване към Claude / следващ разработчик
+# На маса — финален технически handoff
 
-## Ново във v0.6
+Цел: Claude да получи същественото за стартиране без излишен контекст. Кодът в main е източникът на истина, не стари чатове.
 
-Прочети първо [project/FITNESS-INTEGRATION.md](project/FITNESS-INTEGRATION.md): карта на източника adios, реализирани функции, ограничения и точна конфигурация. Има email OTP UI/session adapter, OFF търсене, изрични облачни копия с optimistic concurrency и тестове. Онлайн частта остава НЕАКТИВНА без реален deployment. Запазен е mascot onboarding от commit bae887e.
+## Архитектура
+- Public vanilla-JS PWA: docs/index.html, docs/src/app.js, docs/src/views.js, docs/assets/*.css, docs/src/domain.js и docs/src/catalog.js.
+- Onboarding с 9 стъпки и пет реални preview рецепти: docs/src/onboarding.js. Векторен маскот: docs/src/mascot.js.
+- PWA offline: docs/sw.js се генерира от scripts/build-sw.mjs; при промяна на docs/ задължително нов sw.
+- Food diary: docs/src/fitness.js, docs/src/servings.js, docs/src/diary-sync.js. Offline first, per-user sync queue, 200 сървърни записа на страница.
+- Provider integrations: docs/src/auth.js (email OTP + Apple web PKCE), docs/src/api.js. Server Cloudflare Worker + D1: server/worker.js, server/cloud.js, server/diary.js, server/products.js и server/migration.sql.
+- Billing: server/billing.js и Worker Stripe webhook. Няма live trial/paywall докато не бъде активиран и изпитан.
 
-## Цел
+## Направени последни промени
+1. Browser title е точно **На маса**. Фавиконът docs/assets/icon.svg е изцяло #013c26 по краищата (без бяло триъгълниче), а PWA startup background е #013c26.
+2. docs/assets/mobile-polish.css дава таб навигация с нормални touch targets, fixed safe areas, 16px полета за iOS zoom, mobile bottom-sheet, четими макроси/дневник.
+3. docs/src/diary-sync.js никога не качва първоначални гост/друг-акаунт записи без изрично одобрение; UI в account-view.js и action в app.js. Не премахвай consent gate.
+4. server/diary.js връща страници по 200 реда с nextCursor; client ги сглобява преди sync. PUT/DELETE на конкретен запис са per-user и idempotent.
+5. server/worker.js: DELETE /account/data изтрива app дневник и backup **след потвърждение** и отказва ако има активен абонамент. Това НЕ изтрива Supabase акаунта и платежната история; трябва бъдеща отделна реализация.
+6. OFF баркод lookup предпочита кеш преди global quota, за да не харчи лимита за вече известни продукти.
 
-Да се завърши платено българско приложение с поток близък до заснетия mise: избори → подходящо меню → рецепти → покупки. План Меню: 9 €/месец, 90 €/година. Меню Плюс: 29 €/месец, 290 €/година; дневник, баркод и по-късно оценка на ястия по снимка.
+## Подготовка на услугите — в този ред
+1. Създай Cloudflare D1 и приложи server/migration.sql. Попълни server/wrangler.example.jsonc с реални nonsecret IDs. Сложи DB binding и secret vars през Cloudflare UI.
+2. Supabase: настрой email OTP, site URL/allowed redirects, Apple Services ID, Team ID, Key ID/private key и callbacks. Пускай Apple OAuth само след реални iOS/Android тестове.
+3. Worker: APP_ORIGIN=https://hristiyantsb.github.io и APP_URL=https://hristiyantsb.github.io/na-masata/ засега; SUPABASE_URL, SUPABASE_ANON_KEY, OFF_USER_AGENT (реален контакт), Stripe prices и secrets в environment.
+4. Docs frontend config.js: apiBase, supabaseUrl, supabasePublicKey са само public стойности. Никога service-role keys/Stripe secrets в docs/.
+5. Stripe **test mode**: валидирай prices 9/90 и 29/290 EUR, 7-day trial terms, webhook signature, duplication, renewal, cancellation, portal, refunds and recovery. Когато всичко работи, включи UI paywall. В демото не обещавай активен 7-дневен trial.
+6. Open Food Facts: провери ODbL attribution, grams/ml и пропуснати макроси (null ≠ 0), лимити и легитимен User-Agent. OFF търсенето изисква Plus entitlement.
 
-Потребителят иска простичък, последователен процес, без ненужни потвърждения, и качествен интерфейс без генеричен AI вид. Работи на Windows и използва iPhone. Текущата доставка е уеб приложение, не native iOS binary.
+## Името в URL — важен блокер, не поправяй със слепи replace
+GitHub Pages project URL е /na-masata/, защото *името на репото* е na-masata. За /na-masa/ трябва собственикът да смени Repository name на na-masa в GitHub Settings или да настрои custom domain. След това:
+- Провери Pages deployment, APP_URL, Supabase OAuth allowlist, Stripe return URLs, share/QR links, PWA start_url/scope.
+- Не предполагай, че старият Pages URL автоматично redirect-ва.
+- Запази legacy localStorage na-masata-v3 и архив/backup миграция; инсталираният service-worker scope остава по стария path и изисква upgrade plan.
+- Публичният browser tab/title и бранд могат да бъдат „На маса“ без URL rename.
 
-## Състояние на проекта
+## Задължителен мобилен QA
+- 320×568, 360×740, 390×844, 430×932; Chrome Android, Safari iOS, installed PWA и landscape.
+- All onboarding, keyboard input, allergies, recipe preview; scroll and CTA.
+- Plan->recipe->swap->grocery list; store change, edit price, pantry and reset; food diary add/edit/copy/CSV.
+- Offline launch, reconnect + queue replay; guest diary login => explicit import; два акаунта на един телефон; два tabs race.
+- Test actual Apple OTP and Stripe test-mode, D1 migrations, 201+ diary entries, ORIGIN/CORS/authz/rate limit, offline PWA cache.
+- OS installed PNG icon може да остане стар кеш: необходимо е pixel-level проверяване/regen на PNG (особено iOS).
 
-- Canonical GitHub repo: `Hristiyantsb/na-masata`.
-- Pages: `https://hristiyantsb.github.io/na-masata/`, source `main:/docs`.
-- Предишният Sites адрес е отделна, по-стара публикация. Новата основа е тази в GitHub.
-- Frontend v0.6.0 е native ES modules, без framework/build стъпка и без runtime npm install. Това е умишлен избор за лесен преглед, публикуване и последващо пренасяне.
-- Backend starter в `server/` **не е деплойнат и няма въведени credentials**.
-- Настройките, менюто и дневникът са browser-local. Не обещавай синхронизация, AI анализ, проверени калории, текущи цени или реален абонамент.
-- Съществуващите данни от `na-masata-v1` се мигрират към `na-masata-v3`, без изтриване на стария ключ при четене.
+## Известни останали ограничения
+- Provider credentials/deploy, реален Stripe trial и production E2E, monitoring and logging.
+- Full Supabase account deletion/Stripe legal retention; DELETE /account/data умишлено изтрива само app data.
+- Same-entry multi-device conflict protocol е последна промяна печели, не versioned CAS; ще изисква versioning и UX.
+- Старите installation PNG assets може да имат corner артефакт; SVG browser favicon е поправен.
+- Не са изпълнени автоматични visual screenshot regressions или тестове на реален телефон.
 
-## Как да стартираш
+## Commands
+npm ci
+npm run build:offline
+npm test
+npm run check
 
-1. `npm ci`.
-2. `npm run build:offline`, `npm test` и `npm run check`.
-3. `npm run dev` → http://127.0.0.1:4173.
-4. Прегледай onboarding, меню, покупки, рецепта, дневник и планове на 390×844, 768×1024 и 1440×900.
-5. Прегледай `project/QA.md` преди твърдение „готово за клиенти“.
-
-Не рефакторирай всичко към framework само заради предпочитание. Ако бъде избран React/Expo, пренеси чистите функции от `domain.js`, валидацията и тестовите сценарии; не ги пренаписвай без причина.
-
-## Вече реализирани важни решения
-
-- Филтрите са твърди. При нула кандидати няма автоматично премахване на алергени, режим или оборудване.
-- „Повече протеин“ е >=25 г/порция по ориентировъчните стойности; „По-леко“ <=500 ккал; „Бързо“ <=30 мин. Балансирано означава разнообразие, не медицински валидиран хранителен режим.
-- Генераторът търси ограничен брой варианти, отчита общите опаковки и избягва повторения, докато има неизползвани кандидати. Бюджетът е цел, не математическа гаранция.
-- Сумата за съставките не се представя като сума на касата. Покупките първо събират количествата, после приспадат наличностите, после закръглят до опаковки.
-- Лимитът за калории в менюто е на едно хранене/порция. Дневната цел е отделна, въведена от потребителя; няма автоматична препоръка за прием.
-- Непознатите хранителни стойности са `null`, не 0. Липсващи продуктови калории не се измислят.
-- Камерата спира при затваряне, навигация, скриване на документа и закъсняло предоставяне на разрешение след затваряне.
-- Годишните плащания са 90/290 наведнъж. Няма активни Subscribe/Checkout бутони, които да симулират покупка.
-
-## Следващи стъпки, в правилния ред
-
-### 1. Реален браузърен и мобилен QA
-
-Предишният автоматичен браузърен преглед на GitHub Pages беше блокиран от лимит на средата. Това не означава, че сайтът е повреден. Новата версия не е визуално потвърдена на устройство. Изпълни ръчната матрица и поправи реалните проблеми, преди да разширяваш обхвата. Особено провери Safari: file capture, camera permission, dialog scrolling, keyboard, storage и download.
-
-### 2. Акаунт и backend
-
-- Избери/създай Supabase проект под контрола на собственика. Конфигурирай login callback и потвърждение на имейл.
-- Конфигурирай и тествай реализирания `auth.js` (email OTP, refresh/logout, memory-only session). `app.js` вече свързва `setTokenProvider`. Magic-link redirect и native Apple login не са реализирани.
-- `server/worker.js` проверява bearer token чрез Supabase `/auth/v1/user`; не приема user ID от клиента. Съдържа scaffold, не завършена проверена интеграция.
-- Създай D1 и приложи `server/migration.sql`. Копирай example config в игнориран local config; въведи реалните IDs и secrets през платформата.
-- Настрой `CONFIG.apiBase` едва след тестов deployment. Запази `mode:'preview'`, докато платените пътища не са реално интегрирани.
-
-### 3. Stripe в test mode
-
-- Създай 4 recurring EUR Prices: 900/month, 9000/year, 2900/month, 29000/year (центове).
-- Реши с търговеца данъчното представяне, фирмените данни, отказването и условията. Не приемай автоматично дали тези цени включват ДДС.
-- Secrets: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_ANON_KEY`. Не се добавят в GitHub или frontend.
-- Webhook endpoint `/webhooks/stripe`, snapshot events: checkout.session.completed, customer.subscription.created/updated/deleted, invoice.paid, invoice.payment_failed.
-- Server проверява raw-body HMAC, 5-минутен timestamp прозорец, event ID и canonical subscription state. Тествай replay, подредба, повторни checkout attempts и D1 транзакции с истински provider test events.
-- Настрой billing portal; клиентският success URL **не активира абонамент**.
-- Свържи pricing бутона към checkout едва след auth и entitlement проверка. UI в момента показва демо обяснение.
-- За истинско платено съдържание премести каталога/генерирането зад проверен API. Локален bool/`localStorage` не е защита, а публично публикуваният каталог не може да стане таен със CSS paywall.
-
-### 4. Продуктова база и реално сканиране
-
-- ZXing декодира баркод локално. `processBarcode` в `app.js` в момента честно показва липсваща връзка.
-- Starter `/products/:barcode` изисква Plus entitlement, валидира checksum, кешира 24 часа в отделна таблица и задава custom User-Agent към Open Food Facts.
-- Следвай официалните OFF onboarding/attribution/licensing изисквания. Не смесвай произволно външната продуктова база с proprietary каталог. Съхранявай provenance.
-- Тествай реални български EAN продукти, непознат код, липсващи/неверни данни, 100 г vs 100 мл, timeout и rate limit.
-- Не приемай, че баркодът дава размера на изядената порция. Потребителят потвърждава количеството и етикета.
-
-### 5. Оценка по снимка (отделна услуга)
-
-Не е реализирана. Endpoint `/food/analyze` връща 501.
-
-Преди реализация: избор на vision provider, лимити/разход на план, политика за изображения, съгласие преди качване, ограничение на размер/MIME, премахване на EXIF, кратко задържане, abuse/rate limits, schema validation на отговора. Изходът трябва да съдържа разпознати съставки, предполагаемо количество, диапазон/несигурност и editable потвърждение. Никога не записвай AI оценката автоматично като измерен факт. Камерата не измерва грамове или калории.
-
-### 6. Каталог и качество
-
-Добавяй оригинални рецепти с пълни съставки, подправки, оборудване, ясно време и хранителен provenance. Текущите 23 са стартов каталог; не са кулинарно изпитани или професионално нутриционно валидирани. Използвай лицензирани снимки на конкретното ястие вместо произволни stock снимки. Текущите SVG са декоративни и не се представят за снимки.
-
-## Къде да не се загуби контекстът
-
-- REA е използван за статичен анализ на Android пакет. Hermes bytecode 98 имаше ограничена инструментална поддръжка. Не твърди точен възстановен алгоритъм или достъп до private backend на mise.
-- Review-driven приоритети: ясни цени, никакво изненадващо плащане след дълъг onboarding, complete ingredients, реално спазване на уреди/ограничения, фиксирано меню, контролирана смяна и undo, съставки до стъпките.
-- Няма нужда от App Store за текущия етап. Native публикуване е отделен проект и изисква developer account/signing.
-- Не променяй store prices с измислени множители. Магазините са организационни етикети до реална ценова интеграция.
-
-## Добавено във v0.4
-
-Lora Bold + PT Sans с локални кирилски WOFF2 файлове; редакционна типография и по-компактни списъци по референцията. Менюто се групира по дни. Преместването разменя рецепти между два слота; повторението заменя избран слот, запазвайки неговите порции. И двете уважават заключването и имат undo; отметките за покупки и засегнатите сготвени ястия се нулират. Бюджетът има синхронизиран плъзгач и числово поле.
-
-## Добавено във v0.5
-
-`extras` в локалната схема (version 3, съвместимо разширение) съхранява до 200 ръчни продукта. `extraGrocery` валидира данните. Цена `null` означава неизвестна; `shoppingSummary` връща известната сума и броя неизвестни цени. Менюто продължава да показва само своя бюджет, а пълният списък включва и допълнителните покупки. Генерация, undo и промяна на порции не изтриват ръчните продукти. Backup/import ги включва; старите копия получават празен списък.
-
-`changeServings` променя само избраното хранене, в рамките на 1–12 порции; нулира отметките за покупки и статуса „сготвено“ за него.
-
-Офлайн: `docs/src/pwa.js`, генериран `docs/sw.js`, шаблон `scripts/templates/sw.js`. **След всяка промяна по docs/ изпълни npm run build:offline и commit-ни sw.js.** CI отказва остарял кеш. В production не редактирай SW ръчно. SHA на файловете и шаблона определя версията. Cache-first само за локален allowlist; не кешира API, POST, auth, снимки или Stripe. При нова версия се изчаква изрично обновяване. Истински iPhone/Android install/update/offline QA остава непроверен.
-
-Следващият разработчик първо трябва да прочете CLAUDE.md и project/QA.md. Не представяй автоматизираните SW mock тестове като реален браузърен или мобилен тест.
+Commit-вай генерирания docs/sw.js. Secrets никога в repo.

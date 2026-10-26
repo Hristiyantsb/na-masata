@@ -54,3 +54,62 @@ test('diary mutations are queued, replayed and isolated per user',async()=>{
   assert.ok(calls.some(x=>x[0]==='/diary/'+e.id&&x[1]==='DELETE'));
   sync.stop();
 });
+
+test('a guest diary is never silently uploaded to a newly logged-in account',async()=>{
+ const map=new Map(),writes=[];
+ const storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v),removeItem:k=>map.delete(k)};
+ const entry=diaryEntry({name:'Локална храна',date:'2026-10-26',meal:'Закуска',unit:'г',basis:100,amount:100,kcal:88,protein:2});
+ let rendered=null;
+ const sync=createDiarySync(storage,async(p,opts={})=>{
+   if(p==='/diary')return {items:[]};
+   writes.push([p,opts.method]);return {};
+ });
+ await sync.start('account-a',()=>[entry],next=>{rendered=next;});
+ assert.equal(sync.status().needsImport,true);
+ assert.equal(sync.status().enabled,false);
+ sync.track([entry]);await sync.flush();
+ assert.equal(writes.length,0,'no consent = no network write');
+ sync.adoptLocal([entry],next=>{rendered=next;});
+ await sync.flush();
+ assert.ok(writes.some(([p,m])=>p==='/diary/'+entry.id&&m==='PUT'));
+ assert.equal(rendered.length,1);
+ sync.stop();
+ await sync.start('account-b',()=>[entry],()=>{throw Error('must not overwrite local data')});
+ assert.equal(sync.status().needsImport,true,'wrong account requires consent again');
+ await sync.flush();
+ assert.equal(writes.filter(([p,m])=>m==='PUT').length,1);
+ sync.stop();
+});
+test('diary sync loads all server pages before binding local state',async()=>{
+ const map=new Map(),calls=[];
+ const storage={getItem:k=>map.get(k),setItem:(k,v)=>map.set(k,v)};
+ const entries=[1,2,3].map(()=>diaryEntry({name:'Сървърно хранене',date:'2026-10-26',meal:'Обяд',unit:'г',basis:100,amount:100,kcal:85}));
+ let applied=[];
+ const sync=createDiarySync(storage,async(p)=>{
+  calls.push(p);
+  if(p==='/diary')return {items:entries.slice(0,2),nextCursor:entries[1].id};
+  if(p.startsWith('/diary?after='))return {items:[entries[2]],nextCursor:null};
+  throw Error('unexpected');
+ });
+ await sync.start('account-paged',()=>[],v=>{applied=v});
+ assert.deepEqual(applied.map(x=>x.id).sort(),entries.map(x=>x.id).sort());
+ assert.equal(calls.length,2);
+ sync.stop();
+});
+
+test('already bound users can queue offline edits without losing them on reconnect',async()=>{
+ const data=new Map([['na-masa-diary-owner-v1','returning-user']]),writes=[];
+ const storage={getItem:k=>data.get(k),setItem:(k,v)=>data.set(k,v)};
+ const sync=createDiarySync(storage,async(p,options={})=>{
+   if(p==='/diary')throw Error('network offline');
+   writes.push({p,method:options.method});return {};
+ });
+ await sync.start('returning-user',()=>[],()=>{});
+ assert.equal(sync.status().status,'offline');
+ const entry=diaryEntry({name:'Вечеря',date:'2026-10-26',meal:'Вечеря',unit:'г',basis:100,amount:200,kcal:210});
+ sync.track([entry]);
+ assert.equal(sync.status().pending,1);
+ await sync.flush();
+ assert.ok(writes.some(w=>w.p==='/diary/'+entry.id && w.method==='PUT'));
+ sync.stop();
+});
