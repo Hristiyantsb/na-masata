@@ -1,11 +1,11 @@
 {
   "name": "na-masata",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "type": "module",
   "description": "Bulgarian meal planner and food diary",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "test": "node --test tests/*.test.js",

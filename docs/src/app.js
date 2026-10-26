@@ -41,7 +41,11 @@ import {
 import { wizardView, previewRecipes } from './onboarding.js';
 import { esc, icon, button, money, num, field } from './ui.js';
 import { Scanner } from './scanner.js';
-import { lookupBarcode } from './api.js';
+import { lookupBarcode, searchProducts, setTokenProvider, request } from './api.js';
+import { foodHistory, copiesForDates, parseAdiosExport, NUTRIENTS } from './fitness.js';
+import { foodPicker, foodCopyForm } from './fitness-views.js';
+import { createAuth } from './auth.js';
+import { accountView } from './account-view.js';
 import { CONFIG } from './config.js';
 import { initPwa, pwaState, installApp, checkAppUpdate } from './pwa.js';
 const root = document.getElementById('app'),
@@ -78,7 +82,31 @@ let loaded = loadState(storage),
   toastTimer,
   lookupController = null,
   busy = false;
+let picker = { meal: 'Обяд', tab: 'history', query: '', products: [], status: '' },
+  fitnessUndo = null;
 const scanner = new Scanner();
+const auth = createAuth(CONFIG);
+setTokenProvider(() => auth.token());
+let cloud = null,
+  cloudBusy = false;
+function showAccount(email = '') {
+  modal(accountView(auth, email, cloud));
+}
+async function cloudWrite(value) {
+  if (cloudBusy || !cloud) return;
+  cloudBusy = true;
+  const revision = cloud.revision,
+    userId = auth.user()?.id;
+  try {
+    const result = await request('/backup', { method: 'POST', body: { revision, state: value } });
+    if (auth.user()?.id !== userId) return;
+    cloud = { ...result, state: value };
+    showAccount();
+    toast(value ? 'Облачното копие е запазено.' : 'Облачното копие е изтрито.');
+  } finally {
+    cloudBusy = false;
+  }
+}
 function persist() {
   const saved = saveState(storage, state);
   if (!saved) toast('Няма място за запазване. Изтегли резервно копие от Настройки.', true);
@@ -117,46 +145,6 @@ function render() {
       plan: () => planView(state, undo),
       recipes: () => recipesView(state, query, favorites),
       shopping: () => shoppingView(state),
-      'install-app': async () => {
-        if (await installApp()) return;
-        modal(
-          `<h2 class="dialog-title">На началния екран</h2><p><b>iPhone / Safari:</b> отвори менюто за споделяне и избери „Добави към началния екран“.</p><p><b>Android / Chrome:</b> отвори менюто ⋮ и избери „Инсталиране на приложението“ или „Добавяне към началния екран“.</p><p class="fine">Наличността и името на командата зависят от браузъра. Отвори приложението онлайн веднъж, за да се подготви за офлайн работа. Данните остават на това устройство.</p>`,
-        );
-      },
-      'check-update': async () => {
-        await checkAppUpdate();
-        toast('Проверяваме за нова версия. Ако има готова, ще се появи бутон „Обнови“.');
-      },
-      'app-update': () =>
-        modal(
-          `<h2 class="dialog-title">Нова версия е готова</h2><p>Запазените меню, покупки и дневник ще останат. Страницата ще се презареди; незапазените полета ще се затворят.</p>${button('Обнови сега', 'confirm-app-update', '', 'button primary')}`,
-        ),
-      'confirm-app-update': () => {
-        persist();
-        document.dispatchEvent(new CustomEvent('apply-app-update'));
-      },
-      'extra-add': () => modal(extraGroceryForm(state)),
-      'extra-edit': (el) => {
-        const e = state.extras.find((e) => e.id === el.dataset.id);
-        if (e) modal(extraGroceryForm(state, e));
-      },
-      'extra-delete': (el) => {
-        deletedGrocery = state.extras.find((e) => e.id === el.dataset.id);
-        state.extras = state.extras.filter((e) => e.id !== el.dataset.id);
-        persist();
-        render();
-        toast('Продуктът е премахнат.');
-        toastEl.innerHTML = `Продуктът е премахнат. ${button('Върни', 'extra-undo', '', 'toast-undo')}`;
-      },
-      'extra-undo': () => {
-        if (deletedGrocery && !state.extras.some((e) => e.id === deletedGrocery.id)) {
-          state.extras.push(deletedGrocery);
-          deletedGrocery = null;
-          persist();
-          render();
-        }
-        toast('Продуктът е възстановен.');
-      },
       pantry: () => pantryView(state),
       diary: () => diaryView(state, date),
       plans: () => pricingView(interval),
@@ -251,6 +239,34 @@ function chooseMealDestination(el, mode) {
     `<p class="eyebrow">${mode === 'move' ? 'ПРЕМЕСТИ ЯСТИЕ' : 'ПОВТОРИ ЯСТИЕ'}</p><h2 class="dialog-title">${esc(current.name)}</h2><p class="muted">${mode === 'move' ? 'Избери хранене, с което да разменим местата.' : 'Избери кое хранене да заменим със същото ястие. Количествата за покупки ще се преизчислят.'}</p><div class="destination-list">${state.plan.map((entry, to) => (to === from ? '' : button(`<span>Ден ${entry.day + 1} · ${entry.slot}</span><b>${esc(recipe(entry.id).name)}</b>${icon('arrow', 16)}`, 'place-meal', `data-from="${from}" data-to="${to}" data-mode="${mode}"`, 'destination-option'))).join('')}</div>${state.plan.length < 2 ? '<p>Добави още дни или хранения от предпочитанията.</p>' : ''}`,
   );
 }
+function showFoodPicker() {
+  modal(
+    foodPicker(state, date, picker.meal, picker.tab, picker.query, picker.products, picker.status),
+  );
+}
+function pickedRows() {
+  return picker.tab === 'products'
+    ? picker.products
+    : (picker.tab === 'saved'
+        ? state.savedFoods
+        : foodHistory(state.diary, picker.query, 40)
+      ).filter((e) =>
+        (e.name + ' ' + (e.brand || ''))
+          .toLocaleLowerCase('bg')
+          .includes(picker.query.toLocaleLowerCase('bg')),
+      );
+}
+function rememberDiary() {
+  fitnessUndo = structuredClone(state.diary);
+}
+function finishFitness(message) {
+  persist();
+  closeDialog();
+  navigate('diary');
+  render();
+  toast(message);
+  toastEl.innerHTML = `${esc(message)} ${button('Върни', 'undo-fitness', '', 'toast-undo')}`;
+}
 function scannerView() {
   modal(
     `<p class="eyebrow">МЕНЮ ПЛЮС · СКЕНЕР</p><h2 class="dialog-title">От етикета в дневника.</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><div class="notice">Оценката на ястие по снимка предстои. Дотогава можеш да въведеш храната от етикета.</div>`,
@@ -264,7 +280,7 @@ async function processBarcode(code) {
   }
   if (!CONFIG.apiBase) {
     modal(
-      `<p class="eyebrow">БАРКОДЪТ Е РАЗЧЕТЕН</p><h2 class="dialog-title">${esc(code)}</h2><p class="muted">Продуктовата база още не е свързана. Можеш да въведеш хранителните стойности от етикета — няма да ги предполагаме.</p>${button('Въведи от етикета ' + icon('arrow', 17), 'add-food', '', 'button primary full')}`,
+      `<p class="eyebrow">БАРКОДЪТ Е РАЗЧЕТЕН</p><h2 class="dialog-title">${esc(code)}</h2><p class="muted">Продуктовата база още не е свързана. Можеш да въведеш хранителните стойности от етикета — няма да ги предполагаме.</p>${button('Въведи от етикета ' + icon('arrow', 17), 'manual-food', '', 'button primary full')}`,
     );
     return;
   }
@@ -275,16 +291,104 @@ async function processBarcode(code) {
     const p = await lookupBarcode(code, lookupController.signal);
     if (!dialog.open) return;
     modal(
-      `<p class="eyebrow">OPEN FOOD FACTS</p><h2 class="dialog-title">${esc(p.name)}</h2><p>Провери данните спрямо етикета на твоята опаковка.</p>${p.kcal === null ? '<div class="notice warning">Няма достатъчно хранителни данни. Въведи стойностите от етикета.</div>' + button('Въведи ръчно', 'add-food', '', 'button primary') : foodForm(date, 'Обяд', { id: crypto.randomUUID(), name: p.name, date, meal: 'Обяд', unit: p.unit || 'г', amount: 100, basis: 100, kcal: p.kcal, protein: p.protein, source: 'openfoodfacts', barcode: code })}<p class="fine">Данни: <a href="https://world.openfoodfacts.org/product/${code}" target="_blank" rel="noopener">Open Food Facts</a>, ODbL. Възможни са неточности.</p>`,
+      `<p class="eyebrow">OPEN FOOD FACTS</p><h2 class="dialog-title">${esc(p.name)}</h2><p>Провери данните спрямо етикета на твоята опаковка.</p>${p.kcal === null ? '<div class="notice warning">Няма достатъчно хранителни данни. Въведи стойностите от етикета.</div>' + button('Въведи ръчно', 'manual-food', '', 'button primary') : foodForm(date, picker.meal, { ...p, id: undefined, date, meal: picker.meal, unit: p.unit || 'г', amount: 100, basis: 100, source: 'openfoodfacts', barcode: code })}<p class="fine">Данни: <a href="https://world.openfoodfacts.org/product/${code}" target="_blank" rel="noopener">Open Food Facts</a>, ODbL. Възможни са неточности.</p>`,
     );
   } catch (e) {
     if (e.name === 'AbortError') return;
     modal(
-      `<h2 class="dialog-title">Не успяхме да намерим данните.</h2><p>${esc(e.message)}</p>${button('Въведи ръчно', 'add-food', '', 'button primary')}`,
+      `<h2 class="dialog-title">Не успяхме да намерим данните.</h2><p>${esc(e.message)}</p>${button('Въведи ръчно', 'manual-food', '', 'button primary')}`,
     );
   }
 }
 const actions = {
+  account: () => showAccount(),
+  'auth-out': async () => {
+    cloud = null;
+    try {
+      await auth.signOut();
+    } finally {
+      showAccount();
+    }
+  },
+  'cloud-read': async () => {
+    if (cloudBusy) return;
+    cloudBusy = true;
+    const userId = auth.user()?.id;
+    try {
+      const result = await request('/backup');
+      if (auth.user()?.id !== userId) return;
+      cloud = { ...result, state: result.state ? normalizeState(result.state) : null };
+      showAccount();
+    } finally {
+      cloudBusy = false;
+    }
+  },
+  'cloud-upload': () =>
+    modal(
+      `<h2 class="dialog-title">Качи данните от това устройство?</h2><p>Ще замениш облачното копие за ${esc(auth.user()?.email || '')} с текущото меню, дневник и предпочитания. Това качва и информацията за храненето ти.</p>${button('Качи и замени', 'confirm-cloud-upload', '', 'button primary')}`,
+    ),
+  'confirm-cloud-upload': () => cloudWrite(structuredClone(state)),
+  'cloud-delete': () =>
+    modal(
+      `<h2 class="dialog-title">Изтрий облачното копие?</h2><p>Локалните данни остават. Облачното копие няма да може да се възстанови от приложението.</p>${button('Изтрий копието', 'confirm-cloud-delete', '', 'button danger')}`,
+    ),
+  'confirm-cloud-delete': () => cloudWrite(null),
+  'cloud-restore': () =>
+    modal(
+      `<h2 class="dialog-title">Замени локалните данни?</h2><p>Първо изтегли резервно копие, ако искаш да запазиш текущите записи. Това действие заменя менюто, дневника и предпочитанията с облачното копие.</p>${button('Изтегли текущите данни', 'backup', '', 'button outline')}${button('Възстанови копието', 'confirm-cloud-restore', '', 'button primary')}`,
+    ),
+  'confirm-cloud-restore': () => {
+    if (!cloud?.state) return;
+    const restored = normalizeState(cloud.state);
+    if (!saveState(storage, restored)) throw Error('Няма място за възстановяване.');
+    state = restored;
+    undo = null;
+    fitnessUndo = null;
+    deletedEntry = null;
+    deletedGrocery = null;
+    closeDialog();
+    render();
+    toast('Облачното копие е възстановено.');
+  },
+  'install-app': async () => {
+    if (await installApp()) return;
+    modal(
+      `<h2 class="dialog-title">На началния екран</h2><p><b>iPhone / Safari:</b> отвори менюто за споделяне и избери „Добави към началния екран“.</p><p><b>Android / Chrome:</b> отвори менюто ⋮ и избери „Инсталиране на приложението“ или „Добавяне към началния екран“.</p><p class="fine">Наличността и името на командата зависят от браузъра. Отвори приложението онлайн веднъж, за да се подготви за офлайн работа. Данните остават на това устройство.</p>`,
+    );
+  },
+  'check-update': async () => {
+    await checkAppUpdate();
+    toast('Проверяваме за нова версия. Ако има готова, ще се появи бутон „Обнови“.');
+  },
+  'app-update': () =>
+    modal(
+      `<h2 class="dialog-title">Нова версия е готова</h2><p>Запазените меню, покупки и дневник ще останат. Страницата ще се презареди; незапазените полета ще се затворят.</p>${button('Обнови сега', 'confirm-app-update', '', 'button primary')}`,
+    ),
+  'confirm-app-update': () => {
+    if (persist()) document.dispatchEvent(new CustomEvent('apply-app-update'));
+  },
+  'extra-add': () => modal(extraGroceryForm(state)),
+  'extra-edit': (el) => {
+    const e = state.extras.find((e) => e.id === el.dataset.id);
+    if (e) modal(extraGroceryForm(state, e));
+  },
+  'extra-delete': (el) => {
+    deletedGrocery = state.extras.find((e) => e.id === el.dataset.id);
+    state.extras = state.extras.filter((e) => e.id !== el.dataset.id);
+    persist();
+    render();
+    toast('Продуктът е премахнат.');
+    toastEl.innerHTML = `Продуктът е премахнат. ${button('Върни', 'extra-undo', '', 'toast-undo')}`;
+  },
+  'extra-undo': () => {
+    if (deletedGrocery && !state.extras.some((e) => e.id === deletedGrocery.id)) {
+      state.extras.push(deletedGrocery);
+      deletedGrocery = null;
+      persist();
+      render();
+    }
+    toast('Продуктът е възстановен.');
+  },
   'close-dialog': closeDialog,
   wizard: startWizard,
   'wizard-cancel': () => {
@@ -477,7 +581,133 @@ const actions = {
     ),
   'add-food': (el) => {
     scanner.stop();
-    modal(foodForm(date, el?.dataset?.meal || 'Обяд'));
+    picker = {
+      meal: el?.dataset?.meal || 'Обяд',
+      tab: 'history',
+      query: '',
+      products: [],
+      status: '',
+    };
+    showFoodPicker();
+  },
+  'manual-food': (el) => {
+    scanner.stop();
+    modal(foodForm(date, el?.dataset?.meal || picker.meal));
+  },
+  'diary-jump': (el) => {
+    date = el.dataset.date;
+    render();
+  },
+  'food-tab': (el) => {
+    lookupController?.abort();
+    picker.tab = el.dataset.tab;
+    picker.query = '';
+    picker.status = '';
+    showFoodPicker();
+  },
+  'pick-food': (el) => {
+    const e = pickedRows()[Number(el.dataset.index)];
+    if (!e) return;
+    modal(
+      foodForm(date, picker.meal, {
+        ...e,
+        id: undefined,
+        date,
+        meal: picker.meal,
+        amount: e.amount || 100,
+        basis: e.basis || 100,
+        unit: e.unit || 'г',
+        kcal: e.kcal ?? '',
+      }),
+    );
+  },
+  'quick-food': () =>
+    modal(
+      foodForm(date, 'Междинно', {
+        name: 'Бърз запис',
+        date,
+        meal: 'Междинно',
+        amount: 1,
+        basis: 1,
+        unit: 'порции',
+        kcal: '',
+        protein: null,
+        source: 'manual',
+      }),
+    ),
+  'remove-saved-food': (el) => {
+    state.savedFoods = state.savedFoods.filter((e) => e.id !== el.dataset.id);
+    persist();
+    showFoodPicker();
+  },
+  'save-food': (el) => {
+    const e = state.diary.find((e) => e.id === el.dataset.id);
+    if (!e) return;
+    if (
+      state.savedFoods.length >= 500 &&
+      !state.savedFoods.some((v) => v.name === e.name && v.brand === e.brand)
+    ) {
+      toast('Библиотеката е пълна.');
+      return;
+    }
+    state.savedFoods = state.savedFoods.filter((v) => v.name !== e.name || v.brand !== e.brand);
+    state.savedFoods.push({ ...structuredClone(e), id: crypto.randomUUID() });
+    persist();
+    toast('Храната е запазена в „Мои храни“.');
+  },
+  'copy-food': (el) => {
+    const e = state.diary.find((e) => e.id === el.dataset.id);
+    if (e) modal(foodCopyForm(e, date));
+  },
+  'clear-meal': (el) =>
+    modal(
+      `<h2 class="dialog-title">Изчисти ${esc(el.dataset.meal.toLowerCase())}?</h2><p>Ще премахнем само записите за ${date} в това хранене. Можеш да върнеш промяната.</p>${button('Изчисти храненето', 'confirm-clear-meal', `data-meal="${esc(el.dataset.meal)}"`, 'button danger')}`,
+    ),
+  'confirm-clear-meal': (el) => {
+    rememberDiary();
+    state.diary = state.diary.filter((e) => e.date !== date || e.meal !== el.dataset.meal);
+    finishFitness('Храненето е изчистено.');
+  },
+  'undo-fitness': () => {
+    if (fitnessUndo) {
+      state.diary = fitnessUndo;
+      fitnessUndo = null;
+      persist();
+      render();
+    }
+    toast('Дневникът е възстановен.');
+  },
+  'macro-targets': () =>
+    modal(
+      `<h2 class="dialog-title">Твоите цели за макроси</h2><p class="muted">Въведи цели, които си избрал. Не задаваме автоматични препоръки.</p><form data-form="macro-targets"><div class="form-grid">${['protein', 'carbs', 'fat'].map((k) => field(NUTRIENTS[k].label + ' (г/ден)', k, state.macroTargets[k] || '', 'number', 'min="0" max="2000" step="1"')).join('')}</div><p class="fine">Празно или 0 означава без цел.</p><p class="form-error" role="alert"></p><button class="button primary" type="submit">Запази</button></form>`,
+    ),
+  'export-diary': () => {
+    const keys = [
+      'date',
+      'meal',
+      'name',
+      'brand',
+      'amount',
+      'unit',
+      'basis',
+      'kcal',
+      ...Object.keys(NUTRIENTS),
+    ];
+    const cell = (v) =>
+      '"' +
+      String(v ?? '')
+        .replace(/^[=+@-]/, "'$&")
+        .replaceAll('"', '""') +
+      '"';
+    exportFile(
+      'na-masata-dnevnik.csv',
+      '\ufeff' +
+        [
+          keys.map(cell).join(','),
+          ...state.diary.map((e) => keys.map((k) => cell(e[k])).join(',')),
+        ].join('\r\n'),
+      'text/csv;charset=utf-8',
+    );
   },
   'diary-recipe': (el) => {
     const r = recipe(el.dataset.id),
@@ -539,7 +769,10 @@ const actions = {
     closeDialog();
     navigate(el.dataset.page);
   },
-  scanner: scannerView,
+  scanner: (el) => {
+    if (el?.dataset?.meal) picker.meal = el.dataset.meal;
+    scannerView();
+  },
   'start-camera': async (el) => {
     el.disabled = true;
     try {
@@ -595,7 +828,7 @@ document.addEventListener('click', async (event) => {
     await action(el);
   } catch (e) {
     console.error('Action failed:', el.dataset.action);
-    toast('Не успяхме да завършим действието. Опитай отново.', true);
+    toast(e.message || 'Не успяхме да завършим действието. Опитай отново.', true);
   }
 });
 document.addEventListener('submit', async (event) => {
@@ -605,6 +838,18 @@ document.addEventListener('submit', async (event) => {
   const f = new FormData(form);
   try {
     switch (form.dataset.form) {
+      case 'auth-email': {
+        const email = String(f.get('email') || '').trim();
+        await auth.sendCode(email);
+        showAccount(email);
+        break;
+      }
+      case 'auth-verify': {
+        await auth.verify(form.dataset.email, String(f.get('code') || '').trim());
+        cloud = null;
+        showAccount();
+        break;
+      }
       case 'wizard': {
         if (busy || !wizard) return;
         const d = wizard.draft;
@@ -719,15 +964,74 @@ document.addEventListener('submit', async (event) => {
         toast('Наличностите и покупките са обновени.');
         break;
       }
+      case 'food-search': {
+        picker.query = String(f.get('query') || '').trim();
+        picker.status = '';
+        if (picker.tab !== 'products') {
+          showFoodPicker();
+          break;
+        }
+        if (!CONFIG.apiBase) {
+          picker.status =
+            'Онлайн каталогът още не е свързан. Последните храни, твоите храни и ръчното въвеждане работят офлайн.';
+          showFoodPicker();
+          break;
+        }
+        lookupController?.abort();
+        const controller = new AbortController();
+        lookupController = controller;
+        picker.status = 'Търсим…';
+        showFoodPicker();
+        try {
+          const result = await searchProducts(picker.query, controller.signal);
+          if (controller.signal.aborted || !dialog.open) break;
+          picker.products = result.products || [];
+          picker.status = picker.products.length ? '' : 'Няма намерени продукти.';
+          showFoodPicker();
+        } catch (e) {
+          if (e.name === 'AbortError') break;
+          picker.status = e.message;
+          showFoodPicker();
+        }
+        break;
+      }
+      case 'copy-food': {
+        const entry = state.diary.find((e) => e.id === form.dataset.id);
+        if (!entry) throw Error('Записът вече не съществува.');
+        const dates = f.getAll('dates');
+        if (f.get('otherDate')) dates.push(f.get('otherDate'));
+        const copies = copiesForDates([entry], dates, String(f.get('meal')));
+        if (state.diary.length + copies.length > 20000) throw Error('Дневникът е пълен.');
+        rememberDiary();
+        state.diary.push(...copies);
+        finishFitness('Записът е копиран.');
+        break;
+      }
+      case 'macro-targets': {
+        const targets = {};
+        for (const k of ['protein', 'carbs', 'fat']) {
+          const v = Number(f.get(k));
+          if (!Number.isFinite(v) || v < 0 || v > 2000) throw Error('Провери целите.');
+          targets[k] = v;
+        }
+        state.macroTargets = targets;
+        persist();
+        closeDialog();
+        render();
+        break;
+      }
       case 'food': {
         const e = diaryEntry({
           ...Object.fromEntries(f),
           id: form.dataset.id || undefined,
           basis: Number(form.dataset.basis),
           source: form.dataset.source,
+          brand: form.dataset.brand,
+          servingLabel: form.dataset.serving,
           barcode: form.dataset.barcode,
         });
         const existing = state.diary.findIndex((v) => v.id === e.id);
+        if (existing < 0 && state.diary.length >= 20000) throw Error('Дневникът е пълен.');
         if (existing >= 0) state.diary[existing] = e;
         else state.diary.push(e);
         date = e.date;
@@ -805,6 +1109,23 @@ document.addEventListener('change', async (event) => {
         const generation = scanner.generation;
         const code = await scanner.image(file);
         if (generation === scanner.generation && dialog.open) await processBarcode(code);
+        break;
+      }
+      case 'import-adios': {
+        const file = el.files?.[0];
+        if (!file) return;
+        if (file.size > 5_000_000) throw Error('Файлът е твърде голям.');
+        const imported = parseAdiosExport(await file.text());
+        if (state.diary.length + imported.length > 20000) throw Error('Няма място в дневника.');
+        modal(
+          `<h2 class="dialog-title">Импорт на дневник</h2><p>Ще добавим ${imported.length} записа от adios. Повторният импорт ще създаде дубликати. Текущите записи се запазват.</p>${button('Добави записите', 'confirm-adios-import', '', 'button primary')}`,
+        );
+        actions['confirm-adios-import'] = () => {
+          rememberDiary();
+          state.diary.push(...imported);
+          delete actions['confirm-adios-import'];
+          finishFitness('Записите са добавени.');
+        };
         break;
       }
       case 'restore': {

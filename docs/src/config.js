@@ -1,8 +1,10 @@
 /** Public, non-secret configuration. Never put Stripe/Supabase service-role keys here. */
 export const CONFIG = Object.freeze({
-  version: '0.5.0',
+  version: '0.6.0',
   mode: 'preview',
   apiBase: '',
+  supabaseUrl: '',
+  supabasePublicKey: '',
   supportEmail: '',
   sourceUrl: 'https://github.com/Hristiyantsb/na-masata',
 });

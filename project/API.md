@@ -31,3 +31,12 @@ Checkout body: `{ "plan": "menu" | "plus", "interval": "monthly" | "yearly" }`. 
 ## Open Food Facts
 
 Външните данни се държат в отделен cache с source URL и license. Има лимит на заявките и 24-часов кеш. Не се прави search-as-you-type, не се изпращат изображения, не се маскират липсващи хранителни стойности с нули. Текущият normalization приема basis 100 g; трябва да се доработи и изпита явното разграничаване на 100 ml преди общо търговско използване.
+
+## v0.6 additions (implemented, not deployed)
+
+- `GET /products/search?q=...`: authenticated active Plus; 2–100 characters, up to 20 products; `{products:[...]}`. Same nullable nutrient schema as barcode lookup, sodium mg, basis 100 and explicit unit confirmation.
+- `GET /backup`: authenticated `{revision,updatedAt,state}`. Empty state is null.
+- `POST /backup`: authenticated `{revision,state}`; initial revision null, subsequent exact revision required. Full state is normalized. 409 on conflict, 413 above 1.5 MB UTF-8, 400 invalid data. `state:null` removes payload with a new tombstone revision. No automatic sync.
+- Backend identity comes only from verified Supabase bearer token; cloud copies do not trust a client userId. Cloud backup is account-level portability, not a paid-content entitlement boundary.
+
+See [FITNESS-INTEGRATION.md](FITNESS-INTEGRATION.md) for OTP template and activation instructions.

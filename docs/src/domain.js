@@ -56,6 +56,8 @@ export function defaults() {
     diary: [],
     extras: [],
     dailyTarget: 0,
+    macroTargets: { protein: 0, carbs: 0, fat: 0 },
+    savedFoods: [],
   };
 }
 export function settingsErrors(s) {
@@ -235,15 +237,36 @@ export function diaryEntry(input) {
   if (!Number.isFinite(amount) || amount <= 0 || amount > 10000 || ![1, 100].includes(basis))
     throw new Error('Въведи валидно количество.');
   if (
+    input.kcal == null ||
+    String(input.kcal).trim() === '' ||
     !Number.isFinite(kcal) ||
     kcal < 0 ||
     kcal > 2000 ||
     (protein !== null && (!Number.isFinite(protein) || protein < 0 || protein > 200))
   )
     throw new Error('Провери хранителните стойности.');
+  const extraNutrition = {};
+  for (const [key, max] of [
+    ['carbs', 200],
+    ['fat', 200],
+    ['fiber', 200],
+    ['sugars', 200],
+    ['saturatedFat', 200],
+    ['sodium', 100000],
+  ]) {
+    const value = input[key] == null || input[key] === '' ? null : Number(input[key]);
+    if (value !== null && (!Number.isFinite(value) || value < 0 || value > max))
+      throw Error('Провери хранителните стойности.');
+    extraNutrition[key] = value;
+  }
+  if ((input.unit === 'порции') !== (basis === 1))
+    throw Error('Порциите изискват стойности за една порция; грамовете и милилитрите — за 100.');
   return {
     id: typeof input.id === 'string' ? input.id.slice(0, 100) : crypto.randomUUID(),
     name: input.name.trim(),
+    brand: typeof input.brand === 'string' ? input.brand.trim().slice(0, 120) : '',
+    servingLabel: typeof input.servingLabel === 'string' ? input.servingLabel.slice(0, 120) : '',
+    ...extraNutrition,
     date: input.date,
     meal: input.meal,
     amount,
@@ -326,6 +349,20 @@ export function normalizeState(raw) {
   d.extras = (raw.extras || []).map(extraGrocery);
   if (new Set(d.extras.map((e) => e.id)).size !== d.extras.length)
     throw Error('Дублирани допълнителни продукти.');
+  for (const key of ['protein', 'carbs', 'fat']) {
+    const value = raw.macroTargets?.[key] ?? 0;
+    if (!Number.isFinite(value) || value < 0 || value > 2000)
+      throw Error('Невалидна цел за макронутриенти.');
+    d.macroTargets[key] = value;
+  }
+  if (
+    raw.savedFoods !== undefined &&
+    (!Array.isArray(raw.savedFoods) || raw.savedFoods.length > 500)
+  )
+    throw Error('Невалидна библиотека с храни.');
+  d.savedFoods = (raw.savedFoods || []).map(diaryEntry);
+  if (new Set(d.savedFoods.map((e) => e.id)).size !== d.savedFoods.length)
+    throw Error('Дублирани храни в библиотеката.');
   return d;
 }
 export function recipeJSON(r) {

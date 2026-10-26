@@ -4,7 +4,7 @@
 
 ## Канонична версия
 
-GitHub Hristiyantsb/na-masata; Pages от main:/docs. Frontend v0.5.0, native ES modules; server/ е непубликуван starter. Не сменяй framework без практическа причина.
+GitHub Hristiyantsb/na-masata; Pages от main:/docs. Frontend v0.6.0, native ES modules; server/ е непубликуван starter. Не сменяй framework без практическа причина.
 
 ## Задължително при промяна
 
@@ -24,6 +24,10 @@ GitHub Hristiyantsb/na-masata; Pages от main:/docs. Frontend v0.5.0, native ES
 - Скенерът разчита баркод; продуктова база и AI анализ не са активирани.
 - Данните са локални, не облачни. Офлайн работата изисква първо успешно онлайн зареждане и запазен браузърен кеш.
 - Няма избрано ново лого. Пет предложения в brand/concepts/ използват „на маса“. Не внедрявай произволен вариант.
+
+## Дневник v0.6
+
+Прочети `project/FITNESS-INTEGRATION.md`. Прегледът на adios е по commit a9db1b1; чужд код/шрифтове не са копирани. Работят локално макроси, история, запазени храни, копиране и импорт. Email OTP, cloud backup CAS и OFF search са реализирани, но изискват реална конфигурация. Не представяй memory-only login като persistent session или explicit backup като автоматична sync.
 
 ## Приоритет за завършване
 

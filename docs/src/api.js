@@ -28,6 +28,10 @@ export async function request(path, { method = 'GET', body, signal } = {}) {
     if (response.status === 403) throw Error('Тази функция изисква активен план Меню Плюс.');
     if (response.status === 404)
       throw Error('Продуктът не е намерен. Можеш да го въведеш от етикета.');
+    if (response.status === 409)
+      throw Error('Облачното копие е променено. Провери го отново, преди да записваш.');
+    if (response.status === 413)
+      throw Error('Копието е твърде голямо за облака. Изтегли го като файл.');
     if (response.status === 429) throw Error('Твърде много заявки. Опитай след малко.');
     throw Error('Услугата временно не е достъпна. Опитай отново.');
   }
@@ -41,4 +45,10 @@ export async function checkout(plan, interval) {
   if (!['menu', 'plus'].includes(plan) || !['monthly', 'yearly'].includes(interval))
     throw Error('Невалиден план.');
   return request('/billing/checkout', { method: 'POST', body: { plan, interval } });
+}
+
+export async function searchProducts(query, signal) {
+  const q = query.trim();
+  if (q.length < 2 || q.length > 100) throw Error('Въведи от 2 до 100 знака.');
+  return request('/products/search?q=' + encodeURIComponent(q), { signal });
 }

@@ -5,6 +5,7 @@ import {
   subscriptionRecord,
   verifySignature,
 } from './billing.js';
+import { cloudRoute } from './cloud.js';
 import { isValidBarcode } from '../docs/src/domain.js';
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -16,28 +17,8 @@ const json = (data, status = 200, headers = {}) =>
       ...headers,
     },
   });
-export function normalizeProduct(body, code) {
-  const p = body.product;
-  if (!p) return null;
-  const n = p.nutriments || {},
-    finite = (v) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : null);
-  const kcal =
-    finite(n['energy-kcal_100g']) ??
-    (finite(n.energy_100g) !== null && n.energy_unit === 'kJ' ? n.energy_100g / 4.184 : null);
-  return {
-    barcode: code,
-    name: String(p.product_name_bg || p.product_name || p.generic_name || 'Продукт без име').slice(
-      0,
-      120,
-    ),
-    kcal: kcal !== null && kcal <= 2000 ? Math.round(kcal * 10) / 10 : null,
-    protein: finite(n.proteins_100g),
-    unit: 'г',
-    source: 'openfoodfacts',
-    sourceUrl: `https://world.openfoodfacts.org/product/${code}`,
-    license: 'ODbL-1.0',
-  };
-}
+import { normalizeProduct } from './products.js';
+export { normalizeProduct } from './products.js';
 async function bodyJSON(request) {
   if (Number(request.headers.get('content-length')) > 16384) throw Error('Body too large');
   const text = await request.text();
@@ -177,7 +158,7 @@ export default {
     if (url.pathname === '/health')
       return respond({
         status: 'ok',
-        version: '0.3.0',
+        version: '0.6.0',
         billingConfigured: !!(env.STRIPE_SECRET_KEY && env.DB),
         photoAnalysisAvailable: false,
       });
@@ -190,6 +171,11 @@ export default {
     }
     if (!user) return respond({ error: 'unauthenticated' }, 401);
     try {
+      if (url.pathname === '/backup') {
+        if (!(await rateLimit(env, `backup:${user.id}`, 10)))
+          return respond({ error: 'rate_limit' }, 429);
+        return await cloudRoute(request, env, user.id, respond);
+      }
       const row = await billingRow(env, user.id);
       if (url.pathname === '/me' && request.method === 'GET')
         return respond({
@@ -250,6 +236,49 @@ export default {
         });
         return respond({ url: session.url });
       }
+      if (url.pathname === '/products/search' && request.method === 'GET') {
+        if (!entitlement(row) || row.plan !== 'plus')
+          return respond({ error: 'plus_required' }, 403);
+        const q = (url.searchParams.get('q') || '').trim().toLocaleLowerCase('bg');
+        if (q.length < 2 || q.length > 100) return respond({ error: 'invalid_query' }, 400);
+        if (!(await rateLimit(env, `search:${user.id}`, 5)))
+          return respond({ error: 'rate_limit' }, 429);
+        const cached = await env.DB.prepare(
+          'SELECT payload,expires_at FROM product_search_cache WHERE query=?',
+        )
+          .bind(q)
+          .first();
+        if (cached && cached.expires_at > Date.now() / 1000)
+          return respond(JSON.parse(cached.payload));
+        if (!env.OFF_USER_AGENT) return respond({ error: 'product_service_unconfigured' }, 503);
+        if (!(await rateLimit(env, 'off:search', 3))) return respond({ error: 'rate_limit' }, 429);
+        const search = new URL('https://world.openfoodfacts.org/cgi/search.pl');
+        search.search = new URLSearchParams({
+          search_terms: q,
+          search_simple: '1',
+          action: 'process',
+          json: '1',
+          page_size: '20',
+          fields: 'code,product_name,product_name_bg,generic_name,brands,serving_size,nutriments',
+        });
+        const response = await fetch(search, {
+          headers: { 'User-Agent': env.OFF_USER_AGENT },
+          signal: AbortSignal.timeout(10000),
+        });
+        if (!response.ok) return respond({ error: 'product_service_unavailable' }, 502);
+        const data = await response.json();
+        const products = (Array.isArray(data.products) ? data.products : [])
+          .slice(0, 20)
+          .map((product) => normalizeProduct({ product }, String(product.code || '')))
+          .filter(Boolean);
+        const payload = { products };
+        await env.DB.prepare(
+          'INSERT INTO product_search_cache(query,payload,expires_at) VALUES(?,?,?) ON CONFLICT(query) DO UPDATE SET payload=excluded.payload,expires_at=excluded.expires_at',
+        )
+          .bind(q, JSON.stringify(payload), Math.floor(Date.now() / 1000) + 86400)
+          .run();
+        return respond(payload);
+      }
       if (url.pathname.startsWith('/products/') && request.method === 'GET') {
         if (!entitlement(row) || row.plan !== 'plus')
           return respond({ error: 'plus_required' }, 403);
@@ -269,7 +298,7 @@ export default {
         if (cached && cached.expires_at > Date.now() / 1000)
           return respond(JSON.parse(cached.payload));
         const response = await fetch(
-          `https://world.openfoodfacts.org/api/v3.6/product/${code}.json?fields=product_name,product_name_bg,generic_name,nutriments`,
+          `https://world.openfoodfacts.org/api/v3.6/product/${code}.json?fields=product_name,product_name_bg,generic_name,brands,serving_size,nutriments`,
           { headers: { 'User-Agent': env.OFF_USER_AGENT }, signal: AbortSignal.timeout(10000) },
         );
         if (response.status === 404) return respond({ error: 'not_found' }, 404);
@@ -295,6 +324,9 @@ export default {
       await env.DB.batch([
         env.DB.prepare('DELETE FROM rate_limits WHERE bucket<?').bind(
           Math.floor(Date.now() / 60000) - 60,
+        ),
+        env.DB.prepare('DELETE FROM product_search_cache WHERE expires_at<?').bind(
+          Math.floor(Date.now() / 1000),
         ),
         env.DB.prepare('DELETE FROM product_cache WHERE expires_at<?').bind(
           Math.floor(Date.now() / 1000),
