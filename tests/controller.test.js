@@ -116,6 +116,15 @@ test('actual controller wires diary picker, save/reuse/copy/clear/undo and exist
   await click('app-update');
   assert.ok(dialog.querySelector('[data-action=confirm-app-update]'));
   await click('add-food', { meal: 'Закуска' });
+  const search = dialog.querySelector('[name=query]');
+  search.value = 'няма-такава-храна';
+  search.dispatchEvent(new window.Event('input', { bubbles: true }));
+  await new Promise((resolve) => realTimeout(resolve, 350));
+  assert.equal(dialog.querySelectorAll('[data-action=quick-repeat-food]').length, 0);
+  const searchAgain = dialog.querySelector('[name=query]');
+  searchAgain.value = 'мляко';
+  searchAgain.dispatchEvent(new window.Event('input', { bubbles: true }));
+  await new Promise((resolve) => realTimeout(resolve, 350));
   const beforeQuick = saved().diary.length;
   assert.ok(dialog.querySelector('[data-action=quick-repeat-food]'));
   await click('quick-repeat-food', { index: '0' });

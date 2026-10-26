@@ -90,6 +90,7 @@ let loaded = loadState(storage),
   busy = false;
 let picker = { meal: 'Обяд', tab: 'history', query: '', products: [], status: '' },
   fitnessUndo = null;
+let foodSearchTimer;
 const scanner = new Scanner();
 const auth = createAuth(CONFIG);
 setTokenProvider(() => auth.token());
@@ -160,6 +161,7 @@ function render() {
   root.innerHTML = shell(page, (views[page] || views.plan)(), pwaState());
 }
 function closeDialog() {
+  clearTimeout(foodSearchTimer);
   scanner.stop();
   lookupController?.abort();
   lookupController = null;
@@ -1211,6 +1213,29 @@ document.addEventListener('change', async (event) => {
   }
 });
 document.addEventListener('input', (event) => {
+  const search = event.target;
+  if (
+    search.name === 'query' &&
+    search.closest('[data-form=food-search]') &&
+    picker.tab !== 'products'
+  ) {
+    clearTimeout(foodSearchTimer);
+    if (event.isComposing) return;
+    const currentForm = search.closest('form');
+    const currentTab = picker.tab;
+    const value = search.value;
+    const caret = search.selectionStart;
+    foodSearchTimer = setTimeout(() => {
+      if (!dialog.open || !currentForm.isConnected || picker.tab !== currentTab) return;
+      picker.query = value.trim();
+      showFoodPicker();
+      const next = dialog.querySelector('[name=query]');
+      next.value = value;
+      next.focus();
+      if (caret !== null) next.setSelectionRange?.(caret, caret);
+    }, 300);
+  }
+
   if (event.target.closest('[data-form=food]')) updateFoodPreview();
   const el = event.target;
   if (wizard && el.dataset.input === 'budget-range') {
