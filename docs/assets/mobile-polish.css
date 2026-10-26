@@ -1,0 +1,30 @@
+
+/* Mobile finishing pass: safe-area-friendly, crisp brand, larger touch targets.
+   These styles intentionally follow editorial.css so they override legacy theme. */
+:root { --paper:#fff; --white:#fff; --green:#013c26; --ink:#153c2d; --line:#dfebe2; --soft:#f1f7f2; --radius:16px; }
+html { background:#013c26; overscroll-behavior-y:none; }
+body { background:#fff; min-height:100dvh; }
+#app { min-height:100dvh; background:#fff; }
+.button, button, select, input { touch-action:manipulation; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:3px solid #20835b; outline-offset:3px; }
+@media (max-width:700px) {
+  html, body { width:100%; max-width:100%; overflow-x:hidden; }
+  main { padding-bottom:calc(86px + env(safe-area-inset-bottom)); }
+  .mobile-nav { position:fixed; bottom:0; left:0; right:0; padding-bottom:max(4px,env(safe-area-inset-bottom)); background:#fff; box-shadow:0 -8px 30px rgba(1,60,38,.065); border-top:1px solid #e5eee7; z-index:15; }
+  .mobile-nav a { min-height:56px; font-size:11px; }
+  .mobile-nav a[aria-current='page'] { color:#013c26; font-weight:700; }
+  .topbar { position:sticky; top:0; z-index:10; background:#fff; }
+  .planned-meal, .recipe-card, .shopping-group { border-radius:15px; }
+  .planned-meal .meal-row, .shopping-row, .diary-entry { min-height:60px; }
+  .meal-actions { flex-wrap:wrap; row-gap:6px; }
+  .meal-actions > div { margin-left:auto; }
+  dialog { max-height:calc(100dvh - 20px); }
+  .brand-wordmark { image-rendering:auto; }
+  button, a { -webkit-tap-highlight-color:transparent; }
+}
+@media (max-width:380px) {
+  .mobile-nav a { min-width:0; }
+  .recipe-meta { font-size:11px; }
+  .topbar { gap:8px; }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:.01ms!important; transition-duration:.01ms!important; } }

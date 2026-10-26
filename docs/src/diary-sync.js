@@ -24,7 +24,9 @@ export function createDiarySync(storage, request, notify = () => {}) {
       retryDelay=Math.min(60000,retryDelay*2);
       schedule(retryDelay);
     } finally{flushing=false;}
-    if(queue.size && current===seq) schedule(retryDelay);
+    // A previous account may finish an in-flight request after sign-out.
+    // In that case, resume any pending queue belonging to the newly signed-in account.
+    if(queue.size && userId) schedule(current===seq ? retryDelay : 120);
   }
   function track(entries) {
     if(!userId)return;
@@ -48,6 +50,14 @@ export function createDiarySync(storage, request, notify = () => {}) {
       if(current!==seq)return;
       const items=Array.isArray(remote.items)?remote.items:[];
       if(items.length){
+        // Never silently destroy local offline entries when an existing account signs in.
+        // Save a recovery snapshot before cloud reconciliation, scoped to this account.
+        if(local.some(e=>!items.some(remoteEntry=>remoteEntry.id===e.id))) {
+          try {
+            const key='na-masa-presync-backup:'+id;
+            if(!safeGet(key)) storage?.setItem(key,JSON.stringify(local));
+          } catch {}
+        }
         const combined=new Map(items.map(e=>[e.id,e]));
         // Only queued offline edits override remote records; avoid blindly overwriting another device.
         for(const [id,op] of queue)if(op.value===null)combined.delete(id);else combined.set(id,op.value);
