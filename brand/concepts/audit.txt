@@ -1,0 +1,72 @@
+
+=== 01-logo.svg  (6353 bytes)
+viewBox 0 0 800 256 · aspect 3.125 (horizontal)
+colours 1: #20231e · gradients 0 · anchors 283
+margins L156.0 R156.0 T71.3 B62.0 · bbox fill 0.292
+· INFO [complexity] 283 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 99/100 (heuristic)
+
+=== 02-logo.svg  (3866 bytes)
+viewBox 0 0 800 256 · aspect 3.125 (horizontal)
+colours 1: #20231e · gradients 0 · anchors 205
+margins L127.8 R127.7 T42.0 B42.4 · bbox fill 0.456
+· INFO [complexity] 205 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 99/100 (heuristic)
+
+=== 03-logo.svg  (5144 bytes)
+viewBox 0 0 800 256 · aspect 3.125 (horizontal)
+colours 1: #20231e · gradients 0 · anchors 269
+margins L162.5 R162.7 T47.7 B51.7 · bbox fill 0.363
+▲ WARN [near-miss-angle] 2 straight edge(s) are 0.3–3° off a clean angle — they read as mistakes. Snap them: 90.9° (→90°) len 32.2 at (393,190); 87.8° (→90°) len 32.2 at (454,157). (Expected — and fine — for type set on a curve or deliberately rotated elements.)
+· INFO [complexity] 269 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 91/100 (heuristic)
+
+=== 04-logo.svg  (6281 bytes)
+viewBox 0 0 800 256 · aspect 3.125 (horizontal)
+colours 1: #20231e · gradients 0 · anchors 287
+margins L152.0 R152.0 T24.0 B24.0 · bbox fill 0.504
+· INFO [complexity] 287 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 99/100 (heuristic)
+
+=== 05-logo.svg  (7566 bytes)
+viewBox 0 0 800 256 · aspect 3.125 (horizontal)
+colours 1: #20231e · gradients 0 · anchors 293
+margins L186.1 R184.3 T75.3 B64.0 · bbox fill 0.245
+· INFO [complexity] 293 anchor points (library median 75.0, p75 155.0). Check every point earns its place.
+production-readiness score: 99/100 (heuristic)
+
+=== 01-symbol.svg  (229 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #20231e · gradients 0 · anchors 18
+margins L36.0 R36.0 T62.0 B48.0 · bbox fill 0.41
+· INFO [off-centre-y] Vertical margins differ (top 62.0, bottom 48.0). Remember the optical centre sits slightly above the geometric centre.
+production-readiness score: 99/100 (heuristic)
+
+=== 02-symbol.svg  (335 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #20231e · gradients 0 · anchors 29
+margins L10.0 R48.0 T18.0 B18.0 · bbox fill 0.665
+· INFO [off-centre-x] Horizontal margins differ (left 10.0, right 48.0). Intentional optical centring? Otherwise centre it.
+production-readiness score: 99/100 (heuristic)
+
+=== 03-symbol.svg  (245 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #20231e · gradients 0 · anchors 20
+margins L28.0 R36.0 T40.0 B40.0 · bbox fill 0.516
+· INFO [off-centre-x] Horizontal margins differ (left 28.0, right 36.0). Intentional optical centring? Otherwise centre it.
+production-readiness score: 99/100 (heuristic)
+
+=== 04-symbol.svg  (1699 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #20231e · gradients 0 · anchors 106
+margins L44.0 R44.0 T24.0 B24.0 · bbox fill 0.533
+▲ WARN [near-miss-angle] 1 straight edge(s) are 0.3–3° off a clean angle — they read as mistakes. Snap them: 179.6° (→0°) len 17.2 at (133,109). (Expected — and fine — for type set on a curve or deliberately rotated elements.)
+· INFO [complexity] 106 anchor points (library median 53.0, p75 95.5). Check every point earns its place.
+production-readiness score: 91/100 (heuristic)
+
+=== 05-symbol.svg  (331 bytes)
+viewBox 0 0 256 256 · aspect 1.0 (square)
+colours 1: #20231e · gradients 0 · anchors 26
+margins L28.0 R28.0 T52.0 B52.0 · bbox fill 0.464
+✔ no issues found
+production-readiness score: 100/100 (heuristic)
