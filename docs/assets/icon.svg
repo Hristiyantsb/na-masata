@@ -1,1 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="44" fill="#1d3027"/><circle cx="96" cy="96" r="45" fill="none" stroke="#d4e7a6" stroke-width="6"/><path d="M35 50v35m-9-35v25q0 12 9 12t9-12V50m-9 37v55m119-92q-18 12-18 45h18m0-45v92" fill="none" stroke="#d4e7a6" stroke-width="6" stroke-linecap="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="На маса">
+<title>На маса</title>
+<!-- Opaque edge-to-edge forest green: no white corner at any crop size. -->
+<rect width="512" height="512" fill="#013c26"/>
+<g transform="translate(27 99)">
+<path d="M125 194 83 318q-8 26-29 16-15-7-7-31l42-142Z" fill="#e6a260"/>
+<path d="m331 194 42 124q8 26 29 16 15-7 7-31l-42-142Z" fill="#e6a260"/>
+<path d="M139 190q-6 84 90 99 100-15 93-99Z" fill="#d58b4a"/>
+<ellipse cx="229" cy="181" rx="207" ry="69" fill="#d58e4b"/>
+<ellipse cx="229" cy="164" rx="207" ry="70" fill="#f3bb7d"/>
+<path d="M33 151q190-25 389 2M42 192q188-20 372-3" stroke="#dd9c62" stroke-width="7" opacity=".68" fill="none"/>
+<ellipse cx="337" cy="159" rx="53" ry="21" fill="#fff"/>
+<ellipse cx="337" cy="156" rx="33" ry="12" fill="#eee5d8"/>
+<g transform="translate(107 178) rotate(-14)"><path d="M-32 8H13M12 8V-15M20 8V-16M28 8V-15" stroke="#fff" stroke-width="9" stroke-linecap="round"/></g>
+<ellipse cx="183" cy="243" rx="29" ry="34" fill="white"/>
+<ellipse cx="274" cy="243" rx="29" ry="34" fill="white"/>
+<ellipse cx="191" cy="246" rx="16" ry="21" fill="#251916"/>
+<ellipse cx="282" cy="246" rx="16" ry="21" fill="#251916"/>
+<path d="M217 277q12 10 24 0" stroke="#744a31" stroke-width="5" fill="none" stroke-linecap="round"/>
+</g>
+</svg>

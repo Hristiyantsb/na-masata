@@ -34,3 +34,25 @@ test('per-user upsert is idempotent; wrong user never sees the entry',async()=>{
   assert.equal((await diaryRoute(put({...sample(id),kcal:-1}),env,'alice',respond,'/diary/'+id)).status,400);
  } finally {close();}
 });
+
+test('diary API paginates many entries without leaking another user',async()=>{
+ const {env,close}=db();
+ try{
+  for(let i=0;i<205;i++){
+   const id='00000000-0000-4000-8000-'+String(i).padStart(12,'0');
+   const entry=sample(id,i+1);
+   await env.DB.prepare('INSERT INTO user_diary(user_id,id,payload,updated_at) VALUES(?,?,?,?)')
+     .bind('alice',id,JSON.stringify(entry),'2026-10-26').run();
+  }
+  const page1=await (await diaryRoute(new Request('https://api.example/diary'),env,'alice',respond,'/diary')).json();
+  assert.equal(page1.items.length,200);
+  assert.ok(page1.nextCursor);
+  const page2=await (await diaryRoute(new Request('https://api.example/diary?after='+encodeURIComponent(page1.nextCursor)),env,'alice',respond,'/diary')).json();
+  assert.equal(page2.items.length,5);
+  assert.equal(page2.nextCursor,null);
+  const outsider=await (await diaryRoute(new Request('https://api.example/diary'),env,'bob',respond,'/diary')).json();
+  assert.equal(outsider.items.length,0);
+  const bad=await diaryRoute(new Request('https://api.example/diary?after=oops'),env,'alice',respond,'/diary');
+  assert.equal(bad.status,400);
+ } finally {close();}
+});

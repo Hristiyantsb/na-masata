@@ -9,6 +9,12 @@
   "theme_color": "#013c26",
   "icons": [
     {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
       "src": "assets/brand-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
@@ -28,7 +34,7 @@
     }
   ],
   "id": "./",
-  "description": "Персонални рецепти, седмично меню и удобен списък за пазаруване.",
+  "description": "Твоите рецепти, седмично меню и покупки — по твой вкус.",
   "categories": [
     "food",
     "lifestyle"
