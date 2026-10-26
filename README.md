@@ -99,3 +99,13 @@ ZXing е vendored от `@zxing/browser@0.2.1`. Виж [THIRD_PARTY_NOTICES.md](T
 - **Конфигурация:** попълни само публичните `apiBase`, `supabaseUrl`, `supabasePublicKey` в `docs/src/config.js`. В Worker задай правилни `APP_ORIGIN`, `APP_URL`, `OFF_USER_AGENT`, D1 binding и Supabase keys. Тайните не трябва да попадат в клиента.
 
 **Име:** брандът е „На маса“. Github Pages адресът и репото технически остават `na-masata`, а ключът `na-masata-v3` и старите backup заглавки се приемат за обратна съвместимост.
+
+## Финален мобилен pass (v0.7)
+
+- Бранд: browser tab и PWA name **На маса**, плътен зелен SVG favicon без бяло ъгълче, forest startup color. Иконата за инсталиране на някои платформи може да използва кеширан PNG; изисква проверка на реално устройство.
+- Mobile: съобразени safe areas, bottom-sheet dialogs, 44px touch controls, четими форми 16px срещу iOS zoom; reduced motion.
+- Diary: consent преди импорт на локален дневник, scoped pending queue, възстановяване след offline и paginated API (200 записа); никога автоматичен guest → нов акаунт upload.
+- Backend: DELETE /account/data за app дневник и backup след изрично потвърждение (не изтрива Supabase акаунт/Stripe). OFF cached barcodes не консумират глобалния fetch quota.
+- Прочети HANDOFF.md и CLAUDE.md за актуално състояние, условия за активиране и точна manual QA матрица.
+
+**URL:** GitHub Pages остава https://hristiyantsb.github.io/na-masata/ докато името на *репозиторито* не се промени в GitHub Settings на `na-masa` (или се въведе custom domain). Това е административна операция, а не надпис във frontend. Преди промяната настрой OAuth redirect/Stripe return URL и план за старите bookmarks и PWA инсталации.

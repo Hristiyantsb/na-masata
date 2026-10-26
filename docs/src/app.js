@@ -393,6 +393,23 @@ const actions = {
     await diarySync.flush();
     showAccount();
   },
+  'diary-sync-import': () => {
+    if (!diarySync.status().needsImport) return;
+    modal(`<h2 class="dialog-title">Свържи локалния дневник?</h2><p>Ще добавим ${state.diary.length} локални записа към този акаунт. Ако в облака има други записи, ще ги запазим. Синхронизацията ще продължи автоматично след това.</p><p class="notice">Прави това само ако локалният дневник е твой. При споделено устройство не потвърждавай чужди данни.</p>${button('Да, това са моите записи', 'confirm-diary-sync-import', '', 'button primary')}${button('Не сега', 'close-dialog', '', 'button outline')}`);
+  },
+  'confirm-diary-sync-import': () => {
+    if (!diarySync.status().needsImport) return;
+    diarySync.adoptLocal(structuredClone(state.diary), (entries) => {
+      applyingRemote = true;
+      try {
+        state.diary = entries.map((entry) => diaryEntry(entry));
+        persist();
+      } finally { applyingRemote = false; }
+    });
+    closeDialog();
+    render();
+    toast('Локалният дневник е свързан с този акаунт.');
+  },
   'cloud-read': async () => {
     if (cloudBusy) return;
     cloudBusy = true;
@@ -1379,7 +1396,12 @@ window.addEventListener('hashchange', () => {
   window.scrollTo(0, 0);
 });
 window.addEventListener('pagehide', () => scanner.stop());
-window.addEventListener('online', () => diarySync.flush());
+window.addEventListener('online', () => {
+  if (auth.user() && CONFIG.apiBase && diarySync.status().status === 'offline')
+    void connectDiary();
+  else
+    void diarySync.flush();
+});
 void (async () => {
   try {
     if (await auth.completeAppleSignIn()) { await connectDiary(); toast('Успешен вход с Apple.'); return; }

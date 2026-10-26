@@ -159,7 +159,7 @@ export default {
     if (url.pathname === '/health')
       return respond({
         status: 'ok',
-        version: '0.6.0',
+        version: '0.7.0',
         billingConfigured: !!(env.STRIPE_SECRET_KEY && env.DB),
         photoAnalysisAvailable: false,
       });
@@ -176,6 +176,27 @@ export default {
         if (!(await rateLimit(env, `diary:${user.id}`, 60)))
           return respond({error:'rate_limit'},429);
         return diaryRoute(request,env,user.id,respond,url.pathname);
+      }
+      if (url.pathname === '/account/data' && request.method === 'DELETE') {
+        if (!(await rateLimit(env, `delete-data:${user.id}`, 2)))
+          return respond({error:'rate_limit'},429);
+        const record = await billingRow(env,user.id);
+        // An active subscription must be managed first, to avoid unexpected billing.
+        if (entitlement(record)) return respond({error:'active_subscription'},409);
+        let confirmation;
+        try {
+          const payload = await bodyJSON(request);
+          confirmation = payload?.confirmation;
+        } catch { return respond({error:'invalid_confirmation'},400); }
+        if (confirmation !== 'DELETE_MY_APP_DATA')
+          return respond({error:'invalid_confirmation'},400);
+        await env.DB.batch([
+          env.DB.prepare('DELETE FROM user_diary WHERE user_id=?').bind(user.id),
+          env.DB.prepare('DELETE FROM user_backups WHERE user_id=?').bind(user.id)
+        ]);
+        // Provider identity and historic payment records are deliberately retained:
+        // removing those needs a separate audited, provider-specific workflow.
+        return respond({deleted:true,scope:['diary','backup'],authAccountStillExists:true});
       }
       if (url.pathname === '/backup') {
         if (!(await rateLimit(env, `backup:${user.id}`, 10)))
@@ -290,12 +311,8 @@ export default {
           return respond({ error: 'plus_required' }, 403);
         const code = url.pathname.slice('/products/'.length);
         if (!isValidBarcode(code)) return respond({ error: 'invalid_barcode' }, 400);
-        if (
-          !(await rateLimit(env, `product:${user.id}`, 10)) ||
-          !(await rateLimit(env, 'off:global', 14))
-        )
+        if (!(await rateLimit(env, `product:${user.id}`, 10)))
           return respond({ error: 'rate_limit' }, 429);
-        if (!env.OFF_USER_AGENT) return respond({ error: 'product_service_unconfigured' }, 503);
         const cached = await env.DB.prepare(
           'SELECT payload,expires_at FROM product_cache WHERE barcode=?',
         )
@@ -303,6 +320,9 @@ export default {
           .first();
         if (cached && cached.expires_at > Date.now() / 1000)
           return respond(JSON.parse(cached.payload));
+        if (!env.OFF_USER_AGENT) return respond({ error: 'product_service_unconfigured' }, 503);
+        if (!(await rateLimit(env, 'off:global', 14)))
+          return respond({ error: 'rate_limit' }, 429);
         const response = await fetch(
           `https://world.openfoodfacts.org/api/v3.6/product/${code}.json?fields=product_name,product_name_bg,generic_name,brands,serving_size,nutriments`,
           { headers: { 'User-Agent': env.OFF_USER_AGENT }, signal: AbortSignal.timeout(10000) },

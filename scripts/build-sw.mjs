@@ -6,6 +6,8 @@ const assets = ['index.html', 'manifest.webmanifest'];
 for (const dir of ['src', 'assets', 'vendor']) {
   for (const file of fs.readdirSync(path.join(root, dir), { recursive: true })) {
     const relative = dir + '/' + file;
+    // Legacy 3x3 mascot atlas is not used in the UI; do not precache its 57 KB.
+    if (relative === 'assets/onboarding-mascots.webp') continue;
     if (/\.(js|css|svg|png|woff2|webp)$/.test(file) && fs.statSync(path.join(root, relative)).isFile())
       assets.push(relative);
   }
