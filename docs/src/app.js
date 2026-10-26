@@ -7,6 +7,7 @@ import {
   settingsErrors,
   generatePlan,
   planSnapshot,
+  rearrangePlan,
   total,
   groceries,
   diaryEntry,
@@ -188,6 +189,14 @@ function shoppingText() {
     `\n\nОбщо: ${money(total(state))}`
   );
 }
+function chooseMealDestination(el, mode) {
+  if (state.locked) return;
+  const from = Number(el.dataset.index),
+    current = recipe(state.plan[from].id);
+  modal(
+    `<p class="eyebrow">${mode === 'move' ? 'ПРЕМЕСТИ ЯСТИЕ' : 'ПОВТОРИ ЯСТИЕ'}</p><h2 class="dialog-title">${esc(current.name)}</h2><p class="muted">${mode === 'move' ? 'Избери хранене, с което да разменим местата.' : 'Избери кое хранене да заменим със същото ястие. Количествата за покупки ще се преизчислят.'}</p><div class="destination-list">${state.plan.map((entry, to) => (to === from ? '' : button(`<span>Ден ${entry.day + 1} · ${entry.slot}</span><b>${esc(recipe(entry.id).name)}</b>${icon('arrow', 16)}`, 'place-meal', `data-from="${from}" data-to="${to}" data-mode="${mode}"`, 'destination-option'))).join('')}</div>${state.plan.length < 2 ? '<p>Добави още дни или хранения от предпочитанията.</p>' : ''}`,
+  );
+}
 function scannerView() {
   modal(
     `<p class="eyebrow">МЕНЮ ПЛЮС · СКЕНЕР</p><h2 class="dialog-title">От етикета в дневника.</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><div class="notice">Оценката на ястие по снимка предстои. Дотогава можеш да въведеш храната от етикета.</div>`,
@@ -307,6 +316,26 @@ const actions = {
   'favorites-filter': () => {
     favorites = !favorites;
     render();
+  },
+  'move-meal': (el) => chooseMealDestination(el, 'move'),
+  'repeat-meal': (el) => chooseMealDestination(el, 'repeat'),
+  'place-meal': (el) => {
+    const next = rearrangePlan(
+      state,
+      Number(el.dataset.from),
+      Number(el.dataset.to),
+      el.dataset.mode,
+    );
+    snapshot();
+    Object.assign(state, next);
+    persist();
+    closeDialog();
+    render();
+    toast(
+      el.dataset.mode === 'move'
+        ? 'Ястията са разменени. Можеш да върнеш промяната.'
+        : 'Ястието е повторено и покупките са обновени.',
+    );
   },
   swap: (el) => {
     if (state.locked) return;
@@ -688,6 +717,18 @@ document.addEventListener('change', async (event) => {
 });
 document.addEventListener('input', (event) => {
   const el = event.target;
+  if (wizard && el.dataset.input === 'budget-range') {
+    wizard.draft.budget = Number(el.value);
+    const input = document.getElementById('budget');
+    if (input) input.value = el.value;
+    return;
+  }
+  if (wizard && el.name === 'budget') {
+    wizard.draft.budget = Number(el.value);
+    const slider = document.querySelector('[data-input="budget-range"]');
+    if (slider) slider.value = el.value;
+  }
+  if (wizard && el.name === 'maxCalories') wizard.draft.maxCalories = Number(el.value);
   if (el.dataset.input === 'recipe-search') {
     const position = el.selectionStart;
     query = el.value;

@@ -17,3 +17,7 @@ REA/Hermes were research tools, not application dependencies. No proprietary mis
 ## Original project code
 
 No open-source license has been selected for the original project code by the owner. Public GitHub visibility alone is not a grant of a permissive software license. A commercial/open-source licensing choice remains with the owner.
+
+## Fonts
+
+Lora (700) and PT Sans (400/700), Cyrillic and Latin WOFF2 subsets, are vendored unchanged from @fontsource/lora@5.3.0 and @fontsource/pt-sans@5.3.0. Both use the SIL Open Font License. Full copyright and license texts accompany the fonts in docs/assets/fonts/. Fonts are served locally; no Google Fonts request is made.

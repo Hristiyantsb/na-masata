@@ -7,6 +7,7 @@ const root = path.resolve('docs'),
     '.js': 'text/javascript',
     '.css': 'text/css',
     '.svg': 'image/svg+xml',
+    '.woff2': 'font/woff2',
     '.webmanifest': 'application/manifest+json',
   };
 http

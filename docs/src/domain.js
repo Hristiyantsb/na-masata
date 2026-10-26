@@ -336,3 +336,26 @@ export function recipeJSON(r) {
     recipeInstructions: r.steps.map((text) => ({ '@type': 'HowToStep', text })),
   };
 }
+
+/** Exchange recipes between existing slots, or repeat one into a chosen slot.
+ * Slot day, meal and household servings never change. Returns a new snapshot.
+ */
+export function rearrangePlan(state, from, to, mode = 'move') {
+  if (state.locked) throw Error('Отключи менюто преди промяна.');
+  if (
+    !['move', 'repeat'].includes(mode) ||
+    !Number.isInteger(from) ||
+    !Number.isInteger(to) ||
+    !state.plan[from] ||
+    !state.plan[to] ||
+    from === to
+  )
+    throw Error('Избери друго хранене.');
+  const result = planSnapshot(state);
+  result.plan[to].id = state.plan[from].id;
+  if (mode === 'move') result.plan[from].id = state.plan[to].id;
+  delete result.cooked[to];
+  if (mode === 'move') delete result.cooked[from];
+  result.checked = {};
+  return result;
+}

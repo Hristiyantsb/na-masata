@@ -2,7 +2,7 @@
 
 ## Автоматизирани
 
-29 автоматизирани теста минават с `npm test`; `npm run check` проверява 13 модула, imports и assets. Пакетите са фиксирани в lockfile. Тестовете не извършват плащания, не използват истински токени и не стартират камера.
+32 автоматизирани теста минават с `npm test`; `npm run check` проверява 13 модула, imports и assets. Пакетите са фиксирани в lockfile. Тестовете не извършват плащания, не използват истински токени и не стартират камера.
 
 Покрити сценарии: строг режим/алергени/уреди/калории/време, липса на съвпадения, 14 хранения, разнообразие, обединяване на количества и опаковки, наличности, редактируеми цени, бюджетно превишение, backup validation, legacy migration, storage failure, diary units/dates/null nutrition, barcode checksum, HTML escaping, pricing allowlist, entitlement expiry, webhook signature/tampering/replay window, CORS/auth boundary и missing-product data. Допълнително: HTML структура/етикети, точни цени в екрана и mock тестове за освобождаване на камерата при затваряне/грешка. Това не заменя проверка с истинска камера.
 

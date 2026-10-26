@@ -243,3 +243,40 @@ test('calendar helpers use local calendar dates and cross month boundaries', () 
   assert.equal(localDate(new Date(2026, 9, 25, 23, 59)), '2026-10-25');
   assert.equal(daysBefore('2026-03-01', 1), '2026-02-28');
 });
+
+test('move exchanges recipes without changing slots or mutating the previous plan', async () => {
+  const { rearrangePlan } = await import('../docs/src/domain.js');
+  const state = defaults();
+  state.plan = generatePlan(state).plan;
+  state.cooked = { 0: true, 1: true, 2: true };
+  state.checked = { rice: true };
+  const before = structuredClone(state);
+  const next = rearrangePlan(state, 0, 1, 'move');
+  assert.equal(next.plan[0].id, before.plan[1].id);
+  assert.equal(next.plan[1].id, before.plan[0].id);
+  assert.equal(next.plan[0].day, before.plan[0].day);
+  assert.equal(next.plan[1].slot, before.plan[1].slot);
+  assert.deepEqual(next.checked, {});
+  assert.deepEqual(next.cooked, { 2: true });
+  assert.deepEqual(state, before);
+});
+test('repeat preserves household portions and invalid or locked changes fail', async () => {
+  const { rearrangePlan, quantities } = await import('../docs/src/domain.js');
+  const state = defaults();
+  state.plan = generatePlan(state).plan;
+  state.plan[1].people = 4;
+  const next = rearrangePlan(state, 0, 1, 'repeat');
+  assert.equal(next.plan[1].id, state.plan[0].id);
+  assert.equal(next.plan[1].people, 4);
+  assert.equal(next.plan.length, state.plan.length);
+  assert.notDeepEqual(quantities(next.plan), {});
+  for (const [from, to, mode] of [
+    [0, 0, 'move'],
+    [-1, 1, 'move'],
+    [0, 99, 'repeat'],
+    [0, 1, 'invalid'],
+  ])
+    assert.throws(() => rearrangePlan(state, from, to, mode));
+  state.locked = true;
+  assert.throws(() => rearrangePlan(state, 0, 1, 'move'), /Отключи/);
+});

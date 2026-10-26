@@ -24,34 +24,48 @@ export function shell(page, content) {
     ['shopping', 'bag', 'Покупки'],
     ['diary', 'diary', 'Дневник'],
   ];
-  return `<a class="skip-link" href="#content">Към съдържанието</a><aside class="sidebar"><a class="wordmark" href="#plan">на масата<span>•</span></a><p class="sidebar-caption">Всеки ден, по твой вкус.</p><nav aria-label="Основно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span>${id === 'diary' ? '<small>ПЛЮС</small>' : ''}</a>`).join('')}</nav><div class="sidebar-bottom"><a class="plan-link" href="#plans"><span class="plan-seal">НМ</span><span><b>Избери своя план</b><small>От 9 € на месец</small></span>${icon('arrow', 16)}</a><a class="settings-link" href="#settings">${icon('settings', 18)}Настройки и данни</a></div></aside><main id="content" tabindex="-1"><div class="topbar"><a class="mobile-wordmark" href="#plan">на масата.</a><span class="preview-label"><i></i> Работна версия</span><a href="#plans">Планове ${icon('arrow', 14)}</a></div>${content}<footer><span>По-малко чудене. Повече вкус.</span><a href="#privacy">Поверителност</a><span>България · EUR</span></footer></main><nav class="mobile-nav" aria-label="Мобилно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}<a href="#settings" ${page === 'settings' ? 'aria-current="page"' : ''}>${icon('settings')}<span>Още</span></a></nav>`;
+  return `<a class="skip-link" href="#content">Към съдържанието</a><aside class="sidebar"><a class="wordmark" href="#plan">на масата<span>•</span></a><p class="sidebar-caption">Меню, рецепти и покупки.</p><nav aria-label="Основно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span>${id === 'diary' ? '<small>ПЛЮС</small>' : ''}</a>`).join('')}</nav><div class="sidebar-bottom"><a class="plan-link" href="#plans"><span class="plan-seal">НМ</span><span><b>Избери своя план</b><small>От 9 € на месец</small></span>${icon('arrow', 16)}</a><a class="settings-link" href="#settings">${icon('settings', 18)}Настройки и данни</a></div></aside><main id="content" tabindex="-1"><div class="topbar"><a class="mobile-wordmark" href="#plan">на масата.</a><span class="preview-label"><i></i> Работна версия</span><a href="#plans">Планове ${icon('arrow', 14)}</a></div>${content}<footer><span>На масата · България</span><a href="#privacy">Поверителност</a><span>България · EUR</span></footer></main><nav class="mobile-nav" aria-label="Мобилно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}<a href="#settings" ${page === 'settings' ? 'aria-current="page"' : ''}>${icon('settings')}<span>Още</span></a></nav>`;
 }
 export function planView(state, undo) {
-  const cost = total(state),
-    rows = groceries(state),
-    s = state.settings;
+  const s = state.settings,
+    cost = total(state),
+    rows = groceries(state).filter((r) => r.packs);
+  const days = [...new Set(state.plan.map((e) => e.day))];
   return (
     heading(
-      'ПОДРЕДИ СЕДМИЦАТА',
-      'Какво ще хапваме?',
-      `${s.people} души · ${s.days} дни · ${s.slots.join(' и ').toLowerCase()}`,
-      button('Настрой менюто ' + icon('settings', 16), 'wizard', '', 'button outline'),
+      'СЕДМИЧНО МЕНЮ',
+      'Тази седмица на масата',
+      `${s.people} ${s.people === 1 ? 'човек' : 'души'} · ${s.days} дни`,
+      button(icon('settings', 16) + ' Предпочитания', 'wizard', '', 'button outline'),
     ) +
     (!state.plan.length
       ? empty(
-          'Място за вкусна седмица.',
-          'Няколко избора за твоето домакинство и менюто е готово.',
-          button('Да започваме ' + icon('arrow'), 'wizard', '', 'button primary'),
+          'Какво ще сготвим?',
+          'Избери магазини, бюджет и какво обичаш да ядеш.',
+          button('Създай меню', 'wizard', '', 'button primary'),
         )
-      : `<section class="week-overview"><div><p class="eyebrow">ТВОЯТ БЮДЖЕТ</p><div class="budget-total">${money(cost)} <span>/ ${money(s.budget)}</span></div><div class="budget-track"><span style="width:${Math.min((cost / s.budget) * 100, 100)}%;${cost > s.budget ? 'background:var(--coral)' : ''}"></span></div><p>${cost > s.budget ? `Над бюджета с ${money(cost - s.budget)}` : `Остават ${money(s.budget - cost)}`} <span>· примерни цени за опаковки</span></p></div><a class="shopping-shortcut" href="#shopping"><span class="round-icon">${icon('bag', 26)}</span><div><small>ЕДИН ОБЩ СПИСЪК</small><h3>Готов за пазаруване</h3><p>${rows.filter((r) => r.packs && state.checked[r.k]).length} от ${rows.filter((r) => r.packs).length} продукта отметнати</p></div>${icon('arrow')}</a></section><div class="section-bar"><div><h2>Твоето меню</h2><p>${esc(GOALS[s.goal][0])} · ${esc(DIETS[s.diet])}${s.maxCalories ? ' · до ' + s.maxCalories + ' ккал/порция' : ''}</p></div><div class="inline-actions">${undo ? button(icon('back', 16) + ' Върни', 'undo', '', 'quiet') : ''}${button(icon('lock', 16) + (state.locked ? ' Отключи' : ' Заключи'), 'lock', '', 'quiet')}</div></div>${state.locked ? '<div class="notice compact">Менюто е заключено. Ястията и порциите няма да се променят.</div>' : ''}<div class="meal-list">${state.plan
+      : `
+  <div class="plan-store-line">${icon('bag', 16)}<span>${s.stores.map(esc).join(' · ')}</span></div>
+  <section class="week-overview"><div><p class="eyebrow">ПРИМЕРНА СМЕТКА</p><div class="budget-total">${money(cost)} <span>/ ${money(s.budget)}</span></div><div class="budget-track"><span style="width:${Math.min((cost / s.budget) * 100, 100)}%;${cost > s.budget ? 'background:var(--coral)' : ''}"></span></div><p>${cost > s.budget ? 'Над бюджета с ' + money(cost - s.budget) : 'За цели опаковки'}</p></div><a class="shopping-shortcut" href="#shopping"><div><small>ЗА ПАЗАРУВАНЕ</small><h3>Списъкът ти ${icon('arrow', 18)}</h3><p>${rows.filter((r) => state.checked[r.k]).length} / ${rows.length} продукта</p></div></a></section>
+  <div class="section-bar plan-tools"><p>${esc(GOALS[s.goal][0])} · ${esc(DIETS[s.diet])}</p><div class="inline-actions">${undo ? button(icon('back', 16) + ' Върни', 'undo', '', 'quiet') : ''}${button(icon('lock', 16) + (state.locked ? ' Отключи' : ' Заключи'), 'lock', '', 'quiet')}</div></div>
+  ${state.locked ? '<p class="notice compact">Менюто е заключено. Отключи го, за да местиш или сменяш ястия.</p>' : ''}
+  <div class="week-days">${days
+    .map(
+      (day) =>
+        `<section class="plan-day"><h2 class="day-heading"><span>Ден ${day + 1}</span><span>${state.plan
+          .filter((e) => e.day === day)
+          .map((e) => e.slot)
+          .join(' и ')}</span></h2>${state.plan
           .map((e, i) => {
+            if (e.day !== day) return '';
             const r = recipe(e.id),
               n = nutrition(r);
-            return `<article class="meal-row ${state.cooked[i] ? 'is-cooked' : ''}"><div class="meal-day"><span>ДЕН</span><b>${String(e.day + 1).padStart(2, '0')}</b><small>${e.slot}</small></div><button class="meal-main" data-action="recipe" data-id="${r.id}" data-index="${i}">${foodArt(r)}<span class="meal-copy"><span class="recipe-category">${esc(r.type)}</span><b>${r.name}</b><span class="recipe-meta">${icon('clock', 13)}${r.time} мин <i></i>${e.people} порции <i></i>≈ ${n.kcal} ккал/порция</span></span></button><div class="meal-cost"><b>${money(recipeCost(r, e.people, state))}</b><small>съставки за ястието</small></div>${button(icon('swap', 18), 'swap', `data-index="${i}" aria-label="Смени ${esc(r.name)}" ${state.locked ? 'disabled' : ''}`, 'icon-button')}${button(icon('check', 17), 'cooked', `data-index="${i}" aria-label="${state.cooked[i] ? 'Отмени сготвено' : 'Отбележи като сготвено'}" aria-pressed="${!!state.cooked[i]}"`, 'icon-button done-button')}</article>`;
+            return `<article class="planned-meal ${state.cooked[i] ? 'is-cooked' : ''}"><div class="meal-row"><button class="meal-main" data-action="recipe" data-id="${r.id}" data-index="${i}">${foodArt(r)}<span class="meal-copy"><span class="recipe-category">${esc(r.type)}</span><b>${esc(r.name)}</b><span class="recipe-meta">${r.time} мин <i></i>${e.people} порции <i></i>≈ ${n.kcal} ккал</span></span></button>${button(icon('check', 17), 'cooked', `data-index="${i}" aria-label="${state.cooked[i] ? 'Отмени сготвено' : 'Отбележи като сготвено'}" aria-pressed="${!!state.cooked[i]}"`, 'icon-button done-button')}</div><div class="meal-actions"><span>${money(recipeCost(r, e.people, state))}<small> съставки</small></span><div>${button('Премести', 'move-meal', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}${button('Повтори', 'repeat-meal', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}${button(icon('swap', 14) + ' Смени', 'swap', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}</div></div></article>`;
           })
-          .join(
-            '',
-          )}</div><div class="plan-bottom">${button(icon('swap') + ' Намери друго меню', 'regenerate', state.locked ? 'disabled' : '', 'button primary')}${button(icon('download', 17) + ' Изтегли', 'export-plan', '', 'quiet')}</div><p class="fine">Подбор от ${RECIPES.length} рецепти. Стойността на съставките е различна от цената на целите опаковки. Хранителните стойности са приблизителни.</p>`)
+          .join('')}</section>`,
+    )
+    .join('')}</div>
+  <div class="plan-bottom">${button(icon('swap', 18) + ' Ново меню', 'regenerate', state.locked ? 'disabled' : '', 'button primary')}${button(icon('download', 17) + ' Изтегли', 'export-plan', '', 'quiet')}</div><p class="fine">${RECIPES.length} рецепти. Цените са примерни, а хранителните стойности — приблизителни. Сметката за покупките включва цели опаковки.</p>`)
   );
 }
 export function recipeCards(list, state, swapIndex = null) {
@@ -70,8 +84,8 @@ export function recipesView(state, query, favorites) {
   );
   return (
     heading(
-      'ОТ НАШАТА КУХНЯ',
-      'Познато. Вкусно. Твое.',
+      'РЕЦЕПТИ',
+      'Книгата с рецепти',
       'Рецепти, съобразени с твоите предпочитания.',
       button(icon('settings', 16) + ' Филтри', 'wizard', '', 'button outline'),
     ) +
@@ -83,7 +97,7 @@ export function recipeDetail(r, state, index = null) {
       index === null ? state.settings.people : state.plan[index]?.people || state.settings.people,
     allergens = [...new Set(Object.keys(r.ing).flatMap((k) => PRODUCTS[k][4]))],
     macros = nutrition(r);
-  return `<p class="eyebrow">${r.type}</p><h2 class="dialog-title">${r.name}</h2><div class="recipe-detail-meta"><span>${icon('clock', 16)}${r.time} мин${r.prepNote ? ' + накисване' : ''}</span><span>${n} порции</span><span>${r.equipment.map((k) => EQUIPMENT[k]).join(' + ') || 'Без уреди'}</span></div><div class="nutrition-strip"><div><b>≈ ${macros.kcal}</b><small>ккал / порция</small></div><div><b>${macros.protein} г</b><small>протеин / порция</small></div><div><b>${money(recipeCost(r, n, state))}</b><small>съставки за ${n} порции</small></div></div>${r.prepNote ? `<div class="notice">${esc(r.prepNote)}</div>` : ''}<div class="recipe-columns"><section><h3>На плота</h3>${Object.entries(
+  return `<p class="eyebrow">${r.type}</p><h2 class="dialog-title">${r.name}</h2><div class="recipe-detail-meta"><span>${icon('clock', 16)}${r.time} мин${r.prepNote ? ' + накисване' : ''}</span><span>${n} порции</span><span>${r.equipment.map((k) => EQUIPMENT[k]).join(' + ') || 'Без уреди'}</span></div><div class="nutrition-strip"><div><b>≈ ${macros.kcal}</b><small>ккал / порция</small></div><div><b>${macros.protein} г</b><small>протеин / порция</small></div><div><b>${money(recipeCost(r, n, state))}</b><small>съставки за ${n} порции</small></div></div>${r.prepNote ? `<div class="notice">${esc(r.prepNote)}</div>` : ''}<div class="recipe-columns"><section><h3>Съставки</h3>${Object.entries(
     r.ing,
   )
     .map(
@@ -98,8 +112,8 @@ export function shoppingView(state) {
   const rows = groceries(state);
   return (
     heading(
-      'ОТ МЕНЮТО ДО МАГАЗИНА',
-      'Само това, което ти трябва.',
+      'ПОКУПКИ',
+      'Списък за пазаруване',
       'Количествата са събрани за цялото меню.',
       button(icon('download', 17) + ' Списък', 'export-shopping', '', 'button outline'),
     ) +
@@ -197,11 +211,7 @@ export function foodForm(date, meal = 'Обяд', entry = null) {
 export function pricingView(interval) {
   const annual = interval === 'yearly';
   return (
-    heading(
-      'ЯСНИ ПЛАНОВЕ. СПОКОЙНА КУХНЯ.',
-      'Избери какво ти е нужно.',
-      'Меню за седмицата или поглед върху цялото ти хранене.',
-    ) +
+    heading('АБОНАМЕНТИ', 'Двата плана', 'Меню за седмицата или поглед върху цялото ти хранене.') +
     `<div class="billing-toggle" role="group" aria-label="Период на плащане">${button('Месечно', 'billing-period', 'data-value="monthly" aria-pressed="' + !annual + '"', !annual ? 'active' : '')}${button('Годишно <span>2 месеца по-малко</span>', 'billing-period', 'data-value="yearly" aria-pressed="' + annual + '"', annual ? 'active' : '')}</div><div class="pricing-grid">${Object.entries(
       PLANS,
     )
@@ -216,8 +226,8 @@ export function pricingView(interval) {
 }
 export function settingsView(state) {
   return (
-    heading('ПО ТВОЙ ВКУС', 'Твоето пространство.', 'Настройките и данните са под твой контрол.') +
-    `<div class="settings-sections"><section class="settings-card"><span class="round-icon">${icon('user', 24)}</span><div><h2>Моето домакинство</h2><p>${state.settings.people} души · ${state.settings.days} дни · ${DIETS[state.settings.diet]}</p>${button('Промени предпочитанията', 'wizard', '', 'button outline')}</div></section><section class="settings-card"><span class="round-icon">${icon('book', 24)}</span><div><h2>Моят план</h2><p>Демонстрационен достъп. Нямаш активен платен абонамент.</p><a class="button outline" href="#plans">Разгледай плановете ${icon('arrow', 16)}</a></div></section><section class="settings-card"><span class="round-icon">${icon('lock', 24)}</span><div><h2>Твоите данни</h2><p>Запазват се в този браузър. Няма синхронизация между устройства.</p><div class="inline-actions">${button('Изтегли копие', 'backup', '', 'button outline')}<label class="button outline file-label">Възстанови копие<input id="restore-input" type="file" accept="application/json,.json" data-change="restore" hidden></label></div><p class="fine">Копието включва менюто, предпочитанията, бележките и дневника. Изтегляй го на устройство, на което имаш доверие.</p>${button('Изтрий локалните данни', 'reset', '', 'quiet danger')}</div></section><section class="settings-card"><span class="round-icon">${icon('info', 24)}</span><div><h2>За „На масата“</h2><p>Български рецепти и спокойно планиране. Работна версия 0.3.0.</p><a href="https://github.com/Hristiyantsb/na-masata" target="_blank" rel="noopener">Проектът в GitHub ↗</a></div></section></div>`
+    heading('МОЯТ ПРОФИЛ', 'Настройки', 'Настройките и данните са под твой контрол.') +
+    `<div class="settings-sections"><section class="settings-card"><span class="round-icon">${icon('user', 24)}</span><div><h2>Моето домакинство</h2><p>${state.settings.people} души · ${state.settings.days} дни · ${DIETS[state.settings.diet]}</p>${button('Промени предпочитанията', 'wizard', '', 'button outline')}</div></section><section class="settings-card"><span class="round-icon">${icon('book', 24)}</span><div><h2>Моят план</h2><p>Демонстрационен достъп. Нямаш активен платен абонамент.</p><a class="button outline" href="#plans">Разгледай плановете ${icon('arrow', 16)}</a></div></section><section class="settings-card"><span class="round-icon">${icon('lock', 24)}</span><div><h2>Твоите данни</h2><p>Запазват се в този браузър. Няма синхронизация между устройства.</p><div class="inline-actions">${button('Изтегли копие', 'backup', '', 'button outline')}<label class="button outline file-label">Възстанови копие<input id="restore-input" type="file" accept="application/json,.json" data-change="restore" hidden></label></div><p class="fine">Копието включва менюто, предпочитанията, бележките и дневника. Изтегляй го на устройство, на което имаш доверие.</p>${button('Изтрий локалните данни', 'reset', '', 'quiet danger')}</div></section><section class="settings-card"><span class="round-icon">${icon('info', 24)}</span><div><h2>За „На масата“</h2><p>Български рецепти и спокойно планиране. Работна версия 0.4.0.</p><a href="https://github.com/Hristiyantsb/na-masata" target="_blank" rel="noopener">Проектът в GitHub ↗</a></div></section></div>`
   );
 }
 export function privacyView() {

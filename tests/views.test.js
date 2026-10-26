@@ -88,3 +88,18 @@ test('recipe notes and food names remain text after HTML rendering', () => {
   assert.equal(food.querySelector('[name=name]').value, '"><script>alert(1)</script>');
   assert.equal(food.querySelector('[name=protein]').value, '');
 });
+
+test('weekly menu groups every slot by day and exposes move/repeat actions', () => {
+  const state = defaults();
+  state.settings.slots = ['Обяд', 'Вечеря'];
+  state.plan = generatePlan(state).plan;
+  const d = safeMarkup(views.planView(state, null));
+  assert.equal(d.querySelectorAll('.plan-day').length, state.settings.days);
+  assert.equal(d.querySelectorAll('.planned-meal').length, state.plan.length);
+  assert.equal(d.querySelectorAll('[data-action="move-meal"]').length, state.plan.length);
+  assert.equal(d.querySelectorAll('[data-action="repeat-meal"]').length, state.plan.length);
+  state.locked = true;
+  const locked = dom(views.planView(state, null));
+  for (const el of locked.querySelectorAll('[data-action="move-meal"],[data-action="repeat-meal"]'))
+    assert.ok(el.hasAttribute('disabled'));
+});
