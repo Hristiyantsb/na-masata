@@ -860,3 +860,25 @@ footer {
     font-size: 12px;
   }
 }
+
+/* 2026 brand refresh: white canvas and approved forest green. */
+:root {
+  --paper: #fff;
+  --white: #fff;
+  --green: #013c26;
+  --ink: #153c2d;
+  --soft: #f1f6f2;
+  --line: #dfe8e1;
+}
+html, body { background-color: #fff; }
+.sidebar, .wizard-aside, .wizard-layout, .wizard-bottom, .mobile-nav { background: #fff; }
+.sidebar nav a[aria-current='page'], .sidebar nav a:hover { background: #e9f1eb; color: var(--green); }
+.mobile-nav > a[aria-current='page'] { color: var(--green); }
+.button.primary:hover { background: #025535; }
+.preview-label i, .status-dot, .budget-track > span, .progress-track > span { background-color: var(--green); }
+.wordmark, .mobile-wordmark { display: inline-flex; align-items: center; width: fit-content; line-height: 1; }
+.brand-wordmark { display: block; width: 170px; height: auto; max-width: 100%; object-fit: contain; }
+.mobile-wordmark .brand-wordmark { width: 134px; }
+.wizard-aside .brand-wordmark { width: 190px; }
+.wizard-aside .wordmark { margin: 0; }
+@media (max-width: 700px) { .mobile-nav { background: #fff; } .mobile-wordmark { display: inline-flex; } }
