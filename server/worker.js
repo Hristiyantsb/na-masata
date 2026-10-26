@@ -6,6 +6,7 @@ import {
   verifySignature,
 } from './billing.js';
 import { cloudRoute } from './cloud.js';
+import { diaryRoute } from './diary.js';
 import { isValidBarcode } from '../docs/src/domain.js';
 const json = (data, status = 200, headers = {}) =>
   new Response(JSON.stringify(data), {
@@ -141,7 +142,7 @@ export default {
         ? {
             'Access-Control-Allow-Origin': origin,
             Vary: 'Origin',
-            'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           }
         : {};
@@ -171,6 +172,11 @@ export default {
     }
     if (!user) return respond({ error: 'unauthenticated' }, 401);
     try {
+      if (url.pathname === '/diary' || url.pathname.startsWith('/diary/')) {
+        if (!(await rateLimit(env, `diary:${user.id}`, 60)))
+          return respond({error:'rate_limit'},429);
+        return diaryRoute(request,env,user.id,respond,url.pathname);
+      }
       if (url.pathname === '/backup') {
         if (!(await rateLimit(env, `backup:${user.id}`, 10)))
           return respond({ error: 'rate_limit' }, 429);

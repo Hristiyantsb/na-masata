@@ -199,3 +199,10 @@
     font-size: 14px;
   }
 }
+
+/* Explicit serving weight confirmation and readable diary lookup status. */
+.food-serving-confirm { grid-column:1/-1; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:14px; background:#f4f8f5; border:1px solid #dfe9e1; border-radius:14px; }
+.food-serving-confirm[hidden] { display:none!important; }
+.food-serving-confirm .field:last-child { align-self:center; }
+.food-search-status { min-height:1.25em; }
+@media (max-width:540px) {.food-serving-confirm {grid-template-columns:1fr;} }
