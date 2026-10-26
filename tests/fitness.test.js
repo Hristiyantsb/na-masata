@@ -133,3 +133,17 @@ test('new-from-history forms do not accidentally edit originals; text is escaped
   s.savedFoods = [e];
   assert.doesNotMatch(foodPicker(s, e.date, e.meal, 'saved'), /<script>/);
 });
+
+test('macro energy shares use 4/4/9 and require complete, nonnegative data', async () => {
+  const { macroEnergyShares } = await import('../docs/src/fitness.js');
+  assert.deepEqual(macroEnergyShares({ protein: 10, carbs: 10, fat: 0 }), {
+    protein: 50,
+    carbs: 50,
+    fat: 0,
+  });
+  assert.equal(macroEnergyShares({ protein: 10, carbs: null, fat: 0 }), null);
+  assert.equal(macroEnergyShares({ protein: 0, carbs: 0, fat: 0 }), null);
+  assert.equal(macroEnergyShares({ protein: -1, carbs: 1, fat: 1 }), null);
+  const result = macroEnergyShares({ protein: 10, carbs: 10, fat: 10 });
+  assert.ok(Math.abs(result.fat - 9000 / 170) < 0.0001);
+});

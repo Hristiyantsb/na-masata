@@ -42,7 +42,13 @@ import { wizardView, previewRecipes } from './onboarding.js';
 import { esc, icon, button, money, num, field } from './ui.js';
 import { Scanner } from './scanner.js';
 import { lookupBarcode, searchProducts, setTokenProvider, request } from './api.js';
-import { foodHistory, copiesForDates, parseAdiosExport, NUTRIENTS } from './fitness.js';
+import {
+  foodHistory,
+  copiesForDates,
+  parseAdiosExport,
+  NUTRIENTS,
+  macroEnergyShares,
+} from './fitness.js';
 import { foodPicker, foodCopyForm } from './fitness-views.js';
 import { createAuth } from './auth.js';
 import { accountView } from './account-view.js';
@@ -183,6 +189,22 @@ function updateFoodPreview() {
         return `<p><b>${label}: ${value === null || !Number.isFinite(value) ? 'неизвестно' : num(value, 1) + ' ' + unit}</b>${value !== null && Number.isFinite(value) && targets[key] > 0 ? ' · ' + num((value / targets[key]) * 100, 1) + '% от дневната цел' : ''}</p>`;
       })
       .join('');
+  const values = Object.fromEntries(
+    ['protein', 'carbs', 'fat'].map((key) => {
+      const raw = form.querySelector(`[name="${key}"]`).value.trim();
+      return [key, raw === '' ? null : Number(raw) * scale];
+    }),
+  );
+  const shares = macroEnergyShares(values);
+  preview.innerHTML +=
+    '<p class="eyebrow">ЕНЕРГИЯ ОТ МАКРОСИТЕ</p>' +
+    (shares
+      ? '<p>' +
+        ['protein', 'carbs', 'fat']
+          .map((key) => NUTRIENTS[key].label + ': <b>' + num(shares[key], 1) + '%</b>')
+          .join(' · ') +
+        '</p><p class="fine">Ориентировъчно по 4/4/9 ккал на грам. Разпределението е между тези три макроса и може да се различава от калориите на етикета.</p>'
+      : '<p class="fine">Въведи и трите макроса, за да видиш разпределение. При нулев сбор няма процентно разпределение.</p>');
 }
 function modal(content, wide = false) {
   if (!dialog.open) focusBeforeDialog = document.activeElement;

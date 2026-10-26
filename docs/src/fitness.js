@@ -104,3 +104,14 @@ export function parseAdiosExport(text) {
     }),
   );
 }
+
+/** Energy shares among the three known macros; never equate this estimate with label kcal. */
+export function macroEnergyShares(values) {
+  const keys = ['protein', 'carbs', 'fat'];
+  if (keys.some((key) => values[key] == null || !Number.isFinite(values[key]) || values[key] < 0))
+    return null;
+  const energy = { protein: values.protein * 4, carbs: values.carbs * 4, fat: values.fat * 9 };
+  const total = energy.protein + energy.carbs + energy.fat;
+  if (!total) return null;
+  return Object.fromEntries(keys.map((key) => [key, (energy[key] / total) * 100]));
+}
