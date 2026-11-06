@@ -242,7 +242,7 @@ function updateFoodPreview() {
 function modal(content, wide = false) {
   if (!dialog.open) focusBeforeDialog = document.activeElement;
   dialog.classList.toggle('wide', wide);
-  dialog.innerHTML = `<div class="dialog-bar"><span>eDish</span>${button(icon('close'), 'close-dialog', 'aria-label="Затвори"', 'icon-button')}</div><div class="dialog-content">${content}</div>`;
+  dialog.innerHTML = `<div class="dialog-bar"><span>На маса</span>${button(icon('close'), 'close-dialog', 'aria-label="Затвори"', 'icon-button')}</div><div class="dialog-content">${content}</div>`;
   if (!dialog.open) dialog.showModal();
   dialog.querySelector('.dialog-content').scrollTop = 0;
   updateFoodPreview();
@@ -284,7 +284,7 @@ function exportFile(name, content, type = 'text/plain;charset=utf-8') {
 }
 function shoppingText() {
   return (
-    'eDish — СПИСЪК ЗА ПАЗАРУВАНЕ\nПримерни цени за цели опаковки.\n\n' +
+    'На маса — СПИСЪК ЗА ПАЗАРУВАНЕ\nПримерни цени за цели опаковки.\n\n' +
     state.settings.stores
       .map((s) => {
         const rows = groceries(state).filter((r) => r.packs && r.store === s);
@@ -672,7 +672,7 @@ const actions = {
   'export-plan': () =>
     exportFile(
       'na-masa-menu.txt',
-      'eDish\n\n' +
+      'На маса\n\n' +
         state.plan
           .map((e) => `Ден ${e.day + 1} · ${e.slot}: ${recipe(e.id).name} (${e.people} порции)`)
           .join('\n') +

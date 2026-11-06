@@ -8,10 +8,10 @@ import { mascotArt } from '../docs/src/mascot.js';
 
 const html = (step) => parseHTML('<html><body>'+wizardView(defaults().settings,step)+'</body></html>').document;
 
-test('onboarding has the eDish identity and a usable form on every screen',()=>{
+test('onboarding has the На маса identity and a usable form on every screen',()=>{
  for(let step=0;step<STEPS.length;step++){
   const document=html(step);
-  assert.ok(document.querySelector('img[src="assets/edish-wordmark.svg"]'));
+  assert.ok(document.querySelector('img[src="assets/brand-wordmark.webp"]'));
   assert.ok(document.querySelector('form[data-form="wizard"] .nm-primary'));
   assert.ok(document.querySelector('h1#nm-step-title'));
   assert.equal(document.querySelectorAll('.nm-mascot').length,0);

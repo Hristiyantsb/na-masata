@@ -1,13 +1,19 @@
 {
-  "name": "eDish",
-  "short_name": "eDish",
+  "name": "На маса",
+  "short_name": "На маса",
   "lang": "bg",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#f4604c",
+  "background_color": "#013c26",
+  "theme_color": "#013c26",
   "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
     {
       "src": "assets/brand-icon-192.png",
       "sizes": "192x192",
@@ -21,7 +27,7 @@
       "purpose": "any"
     },
     {
-      "src": "assets/icon-512.png",
+      "src": "assets/brand-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
