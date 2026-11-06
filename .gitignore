@@ -8,3 +8,6 @@ server/wrangler.json
 server/wrangler.jsonc
 .DS_Store
 *.log
+
+.taste-skill/
+worker-build/

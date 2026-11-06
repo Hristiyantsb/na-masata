@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS recipe_catalog(id TEXT PRIMARY KEY,payload TEXT NOT NULL,source TEXT NOT NULL,updated_at TEXT NOT NULL);

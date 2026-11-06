@@ -1,3 +1,4 @@
+import { CONFIG } from './config.js';
 import { NUTRIENTS, nutritionTotals, weekDates, foodHistory } from './fitness.js';
 import { MEALS, daysBefore } from './domain.js';
 import { esc, icon, button, field, num } from './ui.js';
@@ -43,7 +44,7 @@ export function foodPicker(
   return `<p class="eyebrow">${esc(meal)} · ${date}</p><h2 class="dialog-title">Добави храна</h2><div class="food-actions">${button(icon('plus', 16) + ' Ръчно', 'manual-food', `data-meal="${meal}"`, 'button outline')}${button(icon('scan', 16) + ' Баркод', 'scanner', `data-meal="${meal}"`, 'button outline')}<a class="button outline" href="#recipes">От рецепта</a></div><div class="food-tabs" role="group" aria-label="Източник на храна">${[
     ['history', 'Последни'],
     ['saved', 'Мои храни'],
-    ['products', 'Продуктова база'],
+    ...(CONFIG.apiBase ? [['products', 'Продуктова база']] : []),
   ]
     .map(([id, name]) =>
       button(

@@ -1,6 +1,6 @@
 {
-  "name": "na-masata",
-  "version": "0.6.0",
+  "name": "edish",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Bulgarian meal planner and food diary",

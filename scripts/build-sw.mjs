@@ -5,7 +5,7 @@ const root = 'docs';
 const assets = ['index.html', 'manifest.webmanifest'];
 for (const dir of ['src', 'assets', 'vendor']) {
   for (const file of fs.readdirSync(path.join(root, dir), { recursive: true })) {
-    const relative = dir + '/' + file;
+    const relative = dir + '/' + file.replaceAll('\\', '/');
     // Legacy 3x3 mascot atlas is not used in the UI; do not precache its 57 KB.
     if (relative === 'assets/onboarding-mascots.webp') continue;
     if (/\.(js|css|svg|png|woff2|webp)$/.test(file) && fs.statSync(path.join(root, relative)).isFile())
@@ -13,14 +13,18 @@ for (const dir of ['src', 'assets', 'vendor']) {
   }
 }
 assets.sort();
-const template = fs.readFileSync('scripts/templates/sw.js', 'utf8');
+const template = fs.readFileSync('scripts/templates/sw.js', 'utf8').replace(/\r\n/g, '\n');
 const hash = crypto.createHash('sha256').update(template);
-for (const file of assets) hash.update(file).update(fs.readFileSync(path.join(root, file)));
+for (const file of assets) {
+  const bytes = fs.readFileSync(path.join(root, file));
+  const content = /\.(html|js|css|svg|webmanifest)$/.test(file) ? bytes.toString('utf8').replace(/\r\n/g, '\n') : bytes;
+  hash.update(file).update(content);
+}
 const output = template
   .replace('__VERSION__', hash.digest('hex').slice(0, 16))
   .replace('__ASSETS__', JSON.stringify(assets, null, 2));
 if (process.argv.includes('--check')) {
-  if (!fs.existsSync('docs/sw.js') || fs.readFileSync('docs/sw.js', 'utf8') !== output)
+  if (!fs.existsSync('docs/sw.js') || fs.readFileSync('docs/sw.js', 'utf8').replace(/\r\n/g, '\n') !== output)
     throw Error(`Offline bundle is stale. Expected version: ${output.match(/const VERSION = '([^']+)'/)[1]}. Run npm run build:offline and commit docs/sw.js.`);
   console.log(`PASS: offline release matches ${assets.length} local assets.`);
 } else {

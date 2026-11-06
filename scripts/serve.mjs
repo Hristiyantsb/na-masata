@@ -41,4 +41,4 @@ http
       res.end(data);
     });
   })
-  .listen(4173, '127.0.0.1', () => console.log('На масата: http://127.0.0.1:4173'));
+  .listen(Number(process.env.PORT || 4173), '127.0.0.1', () => console.log('eDish local server ready'));

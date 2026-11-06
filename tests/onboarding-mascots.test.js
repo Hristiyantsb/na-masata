@@ -8,25 +8,15 @@ import { mascotArt } from '../docs/src/mascot.js';
 
 const html = (step) => parseHTML('<html><body>'+wizardView(defaults().settings,step)+'</body></html>').document;
 
-test('all onboarding screens feature their own responsive crisp mascot expression',()=>{
-  assert.equal(STEPS.length,9);
-  for(let step=0;step<STEPS.length;step++){
-    const document=html(step);
-    const desktop=document.querySelectorAll('.nm-story-mascot');
-    const mobile=Array.from(document.querySelectorAll('.nm-mascot')).filter(el=>!el.classList.contains('nm-story-mascot'));
-    assert.equal(desktop.length,1,'desktop step '+step);
-    assert.equal(mobile.length,1,'mobile step '+step);
-    for(const el of [...desktop,...mobile]){
-      assert.equal(el.localName,'svg','scalable vector');
-      assert.ok(el.classList.contains('nm-mood-'+step));
-      assert.ok(el.getAttribute('aria-label')?.length);
-      assert.equal(el.getAttribute('viewBox'),'0 0 520 370');
-    }
-    assert.equal(document.querySelectorAll('img[src*="brand-icon-512"]').length,0);
-    assert.ok(document.querySelector('form[data-form="wizard"] .nm-primary'));
-    assert.ok(document.querySelector('h1#nm-step-title'));
-  }
-  assert.match(mascotArt(4),/готварска шапка/);
+test('onboarding has the eDish identity and a usable form on every screen',()=>{
+ for(let step=0;step<STEPS.length;step++){
+  const document=html(step);
+  assert.ok(document.querySelector('img[src="assets/edish-wordmark.svg"]'));
+  assert.ok(document.querySelector('form[data-form="wizard"] .nm-primary'));
+  assert.ok(document.querySelector('h1#nm-step-title'));
+  assert.equal(document.querySelectorAll('.nm-mascot').length,0);
+ }
+ assert.match(mascotArt(0),/Един списък за покупки/);
 });
 test('onboarding uses distinct types of interactive input, not checkbox grids everywhere',()=>{
  const goals=html(1),time=html(4),party=html(5),stores=html(6);

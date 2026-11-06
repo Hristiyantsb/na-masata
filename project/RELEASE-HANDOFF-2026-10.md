@@ -1,9 +1,9 @@
-# На маса · Release readiness & Claude handoff (2026-10-26)
+# eDish · Release readiness & Claude handoff (2026-10-26)
 
 ## Product and deployment facts
 - Production source: `Hristiyantsb/na-masata`, GitHub Pages `main:/docs`.
 - Public Pages URL: `https://hristiyantsb.github.io/na-masata/`.
-- **Brand name is „На маса“.** Browser tab title, manifest `name` and iOS home-screen label are `На маса`.
+- **Brand name is „eDish“.** Browser tab title, manifest `name` and iOS home-screen label are `eDish`.
 - URL `/na-masata/` derives from the **repository name**, not the app title. To obtain `/na-masa/`, rename GitHub repository in Settings → General → Repository name and update the Pages deployment URL and links. Do **not** rename localStorage keys or service-worker scope until a migration is planned. GitHub may redirect previous repository URLs; validate Pages, installation and deep links separately after the rename.
 - This is a PWA, not a native App Store binary. A white shortcut corner/badge added by a browser/OS cannot be removed with CSS; install as a PWA (Add to Home Screen / Install App) instead of pinning a plain browser shortcut. Branded favicon now has a solid `#013c26` background and manifest launch background matches.
 - User video `Screen Recording 2026-10-25 120143(1).mp4` shows the *mise* reference flow: brief onboarding questions, time saving promise, serving counter, meal preference chips, appliance selection, plan, recipe details, daily menu and settings. Do not copy its proprietary artwork/assets; use it only as UX reference.

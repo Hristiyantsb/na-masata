@@ -28,8 +28,8 @@ test('preview respects all hard restrictions', () => {
 test('onboarding does not pretend that checkout is live', () => {
   const s = defaults().settings;
   assert.equal(STEPS.length, 9);
-  assert.match(wizardView(s, 0), /Какво ще сложиш на мен днес/);
+  assert.match(wizardView(s, 0), /Хубава храна. Лесна седмица./);
   assert.match(wizardView(s, 7), /data-action="wizard-recipe"/);
-  assert.match(wizardView(s, 8), /7-дневният пробен период/);
+  assert.match(wizardView(s, 8), /се запазват на това устройство/);
   assert.doesNotMatch(wizardView(s, 8), /data-action="checkout"/);
 });

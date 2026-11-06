@@ -1,3 +1,4 @@
+import { nativeUser } from './native-auth.js';
 import {
   priceChoice,
   validatePrice,
@@ -43,6 +44,7 @@ async function stripe(path, env, method = 'GET', params = null, idempotencyKey =
   return data;
 }
 async function userFrom(request, env) {
+  if (env.AUTH_PROVIDER === 'cloudflare') return nativeUser(request,env);
   if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
   const token = request.headers.get('Authorization');
   if (!token?.startsWith('Bearer ') || token.length > 8192) return null;
@@ -162,7 +164,7 @@ export default {
         version: '0.7.0',
         // Booleans only: never return secrets or environment details.
         databaseConfigured: !!env.DB,
-        authConfigured: !!(env.SUPABASE_URL && env.SUPABASE_ANON_KEY),
+        authConfigured: env.AUTH_PROVIDER === 'cloudflare' ? !!env.DB : !!(env.SUPABASE_URL && env.SUPABASE_ANON_KEY),
         billingConfigured: !!(env.STRIPE_SECRET_KEY && env.STRIPE_WEBHOOK_SECRET && env.DB),
         productLookupConfigured: !!(env.OFF_USER_AGENT && env.DB),
         photoAnalysisAvailable: false,

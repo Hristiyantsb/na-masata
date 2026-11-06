@@ -3,18 +3,18 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
-test('the visible brand is На маса and favicon has an opaque forest green canvas',()=>{
+test('the visible brand is eDish and favicon has an opaque coral canvas',()=>{
  const html=read('docs/index.html');
  const icon=read('docs/assets/favicon.svg');
  const manifest=JSON.parse(read('docs/manifest.webmanifest'));
- assert.match(html,/<title>На маса<\/title>/);
+ assert.match(html,/<title>eDish<\/title>/);
  assert.match(html,/rel="icon" href="assets\/favicon\.svg"/);
  assert.doesNotMatch(html,/rel="icon" href="assets\/brand-icon-192\.png"/);
- assert.match(icon,/<rect width="128" height="128" fill="#013c26"\/>/);
- assert.equal(manifest.name,'На маса');
- assert.equal(manifest.short_name,'На маса');
- assert.equal(manifest.background_color,'#013c26');
- assert.ok(manifest.icons.some(i=>i.src==='assets/icon.svg'&&i.type==='image/svg+xml'));
+ assert.match(icon,/<rect width="512" height="512" fill="#f4604c"\/>/);
+ assert.equal(manifest.name,'eDish');
+ assert.equal(manifest.short_name,'eDish');
+ assert.equal(manifest.background_color,'#ffffff');
+ assert.ok(manifest.icons.some(i=>i.src==='assets/icon-512.png'&&i.purpose==='maskable'));
 });
 test('mobile input controls and dialogs are usable on small devices without iOS zoom',()=>{
  const html=read('docs/index.html');

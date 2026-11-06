@@ -51,20 +51,13 @@ test('all main views render empty and populated states without missing values', 
     }
   }
 });
-test('pricing presents exact annual charges and explicitly identifies preview', () => {
-  for (const [interval, prices] of [
-    ['monthly', [9, 29]],
-    ['yearly', [90, 290]],
-  ]) {
-    const d = safeMarkup(views.pricingView(interval));
-    const shown = [...d.querySelectorAll('.plan-price')].map((el) => el.textContent);
-    assert.equal(shown.length, 2);
-    prices.forEach((p, i) => assert.ok(shown[i].startsWith(`${p} €`)));
-    assert.match(d.body.textContent, /Не събираме плащания/);
-    assert.equal(d.querySelectorAll('[data-action="plan-info"]').length, 2);
-    if (interval === 'yearly')
-      for (const p of prices) assert.ok(d.body.textContent.includes(`${p} € наведнъж годишно`));
-  }
+test('local edition offers working features without checkout or account prompts', () => {
+ const d = safeMarkup(views.pricingView('yearly'));
+ assert.equal(d.querySelectorAll('[data-action="plan-info"]').length, 0);
+ assert.equal(d.querySelectorAll('.plan-price').length, 0);
+ assert.ok(d.querySelector('a[href="#diary"]'));
+ assert.ok(d.querySelector('a[href="#shopping"]'));
+ assert.equal(safeMarkup(views.settingsView(defaults())).querySelector('[data-action="account"]'), null);
 });
 test('recipe notes and food names remain text after HTML rendering', () => {
   const state = defaults();

@@ -32,6 +32,6 @@ export function parseBackup(text) {
   if (text.length > 5_000_000) throw Error('Копието е твърде голямо.');
   const b = JSON.parse(text);
   if (!['na-masata', 'na-masa'].includes(b.app) || ![1, 3].includes(b.version))
-    throw Error('Файлът не е резервно копие на „На маса“.');
+    throw Error('Файлът не е резервно копие на „eDish“.');
   return normalizeState(b.state);
 }

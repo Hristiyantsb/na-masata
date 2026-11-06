@@ -1,0 +1,14 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { validateRecipes } from '../docs/src/recipe-catalog.js';
+import { RECIPES } from '../docs/src/catalog.js';
+const [input,output]=process.argv.slice(2);
+if(!input||!output)throw Error('Usage: node scripts/import-recipes.mjs reviewed-recipes.json output.sql');
+const data=JSON.parse(readFileSync(input,'utf8'));
+if(data.servings!==2||typeof data.source!=='string'||!data.source.trim()||data.source.length>500)throw Error('Specify servings: 2 and a source attribution. Quantities must be for TWO servings.');
+const recipes=validateRecipes(data.recipes),builtins=new Set(RECIPES.map(r=>r.id));
+if(recipes.some(r=>builtins.has(r.id)))throw Error('Imported ids must not overwrite built-in recipes.');
+const quote=v=>"'"+String(v).replaceAll("'","''")+"'";
+const date=new Date().toISOString();
+const sql=recipes.map(r=>`INSERT INTO recipe_catalog(id,payload,source,updated_at) VALUES(${quote(r.id)},${quote(JSON.stringify(r))},${quote(data.source)},${quote(date)}) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,source=excluded.source,updated_at=excluded.updated_at;`).join('\n');
+writeFileSync(output,'-- Reviewed eDish recipes. Ingredient amounts are for two servings.\n'+sql+'\n');
+console.log(`Validated ${recipes.length} recipes. SQL written to ${output}. Review before applying to D1.`);

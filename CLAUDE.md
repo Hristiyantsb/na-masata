@@ -1,11 +1,13 @@
-# На маса — контекст за Claude
+# eDish — контекст за Claude
 
 Прочети HANDOFF.md преди работа и отваряй само файловете за конкретната задача. Използвай скриптовете за QA, не предполагай production готовност.
 
+Текуща версия 0.8.0: локален режим. Не активирай Cloudflare; следвай HANDOFF.md.
+
 ## Репозиторий и продукт
 - Hristiyantsb/na-masata, GitHub Pages main:/docs, frontend native JS/CSS, Worker+D1 в server/.
-- Видимо име: **На маса**. Името на репото и Pages path /na-masata/ са различно нещо; не замествай технически ключове за localStorage и PWA без migration.
-- Одобрен wordmark docs/assets/brand-wordmark.webp, #013c26. Новият browser favicon docs/assets/icon.svg е с плътен зелен фон.
+- Видимо име: **eDish**. Името на репото и Pages path /na-masata/ са различно нещо; не замествай технически ключове за localStorage и PWA без migration.
+- Одобрен wordmark docs/assets/edish-wordmark.svg, coral #f4604c. Favicon и иконите са eDish.
 - Без преход към React/Expo без реална нужда. Реалните Stripe/Supabase/Apple/OFF и Worker не са активирани в статичното демо.
 
 ## Твърди правила

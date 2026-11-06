@@ -7,12 +7,12 @@ export const setTokenProvider = (fn) => {
 };
 export async function request(path, { method = 'GET', body, signal } = {}) {
   if (!CONFIG.apiBase) throw new Error('Връзката със сървъра още не е активирана.');
-  const base = new URL(CONFIG.apiBase);
-  if (base.protocol !== 'https:' && base.hostname !== 'localhost')
+  const base = new URL(CONFIG.apiBase.replace(/\/$/, '') + '/', globalThis.location?.origin);
+  if (base.protocol !== 'https:' && !['localhost','127.0.0.1'].includes(base.hostname))
     throw new Error('Невалидна конфигурация.');
   const token = await tokenProvider();
   const timeout = AbortSignal.timeout(12000);
-  const response = await fetch(new URL(path, base), {
+  const response = await fetch(new URL(path.replace(/^\//, ''), base), {
     method,
     headers: {
       'Content-Type': 'application/json',

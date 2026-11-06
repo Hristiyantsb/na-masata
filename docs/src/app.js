@@ -1,3 +1,5 @@
+import { saveDraft, restoreDraft, clearDraft, cookingSteps, setCookingStep, knownBarcode, COOKING_KEY } from './local-features.js';
+import { loadRecipeCatalog } from './recipe-catalog.js';
 import { RECIPES, PRODUCTS } from './catalog.js';
 import { nutrition } from './nutrition.js';
 import {
@@ -75,6 +77,7 @@ try {
     },
   };
 }
+await loadRecipeCatalog(CONFIG,storage);
 let loaded = loadState(storage),
   state = loaded.state,
   undo = null,
@@ -152,6 +155,7 @@ function navigate(page) {
 }
 function render() {
   if (wizard) {
+    if (!state.onboarded) saveDraft(storage, wizard);
     root.innerHTML = wizardView(
       wizard.draft,
       wizard.step,
@@ -238,7 +242,7 @@ function updateFoodPreview() {
 function modal(content, wide = false) {
   if (!dialog.open) focusBeforeDialog = document.activeElement;
   dialog.classList.toggle('wide', wide);
-  dialog.innerHTML = `<div class="dialog-bar"><span>На маса</span>${button(icon('close'), 'close-dialog', 'aria-label="Затвори"', 'icon-button')}</div><div class="dialog-content">${content}</div>`;
+  dialog.innerHTML = `<div class="dialog-bar"><span>eDish</span>${button(icon('close'), 'close-dialog', 'aria-label="Затвори"', 'icon-button')}</div><div class="dialog-content">${content}</div>`;
   if (!dialog.open) dialog.showModal();
   dialog.querySelector('.dialog-content').scrollTop = 0;
   updateFoodPreview();
@@ -247,7 +251,7 @@ function openRecipe(id, index = null) {
   const r = recipe(id);
   if (!r) return;
   dialogRecipe = { id, index };
-  modal(recipeDetail(r, state, index), true);
+  modal(recipeDetail(r, state, index, cookingSteps(storage,r.id,r.steps.length)), true);
 }
 function startWizard() {
   if (state.locked) {
@@ -255,7 +259,7 @@ function startWizard() {
     return;
   }
   closeDialog();
-  wizard = { draft: structuredClone(state.settings), step: state.onboarded ? 1 : 0, error: '' };
+  wizard = (!state.onboarded && restoreDraft(storage)) || { draft: structuredClone(state.settings), step: state.onboarded ? 1 : 0, error: '' };
   render();
   window.scrollTo(0, 0);
 }
@@ -267,6 +271,7 @@ function commitPlan(result) {
   state.cooked = {};
   state.checked = {};
   state.onboarded = true;
+    clearDraft(storage);
   persist();
 }
 function exportFile(name, content, type = 'text/plain;charset=utf-8') {
@@ -279,7 +284,7 @@ function exportFile(name, content, type = 'text/plain;charset=utf-8') {
 }
 function shoppingText() {
   return (
-    'НА МАСА — СПИСЪК ЗА ПАЗАРУВАНЕ\nПримерни цени за цели опаковки.\n\n' +
+    'eDish — СПИСЪК ЗА ПАЗАРУВАНЕ\nПримерни цени за цели опаковки.\n\n' +
     state.settings.stores
       .map((s) => {
         const rows = groceries(state).filter((r) => r.packs && r.store === s);
@@ -344,7 +349,7 @@ function finishFitness(message) {
 }
 function scannerView() {
   modal(
-    `<p class="eyebrow">МЕНЮ ПЛЮС · СКЕНЕР</p><h2 class="dialog-title">От етикета в дневника.</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><div class="notice">Оценката на ястие по снимка предстои. Дотогава можеш да въведеш храната от етикета.</div>`,
+    `<p class="eyebrow">ТВОИТЕ ПРОДУКТИ</p><h2 class="dialog-title">От етикета в дневника.</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><p class="fine">Вече въведените продукти се разпознават от твоя дневник и „Мои храни“.</p>`,
   );
 }
 async function processBarcode(code) {
@@ -353,10 +358,10 @@ async function processBarcode(code) {
     toast('Баркодът не е валиден. Провери цифрите.', true);
     return;
   }
-  if (!CONFIG.apiBase) {
-    modal(
-      `<p class="eyebrow">БАРКОДЪТ Е РАЗЧЕТЕН</p><h2 class="dialog-title">${esc(code)}</h2><p class="muted">Продуктовата база още не е свързана. Можеш да въведеш хранителните стойности от етикета — няма да ги предполагаме.</p>${button('Въведи от етикета ' + icon('arrow', 17), 'manual-food', '', 'button primary full')}`,
-    );
+  const known = knownBarcode(state,code);
+  if (known || !CONFIG.apiBase) {
+    const entry = known ? {...known,id:undefined,date,meal:picker.meal} : {name:'',barcode:code,source:'manual',unit:'г',basis:100,amount:100,kcal:'',protein:null,date,meal:picker.meal};
+    modal('<p class="notice compact">'+(known ? 'Намерено в твоите храни. Провери порцията и етикета.' : 'Нов продукт. Въведи стойностите от етикета; следващия път ще го познаем по баркода.')+'</p>'+foodForm(date,picker.meal,entry));
     return;
   }
   lookupController?.abort();
@@ -500,6 +505,7 @@ const actions = {
     // Guest mode: no forced account or checkout to sample the recipe catalogue.
     if (state.onboarded || state.plan.length) return;
     state.onboarded = true;
+    clearDraft(storage);
     persist();
     wizard = null;
     navigate('recipes');
@@ -666,7 +672,7 @@ const actions = {
   'export-plan': () =>
     exportFile(
       'na-masa-menu.txt',
-      'НА МАСА\n\n' +
+      'eDish\n\n' +
         state.plan
           .map((e) => `Ден ${e.day + 1} · ${e.slot}: ${recipe(e.id).name} (${e.people} порции)`)
           .join('\n') +
@@ -919,6 +925,8 @@ const actions = {
     try {
       storage.removeItem(STORAGE_KEY);
       storage.removeItem('na-masata-v1');
+      clearDraft(storage);
+      storage.removeItem(COOKING_KEY);
     } catch {
       toast('Не успяхме да изтрием данните.', true);
       return;
@@ -950,6 +958,16 @@ document.addEventListener('submit', async (event) => {
   const f = new FormData(form);
   try {
     switch (form.dataset.form) {
+      case 'auth-native': {
+        const submit = form.querySelector('[type="submit"]');
+        if (submit.disabled) return;
+        submit.disabled = true;
+        try {
+          await auth.login(String(f.get('email') || '').trim(), String(f.get('password') || ''), f.get('register') === 'on');
+          cloud = null; await connectDiary(); showAccount();
+        } finally { submit.disabled = false; }
+        break;
+      }
       case 'auth-email': {
         const email = String(f.get('email') || '').trim();
         await auth.sendCode(email);
@@ -1006,7 +1024,7 @@ document.addEventListener('submit', async (event) => {
         navigate('plan');
         render();
         window.scrollTo(0, 0);
-        toast('Масата е готова. Добър апетит!');
+        toast('Менюто е готово. Добър апетит!');
         break;
       }
       case 'extra': {
@@ -1194,6 +1212,14 @@ document.addEventListener('change', async (event) => {
   if (!action) return;
   try {
     switch (action) {
+      case 'cooking-step': {
+        const r = recipe(el.dataset.id);
+        if (!r) break;
+        const done = setCookingStep(storage, r.id, Number(el.dataset.index), el.checked, r.steps.length);
+        const progress = dialog.querySelector('[data-cooking-progress]');
+        if (progress) progress.textContent = done.length + ' от ' + r.steps.length + ' стъпки готови';
+        break;
+      }
       case 'calorie-limit':
         wizard.draft.maxCalories = el.checked ? 700 : 0;
         render();
@@ -1437,4 +1463,4 @@ document.addEventListener('pwa-state', () => {
     el.hidden = !s.offline && !s.update;
   }
 });
-initPwa();
+if (window.self === window.top) initPwa();

@@ -1,8 +1,10 @@
+import { createNativeAuth } from './native-auth.js';
 /** Supabase GoTrue: persisted refresh session, email OTP and Apple OAuth (web PKCE). */
 const SESSION_KEY = 'na-masa-auth-session-v1';
 const APPLE_FLOW_KEY = 'na-masa-apple-pkce-v1';
 const b64url = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 export function createAuth(config, fetcher = (...args) => fetch(...args), storage = globalThis.localStorage) {
+  if(config.authProvider === 'cloudflare') return createNativeAuth(config,fetcher);
   let session = null, refreshing = null, restoring = null, generation = 0, lastEmailAt = 0;
   const configured = () => Boolean(config.supabaseUrl && config.supabasePublicKey);
   const safeRead = (key) => { try { return storage?.getItem(key) || null; } catch { return null; } };
