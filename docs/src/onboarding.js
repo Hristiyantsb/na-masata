@@ -2,63 +2,69 @@ import { STORES, PRODUCTS, EQUIPMENT, ALLERGENS } from './catalog.js';
 import { GOALS, DIETS, candidates } from './domain.js';
 import { nutrition } from './nutrition.js';
 import { esc, icon, button, num, foodArt } from './ui.js';
-import { mascotArt } from './mascot.js';
+import { mascot, wordmark } from './brand.js';
 
+// Short setup, in the order people decide a dinner: where they shop, how they eat,
+// what they cook with, what is off the table, and how big a portion may be.
 export const STEPS = [
   'Добре дошъл',
-  'Твоята цел',
-  'Хранене',
-  'Ограничения',
-  'Твоето време',
-  'За колко души',
-  'Магазини и бюджет',
+  'Магазини',
+  'Насоченост',
+  'Уреди',
+  'Без това',
+  'Калории и порции',
   'Твоите рецепти',
-  'Готово за седмицата',
 ];
+export const LAST_STEP = STEPS.length - 1;
+const QUESTIONS = LAST_STEP - 1;
 
 const titles = [
-  'Хубава храна. Лесна седмица.',
-  'Кое да направим по-лесно?',
-  'Какво обичаш да хапваш?',
-  'Какво да изключим?',
-  'Колко време ти се готви?',
-  'За колко души готвим?',
-  'Къде пазаруваш най-често?',
-  'Ето какво ти подхожда.',
-  'Твоята седмица е почти готова.',
+  'Седмично меню по твоя магазин и вкус',
+  'Къде пазаруваш?',
+  'Как искаш да се храниш?',
+  'С какво готвиш?',
+  'Какво не ядеш?',
+  'Колко калории на порция?',
+  'Рецептите, които ти подхождат',
 ];
 
 const subtitles = [
-  'Меню по твоя вкус, точни порции и един списък за покупки. Започни с това, което е важно за теб.',
-  'Няма грешен отговор. Ще се водим по най-важното за теб.',
-  'Така няма да ти предлагам неща, които не ядеш.',
-  'Тук слушам внимателно. Особено за алергените.',
-  'Няма да те пращам за три часа в кухнята. Освен ако ти не искаш.',
-  'Ще наглася количествата. Всеки има място на масата.',
-  'Ще организирам списъка според избора ти. Цените са примерни.',
-  'Не са случайни. Подбрах ги от истинските рецепти в приложението.',
-  'От идеите за вечеря до списъка за пазаруване — всичко на едно място.',
+  'Казваш къде пазаруваш и какво ядеш. Подреждаме вечерите и един общ списък за покупки.',
+  'Ще съберем покупките около тези магазини. Може няколко.',
+  'Посока за менюто и режим, който спазваме винаги.',
+  'Предлагаме само рецепти, които можеш да сготвиш с тях.',
+  'Алергените изключваме напълно, без изключения.',
+  'Таван за едно ястие. Под него остават само подходящите рецепти.',
+  'Подбрани от каталога според всичко, което избра.',
 ];
 
-const jokes = [
-  'Избери вкусовете си. Менюто започва от теб.',
-  'Обещавам да не предлагам „каквото има в хладилника“ за пети път.',
-  'Добре, значи не всичко с кашкавал. Записвам си.',
-  'Изключваме избраните алергени от всички предложения.',
-  'Аз съм готова по всяко време. Ти кажи кога.',
-  'Ако сме повече, ще се разтегна. Образно казано.',
-  'Няма да ти броя касовите бележки. Поне засега.',
-  'Първите предложения са готови.',
-  'Хайде да махнем и въпроса „Какво ще ядем?“ от утрешния ден.',
+const GOAL_ICONS = { balanced: 'book', protein: 'protein', light: 'leaf', quick: 'clock' };
+const TIME_OPTIONS = [
+  [0, 'Без лимит'],
+  [20, '20 мин'],
+  [30, '30 мин'],
+  [45, '45 мин'],
+  [60, '60 мин'],
+];
+export const CALORIE_OPTIONS = [
+  [0, 'Без лимит'],
+  [400, '400'],
+  [500, '500'],
+  [600, '600'],
+  [700, '700'],
+  [800, '800'],
 ];
 
-function pick(key, value, name, subtitle, selected, glyph, extra = '') {
-  return `<button type="button" class="nm-pick ${selected ? 'is-selected' : ''} ${extra}" data-action="wizard-pick" data-key="${esc(key)}" data-value="${esc(value)}" aria-pressed="${selected}">${glyph ? `<span class="nm-pick-icon">${icon(glyph, 21)}</span>` : ''}<span class="nm-pick-copy"><strong>${esc(name)}</strong>${subtitle ? `<small>${esc(subtitle)}</small>` : ''}</span><span class="nm-pick-check">${icon('check', 16)}</span></button>`;
+function pick(key, value, name, sub, selected, glyph, extra = '') {
+  return `<button type="button" class="nm-pick ${selected ? 'is-selected' : ''} ${extra}" data-action="wizard-pick" data-key="${esc(key)}" data-value="${esc(value)}" aria-pressed="${selected}">${glyph ? `<span class="nm-pick-icon">${icon(glyph, 20)}</span>` : ''}<span class="nm-pick-copy"><strong>${esc(name)}</strong>${sub ? `<small>${esc(sub)}</small>` : ''}</span></button>`;
 }
+const chip = (key, value, name, selected, extra = '') =>
+  `<button type="button" class="nm-chip ${selected ? 'is-selected' : ''} ${extra}" data-action="wizard-pick" data-key="${esc(key)}" data-value="${esc(value)}" aria-pressed="${selected}">${selected ? icon('check', 16) : ''}${esc(name)}</button>`;
+const group = (label, body, note = '') =>
+  `<fieldset class="nm-group"><legend>${esc(label)}${note ? `<span>${esc(note)}</span>` : ''}</legend>${body}</fieldset>`;
 
 export function previewRecipes(d) {
-  const pool = candidates(d);
-  const ranked = pool.map((r) => ({ r, n: nutrition(r) }));
+  const ranked = candidates(d).map((r) => ({ r, n: nutrition(r) }));
   ranked.sort((a, b) => {
     if (d.goal === 'protein') return b.n.protein - a.n.protein || a.r.time - b.r.time;
     if (d.goal === 'light') return a.n.kcal - b.n.kcal || a.r.time - b.r.time;
@@ -68,61 +74,110 @@ export function previewRecipes(d) {
   return ranked.slice(0, 5).map(({ r }) => r);
 }
 
-function previewCard(r, index) {
+function previewCard(r) {
   const n = nutrition(r);
-  return `<button type="button" class="nm-recipe" data-action="wizard-recipe" data-id="${esc(r.id)}" aria-label="Виж рецептата: ${esc(r.name)}">${foodArt(r)}<span class="nm-recipe-info"><strong>${esc(r.name)}</strong><span class="nm-recipe-meta">${r.time} мин <i></i> ≈${num(n.kcal)} ккал <i></i> ${num(n.protein, 1)} г протеин</span></span>${icon('arrow', 18)}</button>`;
+  return `<button type="button" class="nm-recipe" data-action="wizard-recipe" data-id="${esc(r.id)}" aria-label="Виж рецептата: ${esc(r.name)}">${foodArt(r)}<span class="nm-recipe-info"><strong>${esc(r.name)}</strong><span class="nm-recipe-meta">${r.time} мин · ${num(n.kcal)} ккал · ${num(n.protein)} г протеин</span></span>${icon('arrow', 18)}</button>`;
 }
 
 function counter(d) {
-  return `<div class="nm-counter"><button type="button" data-action="counter" data-key="people" data-delta="-1" aria-label="Един човек по-малко" ${d.people <= 1 ? 'disabled' : ''}>−</button><span><strong>${d.people}</strong><small>${d.people === 1 ? 'човек' : 'души'}</small></span><button type="button" data-action="counter" data-key="people" data-delta="1" aria-label="Един човек повече" ${d.people >= 12 ? 'disabled' : ''}>+</button></div>`;
+  return `<div class="nm-counter"><button type="button" data-action="counter" data-key="people" data-delta="-1" aria-label="Един човек по-малко" ${d.people <= 1 ? 'disabled' : ''}>${icon('minus', 18)}</button><output aria-live="polite"><strong>${d.people}</strong> ${d.people === 1 ? 'човек' : 'души'}</output><button type="button" data-action="counter" data-key="people" data-delta="1" aria-label="Един човек повече" ${d.people >= 12 ? 'disabled' : ''}>${icon('plus', 18)}</button></div>`;
 }
 
-const timeOptions = [[0,'Без лимит'],[20,'20 мин'],[30,'30 мин'],[45,'45 мин'],[60,'60 мин'],[120,'120 мин']];
-function timeStage(d) {
- const index=Math.max(0,timeOptions.findIndex(([v])=>v===d.maxTime));
- return `<div class="nm-time-panel"><div class="nm-time-top"><span>Имаш време за...</span><strong data-time-value>${d.maxTime ? `до ${d.maxTime} мин` : 'колкото е нужно'}</strong></div><input class="nm-time-slider" type="range" min="0" max="5" step="1" value="${index}" data-input="wizard-time" aria-label="Максимално време за готвене" aria-valuetext="${d.maxTime ? d.maxTime+' минути' : 'Без ограничение'}" style="--nm-range:${index*20}%"><div class="nm-time-ticks"><span>Без лимит</span><span>20 мин</span><span>30 мин</span><span>45 мин</span><span>60 мин</span><span>120 мин</span></div></div>`;
-}
-function stepContent(d,step) {
- switch(step) {
- case 0:
-  return `<div class="nm-welcome-art">${mascotArt(0,'nm-mascot-hero')}<span class="nm-welcome-hello">От „какво ще ядем?“ до „готово“.</span></div><div class="nm-welcome-perks"><div><span>${icon('book',20)}</span><strong>Рецепти</strong><small>Точно за теб</small></div><div><span>${icon('clock',20)}</span><strong>Време</strong><small>Каквото имаш</small></div><div><span>${icon('bag',20)}</span><strong>Покупки</strong><small>Без хаос</small></div></div>`;
- case 1:
-  return `<div class="nm-grid nm-goals">${[
-  ['quick','Нямам много време','Искам бързи рецепти','clock','01'],
-  ['balanced','Чудя се какво да готвя','Дай ми вкусни идеи','book','02'],
-  ['protein','Повече протеин','Ястия с повече протеин','protein','03'],
-  ['light','По-леки ястия','Без тежки компромиси','leaf','04'],
-  ].map(([v,n,s,i,k])=>pick('goal',v,n,s,d.goal===v,i,'nm-goal nm-goal-'+k)).join('')}</div><p class="nm-under-note">Това ще подреди първите ти предложения. Можеш да промениш избора по-късно.</p>`;
- case 2:
-  return `<div class="nm-grid nm-diet-grid">${[
-    ['all','Хапвам от всичко','Без специален режим','bag'],
-    ['veggie','Вегетариански','Без месо и риба','leaf'],
-    ['vegan','Изцяло растително','Без животински продукти','leaf'],
-    ['pescatarian','Риба, но без месо','Риба и растителни храни','heart'],
-  ].map(([v,n,s,i])=>pick('diet',v,n,s,d.diet===v,i,'nm-diet')).join('')}</div><div class="nm-microtip">${icon('info',17)} <span>Хранителният режим е отделен от алергиите — за тях питам след малко.</span></div>`;
- case 3:
-  return `<div class="nm-safe-top"><span class="nm-safety-icon">${icon('heart',22)}</span><div><strong>Тук няма компромиси.</strong><small>Избери съставки, които трябва да изключим.</small></div></div><div class="nm-allergen-grid">${Object.entries(ALLERGENS).map(([v,n])=>pick('allergens',v,n,'',d.allergens.includes(v),null,'nm-allergen')).join('')}</div><details class="nm-details nm-optional"><summary>И продукти, които просто не обичам ${icon('plus',16)} <small>${d.dislikes.length ? d.dislikes.length+' избрани' : 'по желание'}</small></summary><div class="nm-grid nm-grid-two nm-dislikes">${Object.entries(PRODUCTS).map(([v,n])=>pick('dislikes',v,n[0],'',d.dislikes.includes(v))).join('')}</div></details><p class="nm-under-note">Алергените остават строго изключени. Провери и етикетите на продуктите.</p>`;
- case 4:
-  return `${timeStage(d)}<div class="nm-mini-heading nm-spaced"><strong>Какво имаш в кухнята?</strong><span>Може няколко</span></div><div class="nm-appliance-grid">${Object.entries(EQUIPMENT).map(([v,n])=>pick('equipment',v,n,'',d.equipment.includes(v),v,'nm-appliance')).join('')}</div><p class="nm-under-note">Ще съобразя рецептите с уредите ти, не обратното.</p>`;
- case 5:
-  return `<div class="nm-party-card"><div><p>Колко места да приготвя?</p><strong>За ${d.people} ${d.people===1?'човек':'души'}</strong></div>${counter(d)}</div><div class="nm-mini-heading nm-spaced"><strong>За колко дни да планираме?</strong></div><div class="nm-grid nm-grid-three nm-days">${[[3,'3 дни'],[5,'5 дни'],[7,'7 дни']].map(([v,n])=>pick('days',v,n,'',d.days===v,null,'nm-segment')).join('')}</div><div class="nm-mini-heading nm-spaced"><strong>Кога ще се събираме?</strong><span>Може и двете</span></div><div class="nm-grid nm-grid-two nm-meals">${['Обяд','Вечеря'].map((v,i)=>pick('slots',v,v,i?'Спокойна вечеря':'Нещо вкусно по обяд',d.slots.includes(v),i?'plan':'clock','nm-meal')).join('')}</div>`;
- case 6:
-  return `<div class="nm-mini-heading"><strong>Любимите ти магазини</strong><span>Може няколко</span></div><div class="nm-store-grid">${STORES.slice(0,6).map((v,i)=>pick('stores',v,v,'',d.stores.includes(v),null,'nm-store nm-store-'+i)).join('')}</div><details class="nm-details nm-optional"><summary>Други магазини ${icon('plus',16)}</summary><div class="nm-grid nm-grid-two nm-dislikes">${STORES.slice(6).map(v=>pick('stores',v,v,'',d.stores.includes(v))).join('')}</div></details><div class="nm-budget-panel"><label for="budget"><strong>Бюджет за ${d.days} дни</strong><span>Ориентировъчно</span></label><div class="nm-budget-line"><input id="budget" name="budget" type="number" inputmode="decimal" min="1" max="10000" step="1" value="${d.budget}" required><span>€</span></div><input type="range" min="10" max="300" step="5" value="${Math.min(300,Math.max(10,d.budget))}" data-input="budget-range" aria-label="Бюджет в евро" style="--nm-range:${Math.round((Math.min(300,Math.max(10,d.budget))-10)/290*100)}%"><div class="nm-budget-ends"><span>10 €</span><span>300 €</span></div></div><p class="nm-under-note">Цените в приложението засега са примерни.</p>`;
- case 7: {
-  const list=previewRecipes(d),count=candidates(d).length;
-  return `<div class="nm-preview-bar"><span class="nm-preview-badge">${list.length} идеи</span><span>${esc(DIETS[d.diet])} <i>·</i> ${d.maxTime ? `до ${d.maxTime} мин` : 'без ограничение'}</span></div>${list.length ? `<div class="nm-recipe-list">${list.map(previewCard).join('')}</div><p class="nm-under-note nm-preview-foot">Докосни рецепта, за да видиш съставките и стъпките.</p>${count<5 ? `<p class="nm-explain">Намерих ${count} подходящи рецепти. Не добавям неподходящи, за да станат пет.</p>` : ''}` : `<div class="nm-empty"><span>${icon('info',32)}</span><h2>Още нямаме подходяща рецепта.</h2><p>Няма да пренебрегна алергии или режима ти. Можеш да промениш времето или уредите.</p>${button('Промени времето','wizard-step','data-index="4"','nm-inline-link')}${button('Промени ограниченията','wizard-step','data-index="3"','nm-inline-link')}</div>`}`;
- }
- case 8:
-  return `<div class="nm-finale"><div class="nm-finale-head"><span>${icon('spark',20)}</span><strong>Готово. Ти избра — аз подреждам.</strong></div><div class="nm-benefits"><div><span>${icon('plan',22)}</span><strong>${d.days} дни подредени</strong><small>Меню според твоя вкус</small></div><div><span>${icon('bag',22)}</span><strong>Един общ списък</strong><small>Без дублирани продукти</small></div><div><span>${icon('swap',22)}</span><strong>Лесна смяна</strong><small>Променяш ястие когато пожелаеш</small></div></div><p class="nm-explain">Менюто и списъкът ти се запазват на това устройство. Можеш да сменяш рецепти, без да започваш отначало.</p></div>`;
- default:return '';
- }
+function budgetField(d) {
+  const value = Math.min(300, Math.max(10, d.budget));
+  return `<div class="nm-budget"><label for="budget">Бюджет за ${d.days} дни</label><div class="nm-budget-line"><input id="budget" name="budget" type="number" inputmode="decimal" min="1" max="10000" step="1" value="${d.budget}" required><span>€</span></div><input type="range" min="10" max="300" step="5" value="${value}" data-input="budget-range" aria-label="Бюджет в евро" style="--nm-range:${Math.round(((value - 10) / 290) * 100)}%"></div>`;
 }
 
-export function wizardView(d,step,error='',canCancel=true){
- const isIntro=step===0,isResult=step>=7;
- const progress=isIntro?0:Math.round((Math.min(step,7)/7)*100);
- const submitLabel=['Да намерим моите рецепти','Продължи','Продължи','Продължи','Продължи','Продължи','Покажи ми рецептите','Подреди цялата седмица','Създай моето меню'][step];
- const disable=step===7&&!previewRecipes(d).length;
- const tagline=['Хайде да сготвим нещо хубаво.','Какво ще ти улесни живота?','За всеки вкус има място.','Това го приемам сериозно.','Бързо, вкусно и възможно.','Колкото повече, толкова по-вкусно.','Пазаруването също е част от плана.','Мисия: вкусна седмица.','Всичко започва от твоя вкус.'][step];
- return `<div class="nm-onboarding nm-step-${step}"><div class="nm-shell"><aside class="nm-story"><a class="nm-story-brand" href="#plan" aria-label="На маса"><img src="assets/brand-wordmark.webp" width="480" height="94" alt="На маса"></a><div class="nm-story-copy"><span></span><h2>По-малко чудене.<br>Повече вкус.</h2><p>${esc(tagline)}</p></div><div class="nm-story-art"><img class="edish-kitchen" src="assets/edish-kitchen.webp" alt="Домашна леща и свежа салата" width="900" height="1200"></div><div class="nm-story-caption"><span class="nm-story-dot"></span> Малките решения правят вкусна седмица.</div></aside><main class="nm-main" id="onboarding-content"><div class="nm-top"><img src="assets/brand-wordmark.webp" alt="На маса" width="480" height="94" class="nm-top-logo"><span class="nm-top-small">Твоята седмица, по твой вкус</span><div class="nm-top-actions">${canCancel ? button('Затвори','wizard-cancel','','nm-close') : ''}</div></div>${!isIntro ? `<div class="nm-progress-head"><button type="button" data-action="wizard-back" class="nm-back" aria-label="Предишна стъпка">${icon('back',18)}</button><div class="nm-progress" role="progressbar" aria-label="Напредък на настройката" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div><span class="nm-progress-count">${isResult?'Готово':`${step} / 6`}</span></div>` : '<div class="nm-intro-spacer"></div>'}<form id="wizard-form" class="nm-form" data-form="wizard"><section class="nm-screen" aria-labelledby="nm-step-title" key="${step}"><div class="nm-page"><header class="nm-head"><h1 class="nm-heading" id="nm-step-title" tabindex="-1">${esc(titles[step])}</h1><p class="nm-subtitle">${esc(subtitles[step])}</p></header><div class="nm-fields">${stepContent(d,step)}</div></div></section><footer class="nm-footer"><p class="nm-error" role="alert">${esc(error)}</p><button class="nm-primary" type="submit" ${disable?'disabled':''}>${esc(submitLabel)} ${icon('arrow',19)}</button>${step===0?button('Разгледай без настройка','wizard-explore','','nm-secondary'):step===7?button('Промени предпочитанията','wizard-step','data-index="1"','nm-secondary'):step===8?button('Назад към рецептите','wizard-step','data-index="7"','nm-secondary'):'<span class="nm-footer-note">Изборите можеш да промениш по всяко време.</span>'}</footer></form></main></div></div>`;
+function welcome() {
+  return `<figure class="nm-hero"><img src="assets/lentil-stew.webp" alt="Домашна леща със зеленчуци" width="900" height="1200" decoding="async"><figcaption>${mascot(64, 1, 'nm-hero-mascot')}</figcaption></figure><ul class="nm-promises"><li>${icon('bag', 20)}<span><strong>Твоите магазини</strong>Lidl, Kaufland, BILLA и още</span></li><li>${icon('plan', 20)}<span><strong>Цяла седмица</strong>Вечери според режима и уредите ти</span></li><li>${icon('check', 20)}<span><strong>Един списък</strong>Всички продукти, без повторения</span></li></ul>`;
+}
+
+function stepContent(d, step) {
+  switch (step) {
+    case 0:
+      return welcome();
+    case 1: {
+      const main = STORES.slice(0, 9),
+        more = STORES.slice(9);
+      const extraSelected = more.filter((v) => d.stores.includes(v)).length;
+      return `<div class="nm-store-grid">${main.map((v) => pick('stores', v, v, '', d.stores.includes(v), null, 'nm-store')).join('')}</div><details class="nm-more" ${extraSelected ? 'open' : ''}><summary>Квартални магазини ${icon('plus', 16)}</summary><div class="nm-chips">${more.map((v) => chip('stores', v, v, d.stores.includes(v))).join('')}</div></details><p class="nm-note">Цените са ориентировъчни. Не са взети от сайта на магазина.</p>`;
+    }
+    case 2:
+      return `<div class="nm-grid-2">${Object.entries(GOALS)
+        .map(([v, [name, sub]]) =>
+          pick('goal', v, name, sub, d.goal === v, GOAL_ICONS[v], 'nm-goal'),
+        )
+        .join('')}</div>${group(
+        'Режим',
+        `<div class="nm-chips">${Object.entries(DIETS)
+          .map(([v, name]) => chip('diet', v, v === 'all' ? 'Ям от всичко' : name, d.diet === v))
+          .join('')}</div>`,
+      )}`;
+    case 3:
+      return `<div class="nm-grid-2">${Object.entries(EQUIPMENT)
+        .map(([v, name]) =>
+          pick('equipment', v, name, '', d.equipment.includes(v), v, 'nm-appliance'),
+        )
+        .join(
+          '',
+        )}</div>${group('Време за готвене', `<div class="nm-chips">${TIME_OPTIONS.map(([v, n]) => chip('maxTime', v, n, d.maxTime === v)).join('')}</div>`)}`;
+    case 4: {
+      const none = !d.allergens.length;
+      return `${group(
+        'Алергии',
+        `<div class="nm-chips">${chip('clear', 'allergens', 'Нямам', none)}${Object.entries(
+          ALLERGENS,
+        )
+          .map(([v, n]) => chip('allergens', v, n, d.allergens.includes(v)))
+          .join('')}</div>`,
+      )}<details class="nm-more" ${d.dislikes.length ? 'open' : ''}><summary>Продукти, които не обичаш <span>${d.dislikes.length ? d.dislikes.length + ' избрани' : 'по желание'}</span>${icon('plus', 16)}</summary><div class="nm-chips">${Object.entries(
+        PRODUCTS,
+      )
+        .map(([v, n]) => chip('dislikes', v, n[0], d.dislikes.includes(v)))
+        .join(
+          '',
+        )}</div></details><p class="nm-note">Провери и етикета. Съставът на продуктите се променя.</p>`;
+    }
+    case 5:
+      return `<div class="nm-segments nm-segments-3">${CALORIE_OPTIONS.map(([v, n]) => chip('maxCalories', v, v ? `до ${n} ккал` : n, d.maxCalories === v, 'nm-segment')).join('')}</div>${group('За колко души', counter(d))}${group('Колко дни', `<div class="nm-segments nm-segments-3">${[3, 5, 7].map((v) => chip('days', v, v + ' дни', d.days === v, 'nm-segment')).join('')}</div>`)}${group('Хранения', `<div class="nm-chips">${['Обяд', 'Вечеря'].map((v) => chip('slots', v, v, d.slots.includes(v))).join('')}</div>`)}${group('Бюджет', budgetField(d), 'ориентировъчно')}`;
+    case 6: {
+      const list = previewRecipes(d),
+        count = candidates(d).length;
+      const summary = [
+        d.stores.slice(0, 2).join(', ') + (d.stores.length > 2 ? ' +' + (d.stores.length - 2) : ''),
+        DIETS[d.diet],
+        d.maxCalories ? `до ${d.maxCalories} ккал` : 'без калориен лимит',
+        d.maxTime ? `до ${d.maxTime} мин` : 'без лимит за време',
+      ];
+      if (!list.length)
+        return `<div class="nm-empty">${mascot(88, -1)}<h2>Няма рецепта за тези условия</h2><p>Не заобикаляме алергии и режим. Разшири времето, уредите или калориите.</p><div class="nm-empty-actions">${button('Промени уредите', 'wizard-step', 'data-index="3"', 'nm-link')}${button('Промени калориите', 'wizard-step', 'data-index="5"', 'nm-link')}</div></div>`;
+      return `<p class="nm-summary">${summary.map(esc).join(' · ')}</p><p class="nm-count"><strong>${count}</strong> ${count === 1 ? 'подходяща рецепта' : 'подходящи рецепти'}</p><div class="nm-recipe-list">${list.map(previewCard).join('')}</div>`;
+    }
+    default:
+      return '';
+  }
+}
+
+const BUILD_STEPS = ['Подбираме рецептите', 'Подреждаме дните', 'Събираме списъка за покупки'];
+export function buildingView(name = '') {
+  return `<div class="nm-onboarding nm-building" role="status" aria-live="polite"><div class="nm-building-inner">${mascot(120, 0, 'nm-building-mascot')}<h1 class="nm-heading">${esc(name ? name + ', подреждаме седмицата' : 'Подреждаме седмицата')}</h1><ol class="nm-build-list">${BUILD_STEPS.map((s, i) => `<li style="--i:${i}"><span class="nm-build-dot">${icon('check', 14)}</span>${esc(s)}</li>`).join('')}</ol></div></div>`;
+}
+
+export function wizardView(d, step, error = '', canCancel = true) {
+  const isIntro = step === 0,
+    isResult = step === LAST_STEP;
+  const progress = Math.round((Math.min(step, QUESTIONS) / QUESTIONS) * 100);
+  const submitLabel = isIntro ? 'Започни' : isResult ? 'Подреди седмицата' : 'Продължи';
+  const disable = isResult && !previewRecipes(d).length;
+  const secondary = isIntro
+    ? canCancel
+      ? ''
+      : button('Разгледай рецептите', 'wizard-explore', '', 'nm-secondary')
+    : isResult
+      ? button('Промени избора', 'wizard-step', 'data-index="1"', 'nm-secondary')
+      : '';
+  const top = isIntro
+    ? `<div class="nm-top">${wordmark()}${canCancel ? button('Затвори', 'wizard-cancel', '', 'nm-close') : ''}</div>`
+    : `<div class="nm-top nm-top-progress"><button type="button" data-action="wizard-back" class="nm-back" aria-label="Назад">${icon('back', 20)}</button><div class="nm-progress" role="progressbar" aria-label="Напредък" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div><span class="nm-progress-count">${isResult ? 'Готово' : `${step} от ${QUESTIONS}`}</span></div>`;
+  return `<div class="nm-onboarding nm-step-${step}"><aside class="nm-aside" aria-hidden="true"><img src="assets/lentil-stew.webp" alt="" width="900" height="1200" decoding="async"><div class="nm-aside-brand">${wordmark('is-light')}</div></aside><main class="nm-main" id="onboarding-content">${top}<form id="wizard-form" class="nm-form" data-form="wizard" novalidate><div class="nm-fields"><header class="nm-head"><h1 class="nm-heading" id="nm-step-title" tabindex="-1">${esc(titles[step])}</h1><p class="nm-subtitle">${esc(subtitles[step])}</p></header>${stepContent(d, step)}</div><footer class="nm-footer"><p class="nm-error" role="alert">${esc(error)}</p><button class="nm-primary" type="submit" ${disable ? 'disabled' : ''}>${esc(submitLabel)}</button>${secondary}</footer></form></main></div>`;
 }

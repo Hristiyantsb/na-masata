@@ -1,4 +1,4 @@
-import { saveDraft, restoreDraft, clearDraft, cookingSteps, setCookingStep, knownBarcode, COOKING_KEY } from './local-features.js';
+import { saveDraft, restoreDraft, clearDraft, cookingSteps, setCookingStep, knownBarcode, COOKING_KEY, LEGACY_KEYS, migrateLocalKeys } from './local-features.js';
 import { loadRecipeCatalog } from './recipe-catalog.js';
 import { RECIPES, PRODUCTS } from './catalog.js';
 import { nutrition } from './nutrition.js';
@@ -40,7 +40,7 @@ import {
   privacyView,
   extraGroceryForm,
 } from './views.js';
-import { wizardView, previewRecipes } from './onboarding.js';
+import { wizardView, previewRecipes, buildingView, LAST_STEP } from './onboarding.js';
 import { esc, icon, button, money, num, field } from './ui.js';
 import { Scanner } from './scanner.js';
 import { lookupBarcode, searchProducts, setTokenProvider, request } from './api.js';
@@ -77,6 +77,7 @@ try {
     },
   };
 }
+migrateLocalKeys(storage);
 await loadRecipeCatalog(CONFIG,storage);
 let loaded = loadState(storage),
   state = loaded.state,
@@ -154,6 +155,11 @@ function navigate(page) {
   } else location.hash = page;
 }
 function render() {
+  if (wizard?.building) {
+    root.innerHTML = buildingView();
+    document.body.classList.add('onboarding');
+    return;
+  }
   if (wizard) {
     if (!state.onboarded) saveDraft(storage, wizard);
     root.innerHTML = wizardView(
@@ -212,7 +218,7 @@ function updateFoodPreview() {
   }
   const targets = { kcal: state.dailyTarget, ...state.macroTargets };
   preview.innerHTML =
-    '<p class="eyebrow">ЗА ИЗЯДЕНОТО КОЛИЧЕСТВО</p>' +
+    '<p class="eyebrow">За изяденото количество</p>' +
     ['kcal', 'protein', 'carbs', 'fat']
       .map((key) => {
         const input = form.querySelector(`[name="${key}"]`);
@@ -230,7 +236,7 @@ function updateFoodPreview() {
   );
   const shares = macroEnergyShares(values);
   preview.innerHTML +=
-    '<p class="eyebrow">ЕНЕРГИЯ ОТ МАКРОСИТЕ</p>' +
+    '<p class="eyebrow">Енергия от макросите</p>' +
     (shares
       ? '<p>' +
         ['protein', 'carbs', 'fat']
@@ -316,7 +322,7 @@ function chooseMealDestination(el, mode) {
   const from = Number(el.dataset.index),
     current = recipe(state.plan[from].id);
   modal(
-    `<p class="eyebrow">${mode === 'move' ? 'ПРЕМЕСТИ ЯСТИЕ' : 'ПОВТОРИ ЯСТИЕ'}</p><h2 class="dialog-title">${esc(current.name)}</h2><p class="muted">${mode === 'move' ? 'Избери хранене, с което да разменим местата.' : 'Избери кое хранене да заменим със същото ястие. Количествата за покупки ще се преизчислят.'}</p><div class="destination-list">${state.plan.map((entry, to) => (to === from ? '' : button(`<span>Ден ${entry.day + 1} · ${entry.slot}</span><b>${esc(recipe(entry.id).name)}</b>${icon('arrow', 16)}`, 'place-meal', `data-from="${from}" data-to="${to}" data-mode="${mode}"`, 'destination-option'))).join('')}</div>${state.plan.length < 2 ? '<p>Добави още дни или хранения от предпочитанията.</p>' : ''}`,
+    `<p class="eyebrow">${mode === 'move' ? 'Премести ястие' : 'Повтори ястие'}</p><h2 class="dialog-title">${esc(current.name)}</h2><p class="muted">${mode === 'move' ? 'Избери хранене, с което да разменим местата.' : 'Избери кое хранене да заменим със същото ястие. Количествата за покупки ще се преизчислят.'}</p><div class="destination-list">${state.plan.map((entry, to) => (to === from ? '' : button(`<span>Ден ${entry.day + 1} · ${entry.slot}</span><b>${esc(recipe(entry.id).name)}</b>${icon('arrow', 16)}`, 'place-meal', `data-from="${from}" data-to="${to}" data-mode="${mode}"`, 'destination-option'))).join('')}</div>${state.plan.length < 2 ? '<p>Добави още дни или хранения от предпочитанията.</p>' : ''}`,
   );
 }
 function showFoodPicker() {
@@ -349,7 +355,7 @@ function finishFitness(message) {
 }
 function scannerView() {
   modal(
-    `<p class="eyebrow">ТВОИТЕ ПРОДУКТИ</p><h2 class="dialog-title">От етикета в дневника.</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><p class="fine">Вече въведените продукти се разпознават от твоя дневник и „Мои храни“.</p>`,
+    `<p class="eyebrow">Твоите продукти</p><h2 class="dialog-title">От етикета в дневника.</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><p class="fine">Вече въведените продукти се разпознават от твоя дневник и „Мои храни“.</p>`,
   );
 }
 async function processBarcode(code) {
@@ -530,7 +536,7 @@ const actions = {
   },
   'wizard-step': (el) => {
     const index = Number(el.dataset.index);
-    if (!Number.isInteger(index) || index < 0 || index > 8) return;
+    if (!Number.isInteger(index) || index < 0 || index > LAST_STEP) return;
     wizard.step = index;
     wizard.error = '';
     render();
@@ -539,9 +545,10 @@ const actions = {
   'wizard-pick': (el) => {
     const { key, value } = el.dataset,
       d = wizard.draft;
-    if (['stores', 'slots', 'equipment', 'allergens', 'dislikes'].includes(key))
+    if (key === 'clear' && ['allergens', 'dislikes'].includes(value)) d[value] = [];
+    else if (['stores', 'slots', 'equipment', 'allergens', 'dislikes'].includes(key))
       d[key] = d[key].includes(value) ? d[key].filter((v) => v !== value) : [...d[key], value];
-    else d[key] = ['days', 'maxTime'].includes(key) ? Number(value) : value;
+    else d[key] = ['days', 'maxTime', 'maxCalories'].includes(key) ? Number(value) : value;
     wizard.error = '';
     render();
     // Keep keyboard focus on the selected option after replacing the screen.
@@ -628,7 +635,7 @@ const actions = {
     const i = Number(el.dataset.index),
       options = candidates(state.settings).filter((r) => r.id !== state.plan[i].id);
     modal(
-      `<p class="eyebrow">СМЯНА НА ЕДНО ЯСТИЕ</p><h2 class="dialog-title">Какво ти се хапва вместо това?</h2><p class="muted">Заменяш „${recipe(state.plan[i].id).name}“. Останалото меню се запазва.</p><div class="recipe-grid">${recipeCards(options, state, i)}</div>${!options.length ? '<p>Няма други подходящи рецепти за тези филтри.</p>' : ''}`,
+      `<p class="eyebrow">Смяна на едно ястие</p><h2 class="dialog-title">Какво ти се хапва вместо това?</h2><p class="muted">Заменяш „${recipe(state.plan[i].id).name}“. Останалото меню се запазва.</p><div class="recipe-grid">${recipeCards(options, state, i)}</div>${!options.length ? '<p>Няма други подходящи рецепти за тези филтри.</p>' : ''}`,
       true,
     );
   },
@@ -650,7 +657,7 @@ const actions = {
   price: (el) => {
     const k = el.dataset.id;
     modal(
-      `<p class="eyebrow">ЛИЧНА ЦЕНА</p><h2 class="dialog-title">${PRODUCTS[k][0]}</h2><form data-form="price" data-id="${k}"><div class="form-grid">${field('Цена на опаковката (€)', 'price', packPrice(k, state), 'number', 'min="0" max="10000" step="0.01" required')}${field(`Размер на опаковката (${PRODUCTS[k][2]})`, 'size', packSize(k, state), 'number', 'min="0.1" max="100000" step="0.1" required')}</div><p class="fine">Една лична цена за продукта, независимо от избрания магазин. Не е актуална оферта.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази и преизчисли</button></form>`,
+      `<p class="eyebrow">Лична цена</p><h2 class="dialog-title">${PRODUCTS[k][0]}</h2><form data-form="price" data-id="${k}"><div class="form-grid">${field('Цена на опаковката (€)', 'price', packPrice(k, state), 'number', 'min="0" max="10000" step="0.01" required')}${field(`Размер на опаковката (${PRODUCTS[k][2]})`, 'size', packSize(k, state), 'number', 'min="0.1" max="100000" step="0.1" required')}</div><p class="fine">Една лична цена за продукта, независимо от избрания магазин. Не е актуална оферта.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази и преизчисли</button></form>`,
     );
   },
   'uncheck-all': () => {
@@ -871,7 +878,7 @@ const actions = {
   },
   'daily-target': () =>
     modal(
-      `<p class="eyebrow">ТВОЯТА ЛИЧНА ЦЕЛ</p><h2 class="dialog-title">Без автоматични препоръки.</h2><p class="muted">Въведи цел, която вече си избрал. Това приложение не определя подходящ калориен прием.</p><form data-form="target">${field('Дневна цел (ккал)', 'target', state.dailyTarget || '', 'number', 'min="0" max="10000" step="1" placeholder="Без зададена цел"')}<p class="fine">Остави празно или въведи 0, за да премахнеш целта.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази</button></form>`,
+      `<p class="eyebrow">Твоята лична цел</p><h2 class="dialog-title">Без автоматични препоръки.</h2><p class="muted">Въведи цел, която вече си избрал. Това приложение не определя подходящ калориен прием.</p><form data-form="target">${field('Дневна цел (ккал)', 'target', state.dailyTarget || '', 'number', 'min="0" max="10000" step="1" placeholder="Без зададена цел"')}<p class="fine">Остави празно или въведи 0, за да премахнеш целта.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази</button></form>`,
     ),
   'billing-period': (el) => {
     interval = el.dataset.value;
@@ -927,6 +934,7 @@ const actions = {
       storage.removeItem('na-masata-v1');
       clearDraft(storage);
       storage.removeItem(COOKING_KEY);
+      storage.removeItem(LEGACY_KEYS.cooking);
     } catch {
       toast('Не успяхме да изтрием данните.', true);
       return;
@@ -985,19 +993,19 @@ document.addEventListener('submit', async (event) => {
         if (busy || !wizard) return;
         const d = wizard.draft;
         const step = wizard.step;
-        if (step === 6) d.budget = Number(f.get('budget'));
+        if (step === 5) d.budget = Number(f.get('budget'));
         let error = '';
+        if (step === 1 && !d.stores.length) error = 'Избери поне един магазин.';
         if (step === 5 && !d.slots.length) error = 'Избери поне едно хранене.';
-        if (step === 6 && !d.stores.length) error = 'Избери поне един магазин.';
-        if (step === 6 || step === 7 || step === 8) error ||= settingsErrors(d)[0] || '';
-        if (step === 7 && !previewRecipes(d).length)
-          error ||= 'Промени времето, уредите или предпочитанията си, за да видиш рецепти.';
+        if (step >= 5) error ||= settingsErrors(d)[0] || '';
+        if (step === LAST_STEP && !previewRecipes(d).length)
+          error ||= 'Промени времето, уредите или калориите, за да видиш рецепти.';
         if (error) {
           wizard.error = error;
           render();
           return;
         }
-        if (step < 8) {
+        if (step < LAST_STEP) {
           wizard.step += 1;
           wizard.error = '';
           render();
@@ -1008,23 +1016,23 @@ document.addEventListener('submit', async (event) => {
         const validation = settingsErrors(d);
         if (validation.length) throw Error(validation[0]);
         if (state.locked) throw Error('Менюто е заключено.');
-        busy = true;
-        const submit = form.querySelector('[type=submit]');
-        submit.disabled = true;
-        submit.textContent = 'Подреждаме менюто…';
-        await new Promise((resolve) => setTimeout(resolve, 30));
         const next = { ...state, settings: structuredClone(d) };
         const result = generatePlan(next);
         if (!result.plan) throw Error(result.reason);
+        busy = true;
         snapshot();
         state.settings = next.settings;
         commitPlan(result);
+        wizard.building = true;
+        render();
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        await new Promise((resolve) => setTimeout(resolve, reduce ? 300 : 1500));
         wizard = null;
         busy = false;
         navigate('plan');
         render();
         window.scrollTo(0, 0);
-        toast('Менюто е готово. Добър апетит!');
+        toast('Менюто е готово.');
         break;
       }
       case 'extra': {
@@ -1220,10 +1228,6 @@ document.addEventListener('change', async (event) => {
         if (progress) progress.textContent = done.length + ' от ' + r.steps.length + ' стъпки готови';
         break;
       }
-      case 'calorie-limit':
-        wizard.draft.maxCalories = el.checked ? 700 : 0;
-        render();
-        break;
       case 'purchased':
         state.checked[el.dataset.id] = el.checked;
         persist();
@@ -1366,18 +1370,6 @@ document.addEventListener('input', (event) => {
   }
 
   if (event.target.closest('[data-form=food]')) updateFoodPreview();
-  if (wizard && el.dataset.input === 'wizard-time') {
-    const options = [0, 20, 30, 45, 60, 120];
-    const index = Number(el.value);
-    if (!Number.isInteger(index) || index < 0 || index >= options.length) return;
-    wizard.draft.maxTime = options[index];
-    el.style.setProperty('--nm-range', (index * 20) + '%');
-    el.setAttribute('aria-valuetext', options[index] ? options[index] + ' минути' : 'Без ограничение');
-    const label = root.querySelector('[data-time-value]');
-    if (label) label.textContent = options[index] ? 'до ' + options[index] + ' мин' : 'колкото е нужно';
-    wizard.error = '';
-    return;
-  }
   if (wizard && el.dataset.input === 'budget-range') {
     wizard.draft.budget = Number(el.value);
     const input = document.getElementById('budget');
@@ -1390,7 +1382,6 @@ document.addEventListener('input', (event) => {
     const slider = document.querySelector('[data-input="budget-range"]');
     if (slider) { slider.value = el.value; slider.style.setProperty('--nm-range', (Math.max(0,Math.min(100,(Number(el.value)-10)/290*100))) + '%'); }
   }
-  if (wizard && el.name === 'maxCalories') wizard.draft.maxCalories = Number(el.value);
   if (el.dataset.input === 'recipe-search') {
     const position = el.selectionStart;
     query = el.value;

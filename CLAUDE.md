@@ -2,12 +2,12 @@
 
 Прочети HANDOFF.md преди работа и отваряй само файловете за конкретната задача. Използвай скриптовете за QA, не предполагай production готовност.
 
-Текуща версия 0.8.0: локален режим. Не активирай Cloudflare; следвай HANDOFF.md.
+Текуща версия 0.9.0: локален режим. Не активирай Cloudflare; следвай HANDOFF.md.
 
 ## Репозиторий и продукт
 - Hristiyantsb/na-masata, GitHub Pages main:/docs, frontend native JS/CSS, Worker+D1 в server/.
 - Видимо име: **На маса**. Името на репото и Pages path /na-masata/ са различно нещо; не замествай технически ключове за localStorage и PWA без migration.
-- Одобрен wordmark docs/assets/brand-wordmark.webp, forest green #013c26. Favicon и иконите са На маса.
+- Бранд: маскот дървена маса с очи (docs/src/brand.js, векторен) + wordmark „на маса“ в Lora 700. Акцент forest green #013c26, топли неутрални повърхности. Токените са в docs/assets/brand.css (последният CSS слой). Без eDish имена никъде във видимия продукт.
 - Без преход към React/Expo без реална нужда. Реалните Stripe/Supabase/Apple/OFF и Worker не са активирани в статичното демо.
 
 ## Твърди правила
@@ -28,7 +28,7 @@ npm run check
 Commit-ни docs/sw.js след промяна. Ако CI дава Offline bundle is stale, изпълни build:offline и commit-ни новия bundle.
 
 ## Бърз маршрут по файлове
-- Onboarding: docs/src/onboarding.js, docs/src/mascot.js, docs/assets/onboarding.css.
+- Onboarding (7 екрана: начало, магазини, насоченост, уреди, без това, калории и порции, резултат): docs/src/onboarding.js, docs/src/brand.js, docs/assets/onboarding.css.
 - Mobile: docs/assets/mobile-polish.css, docs/assets/app.css, docs/src/views.js.
 - Diary: docs/src/fitness.js, docs/src/servings.js, docs/src/diary-sync.js.
 - Auth/API: docs/src/auth.js, docs/src/api.js, server/worker.js, server/diary.js, server/cloud.js.

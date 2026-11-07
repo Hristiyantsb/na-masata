@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { defaults, candidates } from '../docs/src/domain.js';
 import { PRODUCTS } from '../docs/src/catalog.js';
+import { nutrition } from '../docs/src/nutrition.js';
 import { previewRecipes, wizardView, STEPS } from '../docs/src/onboarding.js';
 
 test('first value is real recipes, limited to five and stable', () => {
@@ -27,9 +28,13 @@ test('preview respects all hard restrictions', () => {
 });
 test('onboarding does not pretend that checkout is live', () => {
   const s = defaults().settings;
-  assert.equal(STEPS.length, 9);
-  assert.match(wizardView(s, 0), /Хубава храна. Лесна седмица./);
-  assert.match(wizardView(s, 7), /data-action="wizard-recipe"/);
-  assert.match(wizardView(s, 8), /се запазват на това устройство/);
-  assert.doesNotMatch(wizardView(s, 8), /data-action="checkout"/);
+  assert.equal(STEPS.length, 7);
+  assert.match(wizardView(s, 0), /Седмично меню по твоя магазин и вкус/);
+  assert.match(wizardView(s, 6), /data-action="wizard-recipe"/);
+  for (let i = 0; i < STEPS.length; i++) assert.doesNotMatch(wizardView(s, i), /data-action="checkout"/);
+});
+test('calorie cap removes heavier recipes from the preview', () => {
+  const s = defaults().settings;
+  s.maxCalories = 400;
+  for (const r of previewRecipes(s)) assert.ok(nutrition(r).kcal <= 400, r.name);
 });

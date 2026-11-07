@@ -8,7 +8,7 @@ function setup(){
  const sql=new DatabaseSync(':memory:');sql.exec(readFileSync('server/migration.sql','utf8'));sql.exec(readFileSync('server/migration-auth.sql','utf8'));
  const DB={prepare(query){let args=[];return {bind(...values){args=values;return this},async first(){return sql.prepare(query).get(...args)||null},async run(){const r=sql.prepare(query).run(...args);return {success:true,meta:{changes:r.changes}}},async all(){return {results:sql.prepare(query).all(...args)}}}},async batch(items){return Promise.all(items.map(i=>i.run()))}};
  const env={DB};let ip=0;
- const req=(path,body={},cookie='',origin='https://edish.example')=>new Request('https://edish.example/api'+path,{method:'POST',headers:{origin,'content-type':'application/json','CF-Connecting-IP':'192.0.2.'+(++ip),cookie},body:JSON.stringify(body)});
+ const req=(path,body={},cookie='',origin='https://na-masa.example')=>new Request('https://na-masa.example/api'+path,{method:'POST',headers:{origin,'content-type':'application/json','CF-Connecting-IP':'192.0.2.'+(++ip),cookie},body:JSON.stringify(body)});
  const register=async(email)=>{const response=await authRoute(req('/auth/register',{email,password:'correct horse battery staple'}),env,'/auth/register');assert.equal(response.status,200);return {data:await response.json(),cookie:response.headers.get('set-cookie').split(';')[0]}};
  return {sql,DB,env,req,register};
 }
@@ -18,9 +18,9 @@ test('native identity stores hashes, rejects bad passwords and isolates users',a
  const stored=sql.prepare('SELECT * FROM auth_users WHERE id=?').get(a.data.user.id);
  assert.notEqual(stored.password_hash,'correct horse battery staple');assert.equal(stored.password_hash.length,64);
  const session=sql.prepare('SELECT * FROM auth_sessions WHERE user_id=?').get(a.data.user.id);assert.notEqual(session.access_hash,a.data.access_token);
- const user=await nativeUser(new Request('https://edish.example/api/diary',{headers:{Authorization:'Bearer '+a.data.access_token}}),env);assert.equal(user.id,a.data.user.id);
+ const user=await nativeUser(new Request('https://na-masa.example/api/diary',{headers:{Authorization:'Bearer '+a.data.access_token}}),env);assert.equal(user.id,a.data.user.id);
  const bad=await authRoute(req('/auth/login',{email:'one@example.com',password:'wrong password 123'}),env,'/auth/login');assert.equal(bad.status,401);
- assert.equal(await nativeUser(new Request('https://edish.example/api/diary',{headers:{Authorization:'Bearer '+ 'a'.repeat(64)}}),env),null);
+ assert.equal(await nativeUser(new Request('https://na-masa.example/api/diary',{headers:{Authorization:'Bearer '+ 'a'.repeat(64)}}),env),null);
  sql.close();
 });
 test('refresh is single use and logout revokes both credentials',async()=>{
@@ -28,9 +28,9 @@ test('refresh is single use and logout revokes both credentials',async()=>{
  const refresh=await authRoute(req('/auth/refresh',{},a.cookie),env,'/auth/refresh');assert.equal(refresh.status,200);const data=await refresh.json();
  assert.match(refresh.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Strict/);
  assert.equal((await authRoute(req('/auth/refresh',{},a.cookie),env,'/auth/refresh')).status,401);
- assert.equal(await nativeUser(new Request('https://edish.example/api/diary',{headers:{Authorization:'Bearer '+a.data.access_token}}),env),null);
+ assert.equal(await nativeUser(new Request('https://na-masa.example/api/diary',{headers:{Authorization:'Bearer '+a.data.access_token}}),env),null);
  const next=refresh.headers.get('set-cookie').split(';')[0];const logout=await authRoute(req('/auth/logout',{},next),env,'/auth/logout');assert.equal(logout.status,200);
- assert.equal(await nativeUser(new Request('https://edish.example/api/diary',{headers:{Authorization:'Bearer '+data.access_token}}),env),null);
+ assert.equal(await nativeUser(new Request('https://na-masa.example/api/diary',{headers:{Authorization:'Bearer '+data.access_token}}),env),null);
  sql.close();
 });
 test('auth rejects foreign origins, short passwords, expiry and excessive attempts',async()=>{
@@ -45,10 +45,10 @@ test('auth rejects foreign origins, short passwords, expiry and excessive attemp
 });
 test('Cloudflare entrypoint serves static assets and native public config without secrets',async()=>{
  const {sql,env}=setup();env.ASSETS={fetch:async()=>new Response('asset')};
- assert.equal(await (await worker.fetch(new Request('https://edish.example/'),env,{})).text(),'asset');
- const config=await worker.fetch(new Request('https://edish.example/src/config.js'),env,{});const source=await config.text();assert.match(source,/cloudflare/);assert.match(source,/\/api/);assert.doesNotMatch(source,/SUPABASE|password_hash/);
- const health=await worker.fetch(new Request('https://edish.example/api/health'),env,{});assert.equal((await health.json()).authConfigured,true);
- const privateRoute=await worker.fetch(new Request('https://edish.example/api/diary'),env,{});assert.equal(privateRoute.status,401);
+ assert.equal(await (await worker.fetch(new Request('https://na-masa.example/'),env,{})).text(),'asset');
+ const config=await worker.fetch(new Request('https://na-masa.example/src/config.js'),env,{});const source=await config.text();assert.match(source,/cloudflare/);assert.match(source,/\/api/);assert.doesNotMatch(source,/SUPABASE|password_hash/);
+ const health=await worker.fetch(new Request('https://na-masa.example/api/health'),env,{});assert.equal((await health.json()).authConfigured,true);
+ const privateRoute=await worker.fetch(new Request('https://na-masa.example/api/diary'),env,{});assert.equal(privateRoute.status,401);
  sql.close();
 });
 test('password salt produces distinct hashes',async()=>{assert.notEqual(await passwordHash('long password 12345','one'),await passwordHash('long password 12345','two'))});

@@ -17,6 +17,7 @@ const paths = {
   arrow: 'M5 12h14m-5-5 5 5-5 5',
   back: 'M19 12H5m5-5-5 5 5 5',
   plus: 'M12 5v14M5 12h14',
+  minus: 'M5 12h14',
   check: 'm5 12 4 4L19 6',
   close: 'm6 6 12 12M6 18 18 6',
   clock: 'M12 8v5l3 2M21 12a9 9 0 11-18 0 9 9 0 0118 0',
@@ -42,27 +43,44 @@ export const icon = (name, size = 20) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] ? `<path d="${paths[name]}"/>` : '<circle cx="12" cy="12" r="8"/>'}</svg>`;
 export const button = (text, action, attrs = '', kind = 'button') =>
   `<button type="button" class="${kind}" data-action="${action}" ${attrs}>${text}</button>`;
+// Top-down dish drawn from the recipe's own ingredients: the main ingredient sets the base,
+// the next few become garnish. Deterministic per recipe, no photos needed.
+const FOOD_COLORS = {
+  tomato: '#d9472b', canned: '#c63c26', pepper: '#e0662f', paprika: '#b8401f', carrot: '#ee8a2f',
+  lentil: '#a5642d', bean: '#e8dcc2', chickpea: '#d9b46a', potato: '#e7c27a', rice: '#f3eee1',
+  pasta: '#efcf7e', bread: '#d6a35c', flour: '#efe6d2', oats: '#d9c39a', phyllo: '#f0cf86',
+  cheese: '#fbfaf3', yogurt: '#fdfcf7', egg: '#f5c542', chicken: '#e3b07a', mince: '#8c4a2f',
+  fish: '#e9b6a0', spinach: '#3f7a35', zucchini: '#7fa64a', cucumber: '#8fbf5a', cabbage: '#c9dc9a',
+  mushroom: '#9a7b5e', parsley: '#3f8a3a', dill: '#5f9a3f', savory: '#6c8a4a', onion: '#efe0c6',
+  garlic: '#f4ecd9', lemon: '#f2d44c', walnut: '#8a5a32', apple: '#d8533c', banana: '#f2d670',
+  honey: '#e3a32b', tofu: '#f3ecd8',
+};
+const SKIP = new Set(['oil', 'salt', 'peppercorn']);
 export function foodArt(r) {
-  const kind = ['shopska', 'chickpea', 'airchickpea', 'zucchini', 'spinach', 'cabbage'].includes(
-    r.id,
-  )
-    ? 'greens'
-    : r.id === 'fish'
-      ? 'fish'
-      : r.id === 'banitsa'
-        ? 'pie'
-        : ['omelette', 'mishmash'].includes(r.id)
-          ? 'pan'
-          : 'bowl';
-  const shapes = {
-    greens:
-      'M24 34c-16-3-15-21-5-23 10-2 17 12 5 23zm0 0c1-17 13-25 21-18 9 9-1 22-21 18zm1 1-5-17m5 17 15-13',
-    fish: 'M13 28c12-19 29-15 37 0-8 15-25 18-37 0zm0 0L3 16v24zm24-5h1m-7-11 2 7m-2 18 2 7',
-    pie: 'M6 30 25 7l24 23-5 17H10zM6 30h43M17 19l21 11M23 12l23 14M17 35v6m11-6v6m10-6v6',
-    pan: 'M8 18h33v16c0 17-33 17-33 0zm33 7h12M18 5v6m12-6v6M16 27c5-6 15-4 16 3s-8 11-13 7-7-6-3-10',
-    bowl: 'M5 25h44c-1 18-11 24-22 24S7 43 5 25zm5 5h34M18 5c-6 5 5 8 0 13M28 3c-6 6 5 9 0 15M38 5c-6 5 5 8 0 13',
-  };
-  return `<div class="food-art art-${r.id.length % 4}" aria-hidden="true"><span class="plate"><svg width="36" height="36" viewBox="0 0 56 56" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="${shapes[kind]}"/></svg></span></div>`;
+  const keys = Object.entries(r.ing || {})
+    .filter(([k]) => FOOD_COLORS[k] && !SKIP.has(k))
+    .sort((a, b) => b[1] - a[1])
+    .map(([k]) => k);
+  const base = FOOD_COLORS[keys[0]] || '#e7c27a';
+  const accents = (keys.length > 1 ? keys.slice(1, 5) : keys).map((k) => FOOD_COLORS[k]);
+  let seed = [...r.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const rand = () => ((seed = (seed * 1103515245 + 12345) >>> 0) % 1000) / 1000;
+  let bits = '';
+  for (let i = 0; i < 9; i++) {
+    const angle = rand() * Math.PI * 2,
+      dist = 3 + rand() * 11,
+      x = (28 + Math.cos(angle) * dist).toFixed(1),
+      y = (28 + Math.sin(angle) * dist).toFixed(1),
+      size = (2 + rand() * 2.6).toFixed(1),
+      color = accents[i % accents.length] || '#3f8a3a';
+    bits +=
+      i % 3 === 2
+        ? `<ellipse cx="${x}" cy="${y}" rx="${size}" ry="${(size * 0.55).toFixed(1)}" transform="rotate(${Math.round(rand() * 180)} ${x} ${y})" fill="${color}"/>`
+        : `<circle cx="${x}" cy="${y}" r="${size}" fill="${color}"/>`;
+  }
+  const herb = keys.find((k) => ['parsley', 'dill', 'savory', 'spinach'].includes(k));
+  if (herb) bits += `<path d="M33 20c3-2 6-1 7 1-2 2-5 2-7-1zm-2 3c-1-3 0-6 3-6 1 3 0 5-3 6z" fill="${FOOD_COLORS[herb]}"/>`;
+  return `<div class="food-art" aria-hidden="true"><svg viewBox="0 0 56 56" width="100%" height="100%"><circle cx="28" cy="29.5" r="25" fill="#1f2420" opacity=".08"/><circle cx="28" cy="28" r="25" fill="#fff"/><circle cx="28" cy="28" r="25" fill="none" stroke="#1f2420" stroke-opacity=".08"/><circle cx="28" cy="28" r="18.5" fill="${base}"/><circle cx="28" cy="28" r="18.5" fill="url(#fa-shade)"/>${bits}<defs><radialGradient id="fa-shade" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></radialGradient></defs></svg></div>`;
 }
 export const badge = (text) => `<span class="badge">${esc(text)}</span>`;
 export const heading = (eyebrow, title, sub, action = '') =>

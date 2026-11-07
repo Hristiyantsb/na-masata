@@ -26,9 +26,10 @@ test('mobile input controls and dialogs are usable on small devices without iOS 
  assert.match(css,/\.mobile-nav>a\[aria-current='page'\]/);
  assert.match(css,/prefers-reduced-motion:reduce/);
 });
-test('obsolete bitmap mascot atlas is not downloaded in first offline install',()=>{
- const build=read('scripts/build-sw.mjs');
- assert.match(build,/onboarding-mascots\.webp.*continue/);
+test('no eDish branding ships in the app',()=>{
+ const html=read('docs/index.html');
  const sw=read('docs/sw.js');
- assert.doesNotMatch(sw,/"assets\/onboarding-mascots\.webp"/);
+ assert.doesNotMatch(html,/edish/i);
+ assert.doesNotMatch(sw,/edish/i);
+ assert.match(html,/assets\/brand\.css/);
 });

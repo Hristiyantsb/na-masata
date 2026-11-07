@@ -16,7 +16,8 @@ export function validateRecipes(input){
 }
 export async function loadRecipeCatalog(config,storage,fetcher=(...args)=>fetch(...args)){
  if(config.authProvider!=='cloudflare')return {loaded:0};
- const key='edish-catalog-v1';let list=[];
+ const key='na-masa-catalog-v1';let list=[];
+ try{storage.removeItem('edish-catalog-v1')}catch{}
  try{const saved=storage.getItem(key);if(saved)list=validateRecipes(JSON.parse(saved))}catch{}
  try{
   const response=await fetcher(config.apiBase+'/catalog',{signal:AbortSignal.timeout(4000)});

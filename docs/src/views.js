@@ -21,6 +21,7 @@ import {
   SHOPPING_UNITS,
   shoppingSummary,
 } from './domain.js';
+import { mascot, wordmark } from './brand.js';
 import { esc, icon, button, money, num, heading, foodArt, empty, field, badge } from './ui.js';
 export function shell(page, content, connectivity = {}) {
   const items = [
@@ -29,7 +30,7 @@ export function shell(page, content, connectivity = {}) {
     ['shopping', 'bag', 'Покупки'],
     ['diary', 'diary', 'Дневник'],
   ];
-  return `<a class="skip-link" href="#content">Към съдържанието</a><aside class="sidebar"><a class="wordmark" href="#plan"><img class="brand-wordmark" src="assets/brand-wordmark.webp" alt="На маса" width="480" height="94" decoding="async" /></a><p class="sidebar-caption">Меню, рецепти и покупки.</p><nav aria-label="Основно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}</nav><div class="sidebar-bottom"><a class="plan-link" href="#plans"><img class="plan-seal" src="assets/favicon.svg" alt="" width="32" height="32"><span><b>Твоят На маса</b><small>Всичко на едно място</small></span>${icon('arrow', 16)}</a><a class="settings-link" href="#settings">${icon('settings', 18)}Настройки и данни</a></div></aside><main id="content" tabindex="-1"><div class="topbar"><a class="mobile-wordmark" href="#plan" aria-label="На маса"><img class="brand-wordmark" src="assets/brand-wordmark.webp" alt="На маса" width="480" height="94" decoding="async" /></a><span class="preview-label"><i></i> На това устройство</span><a href="#settings">Настройки ${icon('arrow', 14)}</a></div><div id="connection-status" class="connection-status" role="status" ${!connectivity.offline && !connectivity.update ? 'hidden' : ''}>${connectivity.offline ? '<span>Без интернет · локален режим</span>' : ''}${connectivity.update ? button('Нова версия · Обнови', 'app-update', '', 'quiet') : ''}</div>${content}<footer><span>На маса · България</span><a href="#privacy">Поверителност</a><span>България · EUR</span></footer></main><nav class="mobile-nav" aria-label="Мобилно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}<a href="#settings" ${page === 'settings' ? 'aria-current="page"' : ''}>${icon('settings')}<span>Още</span></a></nav>`;
+  return `<a class="skip-link" href="#content">Към съдържанието</a><aside class="sidebar"><a class="wordmark" href="#plan" aria-label="На маса, към менюто">${wordmark()}</a><p class="sidebar-caption">Меню, рецепти и покупки.</p><nav aria-label="Основно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}</nav><div class="sidebar-bottom"><a class="plan-link" href="#plans"><span class="plan-seal">${mascot(32)}</span><span><b>Твоят На маса</b><small>Всичко на едно място</small></span>${icon('arrow', 16)}</a><a class="settings-link" href="#settings">${icon('settings', 18)}Настройки и данни</a></div></aside><main id="content" tabindex="-1"><div class="topbar"><a class="mobile-wordmark" href="#plan" aria-label="На маса, към менюто">${wordmark()}</a><span class="preview-label"><i></i> На това устройство</span><a href="#settings">Настройки ${icon('arrow', 14)}</a></div><div id="connection-status" class="connection-status" role="status" ${!connectivity.offline && !connectivity.update ? 'hidden' : ''}>${connectivity.offline ? '<span>Без интернет · локален режим</span>' : ''}${connectivity.update ? button('Нова версия · Обнови', 'app-update', '', 'quiet') : ''}</div>${content}<footer><span>На маса · България</span><a href="#privacy">Поверителност</a><span>България · EUR</span></footer></main><nav class="mobile-nav" aria-label="Мобилно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}<a href="#settings" ${page === 'settings' ? 'aria-current="page"' : ''}>${icon('settings')}<span>Още</span></a></nav>`;
 }
 export function planView(state, undo) {
   const s = state.settings,
@@ -38,7 +39,7 @@ export function planView(state, undo) {
   const days = [...new Set(state.plan.map((e) => e.day))];
   return (
     heading(
-      'СЕДМИЧНО МЕНЮ',
+      'Седмично меню',
       'Твоята вкусна седмица',
       `${s.people} ${s.people === 1 ? 'човек' : 'души'} · ${s.days} дни`,
       button(icon('settings', 16) + ' Предпочитания', 'wizard', '', 'button outline'),
@@ -51,7 +52,7 @@ export function planView(state, undo) {
         )
       : `
   <div class="plan-store-line">${icon('bag', 16)}<span>${s.stores.map(esc).join(' · ')}</span></div>
-  <section class="week-overview"><div><p class="eyebrow">ПРИМЕРНА СМЕТКА</p><div class="budget-total">${money(cost)} <span>/ ${money(s.budget)}</span></div><div class="budget-track"><span style="width:${Math.min((cost / s.budget) * 100, 100)}%;${cost > s.budget ? 'background:var(--coral)' : ''}"></span></div><p>${cost > s.budget ? 'Над бюджета с ' + money(cost - s.budget) : 'За цели опаковки'}</p></div><a class="shopping-shortcut" href="#shopping"><div><small>ЗА ПАЗАРУВАНЕ</small><h3>Списъкът ти ${icon('arrow', 18)}</h3><p>${rows.filter((r) => state.checked[r.k]).length} / ${rows.length} продукта</p></div></a></section>
+  <section class="week-overview"><div><p class="eyebrow">Примерна сметка</p><div class="budget-total">${money(cost)} <span>/ ${money(s.budget)}</span></div><div class="budget-track"><span style="width:${Math.min((cost / s.budget) * 100, 100)}%;${cost > s.budget ? 'background:var(--coral)' : ''}"></span></div><p>${cost > s.budget ? 'Над бюджета с ' + money(cost - s.budget) : 'За цели опаковки'}</p></div><a class="shopping-shortcut" href="#shopping"><div><small>За пазаруване</small><h3>Списъкът ти ${icon('arrow', 18)}</h3><p>${rows.filter((r) => state.checked[r.k]).length} / ${rows.length} продукта</p></div></a></section>
   <div class="section-bar plan-tools"><p>${esc(GOALS[s.goal][0])} · ${esc(DIETS[s.diet])}</p><div class="inline-actions">${undo ? button(icon('back', 16) + ' Върни', 'undo', '', 'quiet') : ''}${button(icon('lock', 16) + (state.locked ? ' Отключи' : ' Заключи'), 'lock', '', 'quiet')}</div></div>
   ${state.locked ? '<p class="notice compact">Менюто е заключено. Отключи го, за да местиш или сменяш ястия.</p>' : ''}
   <div class="week-days">${days
@@ -89,7 +90,7 @@ export function recipesView(state, query, favorites) {
   );
   return (
     heading(
-      'РЕЦЕПТИ',
+      'Рецепти',
       'Книгата с рецепти',
       'Рецепти, съобразени с твоите предпочитания.',
       button(icon('settings', 16) + ' Филтри', 'wizard', '', 'button outline'),
@@ -118,12 +119,12 @@ export function shoppingView(state) {
     summary = shoppingSummary(state);
   return (
     heading(
-      'ПОКУПКИ',
+      'Покупки',
       'Списък за пазаруване',
       'Количествата са събрани за цялото меню.',
       button(icon('download', 17) + ' Списък', 'export-shopping', '', 'button outline'),
     ) +
-    `<section class="shopping-overview"><div><small>ЦЕЛИ ОПАКОВКИ</small><strong>${money(summary.knownTotal)}</strong><span>${summary.unknownPrices ? `+ ${summary.unknownPrices} продукта без цена` : 'Известна сума за покупките'}</span></div><div><small>ПРОДУКТИ</small><strong>${rows.filter((r) => r.packs).length}</strong><span>${rows.filter((r) => r.packs && state.checked[r.k]).length} отметнати</span></div><div><small>ПЪРВО ПОГЛЕДНИ ВКЪЩИ</small><p>Наличностите се приспадат автоматично.</p>${button('Моите наличности ' + icon('arrow', 16), 'pantry', '', 'quiet')}</div></section><div class="notice compact">Примерни цени, не оферти на магазините. Редактирай цената и размера на опаковката от сумата вдясно.</div>${state.settings.stores
+    `<section class="shopping-overview"><div><small>Цели опаковки</small><strong>${money(summary.knownTotal)}</strong><span>${summary.unknownPrices ? `+ ${summary.unknownPrices} продукта без цена` : 'Известна сума за покупките'}</span></div><div><small>Продукти</small><strong>${rows.filter((r) => r.packs).length}</strong><span>${rows.filter((r) => r.packs && state.checked[r.k]).length} отметнати</span></div><div><small>Първо погледни вкъщи</small><p>Наличностите се приспадат автоматично.</p>${button('Моите наличности ' + icon('arrow', 16), 'pantry', '', 'quiet')}</div></section><div class="notice compact">Примерни цени, не оферти на магазините. Редактирай цената и размера на опаковката от сумата вдясно.</div>${state.settings.stores
       .map((store) => {
         const list = rows.filter((r) => r.store === store && r.packs);
         if (!list.length) return '';
@@ -142,7 +143,7 @@ export function shoppingView(state) {
 export function pantryView(state) {
   return (
     heading(
-      'ПРЕДИ ДА ПАЗАРУВАШ',
+      'Преди да пазаруваш',
       'Какво имаш вкъщи?',
       'Въведи количества, а не брой опаковки.',
       `<a class="button outline" href="#shopping">Към списъка ${icon('arrow', 16)}</a>`,
@@ -168,7 +169,7 @@ export function diaryView(state, date) {
     target = state.dailyTarget;
   return (
     heading(
-      'ХРАНЕНЕТО В КОНТЕКСТ',
+      'Храненето в контекст',
       'Моят дневник.',
       'Без догадки. Записваш количеството, виждаш сметката.',
       button(icon('plus', 17) + ' Добави храна', 'add-food', '', 'button primary'),
@@ -209,20 +210,20 @@ export function foodForm(date, meal = 'Обяд', entry = null) {
   if (e.basis === 100 && !options.includes('именувана порция')) options.push('именувана порция');
   const servingQuantity = e.servingGrams || suggestedServingQuantity(e.servingLabel, e.unit) || '';
   const labelText = e.basis === 1 ? 'една порция' : e.unit === 'мл' ? '100 мл' : '100 г';
-  return `<p class="eyebrow">ХРАНИТЕЛЕН ДНЕВНИК</p><h2 class="dialog-title">${entry?.id ? 'Редактирай храната' : 'Какво хапна?'}</h2><form data-form="food" ${entry?.id ? `data-id="${esc(e.id)}"` : ''} data-source="${e.source}" data-basis="${e.basis}" data-unit="${esc(e.unit)}" data-barcode="${e.barcode || ''}" data-brand="${esc(e.brand || '')}">${field('Име на храната', 'name', e.name, 'text', 'maxlength="120" required')}<div class="form-grid">${field('Дата', 'date', e.date, 'date', 'required')}<label class="field"><span>Хранене</span><select name="meal">${MEALS.map((m) => `<option ${m === e.meal ? 'selected' : ''}>${m}</option>`).join('')}</select></label>${field('Изядено количество', 'amount', q.amount, 'number', 'min="0.01" max="10000" step="any" required')}<label class="field"><span>Мерна единица</span><select name="measure">${options.map((u) => `<option ${q.measure === u ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></label>${field('Наименование на порцията (от етикета)', 'servingLabel', e.servingLabel || '', 'text', 'maxlength="120" placeholder="например 1 купичка"')}<div class="food-serving-confirm" data-serving-details ${q.measure === 'именувана порция' ? '' : 'hidden'}>${field(e.unit === 'мл' ? 'Милилитри в 1 порция' : 'Грамове в 1 порция', 'servingQuantity', servingQuantity, 'number', 'min="0.01" max="10000" step="any"')}<label class="field"><span><input type="checkbox" name="servingConfirmed" value="yes"> Потвърдих ${e.unit === 'мл' ? 'милилитрите' : 'грамажа'} от етикета или везна.</span></label></div>${field(`Ккал за ${labelText}`, 'kcal', e.kcal, 'number', 'min="0" max="2000" step="0.1" required')}${field(`Протеин (г) за ${labelText}`, 'protein', e.protein ?? '', 'number', 'min="0" max="200" step="0.1"')}</div><div data-food-preview role="status" aria-live="polite"></div>${macroFields(e)}${e.source === 'openfoodfacts' ? '<label class="field"><span><input type="checkbox" name="labelConfirmed" required> Проверих стойностите и дали етикетът е за 100 г или 100 мл.</span></label>' : ''}<p class="fine">Порции с име се изчисляват само след потвърден грамаж/милилитри. Не гадаем. Стойностите са за ${labelText}; празно поле = неизвестно.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази в дневника ${icon('check', 18)}</button></form>`;
+  return `<p class="eyebrow">Хранителен дневник</p><h2 class="dialog-title">${entry?.id ? 'Редактирай храната' : 'Какво хапна?'}</h2><form data-form="food" ${entry?.id ? `data-id="${esc(e.id)}"` : ''} data-source="${e.source}" data-basis="${e.basis}" data-unit="${esc(e.unit)}" data-barcode="${e.barcode || ''}" data-brand="${esc(e.brand || '')}">${field('Име на храната', 'name', e.name, 'text', 'maxlength="120" required')}<div class="form-grid">${field('Дата', 'date', e.date, 'date', 'required')}<label class="field"><span>Хранене</span><select name="meal">${MEALS.map((m) => `<option ${m === e.meal ? 'selected' : ''}>${m}</option>`).join('')}</select></label>${field('Изядено количество', 'amount', q.amount, 'number', 'min="0.01" max="10000" step="any" required')}<label class="field"><span>Мерна единица</span><select name="measure">${options.map((u) => `<option ${q.measure === u ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></label>${field('Наименование на порцията (от етикета)', 'servingLabel', e.servingLabel || '', 'text', 'maxlength="120" placeholder="например 1 купичка"')}<div class="food-serving-confirm" data-serving-details ${q.measure === 'именувана порция' ? '' : 'hidden'}>${field(e.unit === 'мл' ? 'Милилитри в 1 порция' : 'Грамове в 1 порция', 'servingQuantity', servingQuantity, 'number', 'min="0.01" max="10000" step="any"')}<label class="field"><span><input type="checkbox" name="servingConfirmed" value="yes"> Потвърдих ${e.unit === 'мл' ? 'милилитрите' : 'грамажа'} от етикета или везна.</span></label></div>${field(`Ккал за ${labelText}`, 'kcal', e.kcal, 'number', 'min="0" max="2000" step="0.1" required')}${field(`Протеин (г) за ${labelText}`, 'protein', e.protein ?? '', 'number', 'min="0" max="200" step="0.1"')}</div><div data-food-preview role="status" aria-live="polite"></div>${macroFields(e)}${e.source === 'openfoodfacts' ? '<label class="field"><span><input type="checkbox" name="labelConfirmed" required> Проверих стойностите и дали етикетът е за 100 г или 100 мл.</span></label>' : ''}<p class="fine">Порции с име се изчисляват само след потвърден грамаж/милилитри. Не гадаем. Стойностите са за ${labelText}; празно поле = неизвестно.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази в дневника ${icon('check', 18)}</button></form>`;
 }
 export function pricingView(interval) {
   if (!CONFIG.apiBase) return heading('На маса','Твоят кулинарен ритъм','Всички локални функции са достъпни без акаунт и без абонамент.') + '<div class="local-features"><a href="#plan"><h2>Меню за седмицата</h2><p>Порции, предпочитания и лесна смяна на ястията.</p><span>Отвори менюто →</span></a><a href="#shopping"><h2>Подредени покупки</h2><p>Общ списък, наличности вкъщи и редакция на цените.</p><span>Към покупките →</span></a><a href="#diary"><h2>Хранителен дневник</h2><p>Твоите храни, порции и лични цели.</p><span>Отвори дневника →</span></a></div><div class="notice"><strong>Данните ти остават тук.</strong><p>Изтегли резервно копие от Настройки, за да ги прехвърлиш на друго устройство. Синхронизацията и плащанията не са включени.</p><a class="button outline" href="#settings">Настройки и резервно копие</a></div>';
 
   const annual = interval === 'yearly';
   return (
-    heading('АБОНАМЕНТИ', 'Двата плана', 'Меню за седмицата или поглед върху цялото ти хранене.') +
+    heading('Абонаменти', 'Двата плана', 'Меню за седмицата или поглед върху цялото ти хранене.') +
     `<div class="billing-toggle" role="group" aria-label="Период на плащане">${button('Месечно', 'billing-period', 'data-value="monthly" aria-pressed="' + !annual + '"', !annual ? 'active' : '')}${button('Годишно <span>2 месеца по-малко</span>', 'billing-period', 'data-value="yearly" aria-pressed="' + annual + '"', annual ? 'active' : '')}</div><div class="pricing-grid">${Object.entries(
       PLANS,
     )
       .map(
         ([id, p]) =>
-          `<article class="pricing-card ${id === 'plus' ? 'plus-plan' : ''}"><div class="pricing-label"><span>${id === 'plus' ? 'ЦЯЛАТА КАРТИНА' : 'ЕЖЕДНЕВИЕТО, ПОДРЕДЕНО'}</span>${icon(id === 'plus' ? 'scan' : 'book', 25)}</div><h2>${p.name}</h2><p>${id === 'plus' ? 'Менюто и хранителният ти дневник на едно място.' : 'По-малко време в чудене какво да сготвиш.'}</p><div class="plan-price">${p[interval]} €<span>/ ${annual ? 'година' : 'месец'}</span></div><p class="price-detail">${annual ? `${money(p.yearly / 12)} на месец · ${p.yearly} € наведнъж годишно` : 'Плащане всеки месец'}${annual ? `<br>Спестяваш ${p.monthly * 12 - p.yearly} € спрямо 12 месечни плащания` : ''}</p><ul>${(id === 'menu' ? ['Персонално седмично меню', 'Филтри за хранене, уреди и съставки', 'Общ списък и бюджет за покупки', 'Любими рецепти и лични бележки'] : ['Всичко от план Меню', 'Хранителен дневник и калории', 'Баркод скенер и данни за продукти', 'Протеин, въглехидрати, мазнини и лични цели']).map((t) => `<li>${icon('check', 16)}${t}</li>`).join('')}</ul>${button('За този план ' + icon('arrow', 16), 'plan-info', `data-plan="${id}"`, 'button ' + (id === 'plus' ? 'primary' : 'outline') + ' full')}${id === 'plus' ? '<div class="planned-feature">Следващ етап: оценка на ястие по снимка с потвърждение на порцията.</div>' : ''}</article>`,
+          `<article class="pricing-card ${id === 'plus' ? 'plus-plan' : ''}"><div class="pricing-label"><span>${id === 'plus' ? 'Цялата картина' : 'Ежедневието, подредено'}</span>${icon(id === 'plus' ? 'scan' : 'book', 25)}</div><h2>${p.name}</h2><p>${id === 'plus' ? 'Менюто и хранителният ти дневник на едно място.' : 'По-малко време в чудене какво да сготвиш.'}</p><div class="plan-price">${p[interval]} €<span>/ ${annual ? 'година' : 'месец'}</span></div><p class="price-detail">${annual ? `${money(p.yearly / 12)} на месец · ${p.yearly} € наведнъж годишно` : 'Плащане всеки месец'}${annual ? `<br>Спестяваш ${p.monthly * 12 - p.yearly} € спрямо 12 месечни плащания` : ''}</p><ul>${(id === 'menu' ? ['Персонално седмично меню', 'Филтри за хранене, уреди и съставки', 'Общ списък и бюджет за покупки', 'Любими рецепти и лични бележки'] : ['Всичко от план Меню', 'Хранителен дневник и калории', 'Баркод скенер и данни за продукти', 'Протеин, въглехидрати, мазнини и лични цели']).map((t) => `<li>${icon('check', 16)}${t}</li>`).join('')}</ul>${button('За този план ' + icon('arrow', 16), 'plan-info', `data-plan="${id}"`, 'button ' + (id === 'plus' ? 'primary' : 'outline') + ' full')}${id === 'plus' ? '<div class="planned-feature">Следващ етап: оценка на ястие по снимка с потвърждение на порцията.</div>' : ''}</article>`,
       )
       .join(
         '',
@@ -231,14 +232,14 @@ export function pricingView(interval) {
 }
 export function settingsView(state, offline = {}) {
   return (
-    heading('МОЯТ ПРОФИЛ', 'Настройки', 'Настройките и данните са под твой контрол.') +
+    heading('Моят профил', 'Настройки', 'Настройките и данните са под твой контрол.') +
     `<div class="settings-sections"><section class="settings-card"><div><h2>Приложението на телефона</h2><p>Добави го на началния екран. След първото успешно онлайн зареждане менюто, рецептите, покупките и дневникът могат да работят без интернет, докато браузърът пази данните.</p><p id="offline-readiness" class="fine" role="status">${offline.ready ? 'Офлайн копието е готово на това устройство.' : offline.error ? 'Не успяхме да подготвим офлайн копие. Приложението остава достъпно онлайн.' : 'Офлайн копието се подготвя при онлайн зареждане.'}</p><div class="inline-actions">${button('Добави на началния екран', 'install-app', '', 'button outline')}${button('Провери за обновление', 'check-update', '', 'quiet')}</div></div></section><section class="settings-card"><span class="round-icon">${icon('user', 24)}</span><div><h2>Моето домакинство</h2><p>${state.settings.people} души · ${state.settings.days} дни · ${DIETS[state.settings.diet]}</p>${button('Промени предпочитанията', 'wizard', '', 'button outline')}</div></section><section class="settings-card"><span class="round-icon">${icon('book', 24)}</span><div><h2>Моят план</h2><p>Менюто, покупките и дневникът са достъпни на това устройство.</p><a class="button outline" href="#plans">Какво включва На маса ${icon('arrow', 16)}</a></div></section><section class="settings-card"><span class="round-icon">${icon('lock', 24)}</span><div><h2>Твоите данни</h2>${CONFIG.apiBase ? button('Акаунт и облачно копие', 'account', '', 'button outline') : ''}<label class="button outline file-label">Импорт от adios дневник<input type="file" accept="application/json,.json" data-change="import-adios" hidden></label><p>Данните се запазват в този браузър. Изтегли копие за прехвърляне на друго устройство или преди изчистване на браузъра.</p><div class="inline-actions">${button('Изтегли копие', 'backup', '', 'button outline')}<label class="button outline file-label">Възстанови копие<input id="restore-input" type="file" accept="application/json,.json" data-change="restore" hidden></label></div><p class="fine">Копието включва менюто, предпочитанията, бележките и дневника. Изтегляй го на устройство, на което имаш доверие.</p>${button('Изтрий локалните данни', 'reset', '', 'quiet danger')}</div></section><section class="settings-card"><span class="round-icon">${icon('info', 24)}</span><div><h2>За „На маса“</h2><p>Български рецепти и спокойно планиране. Версия 0.8.1 · локално съхранение.</p><a href="https://github.com/Hristiyantsb/na-masata" target="_blank" rel="noopener">Проектът в GitHub ↗</a></div></section></div>`
   );
 }
 export function privacyView() {
   return (
     heading(
-      'ПРОЗРАЧНО ОТ САМОТО НАЧАЛО',
+      'Прозрачно от самото начало',
       'Твоите данни, твоят избор.',
       'Как работи На маса на твоето устройство.',
     ) +

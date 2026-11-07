@@ -10,5 +10,5 @@ if(recipes.some(r=>builtins.has(r.id)))throw Error('Imported ids must not overwr
 const quote=v=>"'"+String(v).replaceAll("'","''")+"'";
 const date=new Date().toISOString();
 const sql=recipes.map(r=>`INSERT INTO recipe_catalog(id,payload,source,updated_at) VALUES(${quote(r.id)},${quote(JSON.stringify(r))},${quote(data.source)},${quote(date)}) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,source=excluded.source,updated_at=excluded.updated_at;`).join('\n');
-writeFileSync(output,'-- Reviewed eDish recipes. Ingredient amounts are for two servings.\n'+sql+'\n');
+writeFileSync(output,'-- Reviewed На маса recipes. Ingredient amounts are for two servings.\n'+sql+'\n');
 console.log(`Validated ${recipes.length} recipes. SQL written to ${output}. Review before applying to D1.`);

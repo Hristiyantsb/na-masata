@@ -8,8 +8,8 @@ export async function passwordHash(password,salt) {
  return hex(await crypto.subtle.deriveBits({name:'PBKDF2',salt:encode.encode(salt),iterations:100000,hash:'SHA-256'},key,256));
 }
 function equal(a,b){if(a.length!==b.length)return false;let diff=0;for(let i=0;i<a.length;i++)diff|=a.charCodeAt(i)^b.charCodeAt(i);return diff===0;}
-function cookie(value,age){return `edish_refresh=${value}; Path=/api/auth; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`;}
-function refreshCookie(request){return request.headers.get('cookie')?.match(/(?:^|;\s*)edish_refresh=([a-f0-9]{64})(?:;|$)/)?.[1];}
+function cookie(value,age){return `namasa_refresh=${value}; Path=/api/auth; HttpOnly; Secure; SameSite=Strict; Max-Age=${age}`;}
+function refreshCookie(request){return request.headers.get('cookie')?.match(/(?:^|;\s*)namasa_refresh=([a-f0-9]{64})(?:;|$)/)?.[1];}
 export async function nativeUser(request,env){
  const token=request.headers.get('Authorization')?.match(/^Bearer ([a-f0-9]{64})$/)?.[1];
  if(!token)return null;
@@ -54,7 +54,7 @@ export async function authRoute(request,env,path){
    const salt=random(),hash=await passwordHash(password,salt);user={id:crypto.randomUUID(),email};
    await env.DB.prepare('INSERT INTO auth_users(id,email,password_hash,salt,created_at) VALUES(?,?,?,?,?)').bind(user.id,email,hash,salt,now()).run();
   }else{
-   const hash=await passwordHash(password,existing?.salt||'edish-dummy-password-salt');
+   const hash=await passwordHash(password,existing?.salt||'na-masa-dummy-password-salt');
    if(!existing||!equal(hash,existing.password_hash))return response({error:'invalid_credentials'},401);
    user={id:existing.id,email:existing.email};
   }

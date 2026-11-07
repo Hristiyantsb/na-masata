@@ -41,4 +41,4 @@ http
       res.end(data);
     });
   })
-  .listen(Number(process.env.PORT || 4173), '127.0.0.1', () => console.log('eDish local server ready'));
+  .listen(Number(process.env.PORT || 4173), '127.0.0.1', () => console.log('На маса: http://127.0.0.1:' + (process.env.PORT || 4173) + ''));
