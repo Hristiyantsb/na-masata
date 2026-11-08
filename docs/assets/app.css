@@ -64,39 +64,39 @@ h1 {
   font-size: clamp(30px, 3.1vw, 43px);
   line-height: 1.12;
   letter-spacing: -1.7px;
-  font-weight: 650;
+  font-weight: 600;
   margin-bottom: 13px;
 }
 h2 {
   font-size: 21px;
   letter-spacing: -0.65px;
   line-height: 1.3;
-  font-weight: 650;
+  font-weight: 600;
 }
 h3 {
   font-size: 15px;
-  font-weight: 650;
-  letter-spacing: -0.2px;
+  font-weight: 600;
+  letter-spacing: 0;
 }
 p {
   margin-bottom: 15px;
 }
 small {
-  font-size: 11px;
+  font-size: 12px;
 }
 .muted {
   color: var(--muted);
   line-height: 1.65;
 }
 .fine {
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.75;
   color: var(--muted);
 }
 .eyebrow {
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 1.7px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
   line-height: 1.7;
   color: var(--muted);
   margin-bottom: 15px;
@@ -140,7 +140,7 @@ small {
 .quiet {
   background: none;
   border: 0;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 10px 6px;
   display: inline-flex;
@@ -255,7 +255,7 @@ textarea {
 .wordmark {
   display: block;
   font-size: 27px;
-  font-weight: 750;
+  font-weight: 700;
   letter-spacing: -1.6px;
   white-space: nowrap;
 }
@@ -277,7 +277,7 @@ textarea {
   flex-direction: column;
 }
 .sidebar-caption {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin: 9px 0 42px;
 }
@@ -300,7 +300,7 @@ textarea {
   color: #263d26;
 }
 .sidebar nav a small {
-  font-size: 7px;
+  font-size: 11px;
   border: 1px solid #cbd6bb;
   border-radius: 4px;
   padding: 1px 4px;
@@ -322,11 +322,11 @@ textarea {
   background: #f8faef;
 }
 .plan-link b {
-  font-size: 10px;
+  font-size: 12px;
 }
 .plan-link small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
   margin-top: 3px;
 }
@@ -335,7 +335,7 @@ textarea {
   place-items: center;
   width: 29px;
   height: 29px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
   background: #dce9bc;
   border-radius: 50%;
@@ -347,7 +347,7 @@ textarea {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 11px;
+  font-size: 12px;
   padding: 20px 9px 0;
   color: var(--muted);
 }
@@ -364,7 +364,7 @@ main {
   margin-bottom: 44px;
 }
 .preview-label {
-  font-size: 10px;
+  font-size: 12px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -382,7 +382,7 @@ main {
   display: flex;
   gap: 8px;
   align-items: center;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 550;
 }
 .mobile-wordmark,
@@ -414,7 +414,7 @@ footer {
   display: flex;
   align-items: center;
   gap: 25px;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--faint);
 }
 footer > span:last-child {
@@ -455,7 +455,7 @@ footer > span:last-child {
 }
 .notice.compact {
   padding: 12px 16px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .notice.warning {
   background: #fff0e7;
@@ -476,7 +476,7 @@ footer > span:last-child {
 }
 .section-bar p {
   margin: 5px 0 0;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .section-bar > span {
@@ -497,20 +497,20 @@ footer > span:last-child {
   padding: 24px 27px;
 }
 .week-overview .eyebrow {
-  font-size: 9px;
-  letter-spacing: 1.2px;
+  font-size: 11px;
+  letter-spacing: 0;
   margin-bottom: 8px;
 }
 .budget-total {
   font-size: 34px;
   letter-spacing: -1.4px;
-  font-weight: 650;
+  font-weight: 600;
 }
 .budget-total > span {
   font-size: 14px;
   font-weight: 400;
   color: #8e997d;
-  letter-spacing: -0.3px;
+  letter-spacing: 0;
 }
 .budget-track {
   height: 5px;
@@ -526,7 +526,7 @@ footer > span:last-child {
   background: #799649;
 }
 .week-overview > div > p:last-child {
-  font-size: 10px;
+  font-size: 12px;
   color: #667855;
   margin: 0;
 }
@@ -552,8 +552,8 @@ footer > span:last-child {
   color: #54733f;
 }
 .shopping-shortcut small {
-  font-size: 8px;
-  letter-spacing: 1.2px;
+  font-size: 11px;
+  letter-spacing: 0;
   color: #8a967b;
 }
 .shopping-shortcut h3 {
@@ -561,7 +561,7 @@ footer > span:last-child {
   margin: 5px 0;
 }
 .shopping-shortcut p {
-  font-size: 10px;
+  font-size: 12px;
   color: #7d8a70;
   margin: 0;
 }
@@ -587,8 +587,8 @@ footer > span:last-child {
   color: #96a186;
 }
 .meal-day > span {
-  font-size: 8px;
-  letter-spacing: 1px;
+  font-size: 11px;
+  letter-spacing: 0;
 }
 .meal-day > b {
   font-size: 23px;
@@ -598,7 +598,7 @@ footer > span:last-child {
   color: #758469;
 }
 .meal-day small {
-  font-size: 8px;
+  font-size: 11px;
 }
 .meal-main {
   display: flex;
@@ -650,12 +650,12 @@ footer > span:last-child {
   gap: 6px;
 }
 .recipe-category {
-  font-size: 9px;
+  font-size: 11px;
   color: #8b977e;
 }
 .meal-copy > b {
   font-size: 15px;
-  letter-spacing: -0.3px;
+  letter-spacing: 0;
   line-height: 1.3;
   font-weight: 600;
 }
@@ -663,7 +663,7 @@ footer > span:last-child {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .recipe-meta i {
@@ -679,11 +679,11 @@ footer > span:last-child {
 .meal-cost > b {
   font-size: 14px;
   font-weight: 600;
-  letter-spacing: -0.3px;
+  letter-spacing: 0;
 }
 .meal-cost > small {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   color: #939d87;
   margin-top: 4px;
 }
@@ -779,7 +779,7 @@ footer > span:last-child {
   min-height: 45px;
 }
 .recipe-card .recipe-meta {
-  font-size: 9px;
+  font-size: 11px;
   gap: 6px;
 }
 .recipe-card .favorite {
@@ -813,8 +813,8 @@ footer > span:last-child {
 }
 .shopping-overview small {
   display: block;
-  font-size: 8px;
-  letter-spacing: 1.3px;
+  font-size: 11px;
+  letter-spacing: 0;
   color: #929d82;
 }
 .shopping-overview strong {
@@ -825,7 +825,7 @@ footer > span:last-child {
   margin: 9px 0;
 }
 .shopping-overview span {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .shopping-overview p {
@@ -898,7 +898,7 @@ footer > span:last-child {
 }
 .shopping-check small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 4px;
 }
@@ -915,7 +915,7 @@ footer > span:last-child {
   max-width: 150px;
   min-height: 33px !important;
   padding: 5px 8px !important;
-  font-size: 10px;
+  font-size: 12px;
   background: transparent !important;
 }
 .price-button {
@@ -929,7 +929,7 @@ footer > span:last-child {
 }
 .price-button small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: #8d9e78;
   margin-top: 3px;
   font-weight: 400;
@@ -949,7 +949,7 @@ footer > span:last-child {
   margin: 12px 0 0;
   display: flex;
   justify-content: space-between;
-  font-size: 11px;
+  font-size: 12px;
 }
 .pantry-grid {
   display: grid;
@@ -962,7 +962,7 @@ footer > span:last-child {
   margin-bottom: 20px;
 }
 .pantry-grid .field {
-  font-size: 11px;
+  font-size: 12px;
 }
 .pantry-grid input {
   min-height: 42px;
@@ -987,7 +987,7 @@ footer > span:last-child {
   padding: 7px !important;
 }
 .pill {
-  font-size: 9px;
+  font-size: 11px;
   background: #eaf0de;
   color: #718256;
   padding: 6px 10px;
@@ -1026,7 +1026,7 @@ footer > span:last-child {
   letter-spacing: -1px;
 }
 .calorie-ring span {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
 }
 .diary-totals {
@@ -1037,7 +1037,7 @@ footer > span:last-child {
   margin-bottom: 8px;
 }
 .diary-totals p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   max-width: 300px;
   margin-bottom: 8px;
@@ -1049,7 +1049,7 @@ footer > span:last-child {
   flex-wrap: wrap;
 }
 .diary-totals > div > span {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .diary-totals > div > span > b {
@@ -1075,7 +1075,7 @@ footer > span:last-child {
   color: var(--ink);
 }
 .scan-card > span {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
 }
 .scan-card > svg:last-child {
@@ -1095,12 +1095,12 @@ footer > span:last-child {
 }
 .diary-meal .section-bar > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .meal-empty {
   padding: 17px 0;
   color: #9aa38e;
-  font-size: 11px;
+  font-size: 12px;
 }
 .diary-entry {
   display: flex;
@@ -1128,7 +1128,7 @@ footer > span:last-child {
 }
 .diary-entry small {
   display: block;
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 3px;
 }
@@ -1140,7 +1140,7 @@ footer > span:last-child {
   min-width: 45px;
 }
 .diary-entry > strong > small {
-  font-size: 8px;
+  font-size: 11px;
 }
 .week-chart {
   background: white;
@@ -1178,7 +1178,7 @@ footer > span:last-child {
 }
 .chart-bars > div > span,
 .chart-bars > div > small {
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
 }
 .billing-toggle {
@@ -1206,7 +1206,7 @@ footer > span:last-child {
 }
 .billing-toggle button span {
   display: block;
-  font-size: 8px;
+  font-size: 11px;
   color: #7c8b68;
   font-weight: 400;
   margin-top: 3px;
@@ -1235,8 +1235,8 @@ footer > span:last-child {
   align-items: center;
   justify-content: space-between;
   color: #8b9d73;
-  font-size: 8px;
-  letter-spacing: 1px;
+  font-size: 11px;
+  letter-spacing: 0;
   margin-bottom: 22px;
 }
 .pricing-card h2 {
@@ -1264,7 +1264,7 @@ footer > span:last-child {
 }
 .pricing-card .price-detail {
   min-height: 43px;
-  font-size: 10px;
+  font-size: 12px;
   margin-bottom: 25px;
 }
 .pricing-card ul {
@@ -1289,7 +1289,7 @@ footer > span:last-child {
   margin-top: 1px;
 }
 .planned-feature {
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.65;
   color: #7d8a6b;
   padding-top: 15px;
@@ -1310,7 +1310,7 @@ footer > span:last-child {
   font-weight: 550;
 }
 .pricing-status p {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.7;
   margin-top: 6px;
@@ -1366,11 +1366,11 @@ footer > span:last-child {
   line-height: 1.75;
 }
 .settings-card .fine {
-  font-size: 10px;
+  font-size: 12px;
   margin: 13px 0 0;
 }
 .settings-card > div > a:not(.button) {
-  font-size: 11px;
+  font-size: 12px;
   color: #708b50;
 }
 .prose {
@@ -1416,7 +1416,7 @@ dialog::backdrop {
 .dialog-bar > span {
   font-size: 14px;
   font-weight: 700;
-  letter-spacing: -0.5px;
+  letter-spacing: 0;
 }
 .dialog-content {
   padding: 27px;
@@ -1431,14 +1431,14 @@ dialog::backdrop {
   font-size: 12px;
 }
 .dialog-content > .eyebrow {
-  font-size: 9px;
+  font-size: 11px;
 }
 .recipe-detail-meta {
   display: flex;
   gap: 20px;
   align-items: center;
   flex-wrap: wrap;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   margin-bottom: 20px;
 }
@@ -1463,7 +1463,7 @@ dialog::backdrop {
 }
 .nutrition-strip small {
   display: block;
-  font-size: 9px;
+  font-size: 11px;
   color: var(--muted);
   margin-top: 4px;
 }
@@ -1482,14 +1482,14 @@ dialog::backdrop {
   gap: 8px;
   padding: 10px 0;
   border-bottom: 1px solid var(--line);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
 }
 .ingredient-line > span {
   flex: 1;
 }
 .ingredient-line b {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 550;
   white-space: nowrap;
 }
@@ -1498,7 +1498,7 @@ dialog::backdrop {
   color: #8a967d;
 }
 .recipe-columns .fine {
-  font-size: 10px;
+  font-size: 12px;
   margin-top: 15px;
 }
 .recipe-step {
@@ -1549,7 +1549,7 @@ dialog::backdrop {
   pointer-events: none;
 }
 .scanner-guide > span {
-  font-size: 10px;
+  font-size: 12px;
 }
 .camera-active .scanner-guide {
   color: white;
@@ -1587,7 +1587,7 @@ dialog::backdrop {
   margin-bottom: 33px;
 }
 .wizard-aside > .fine {
-  font-size: 10px;
+  font-size: 12px;
   margin: 0;
 }
 .wizard-aside ol {
@@ -1601,7 +1601,7 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 11px;
-  font-size: 11px;
+  font-size: 12px;
   color: #98a387;
 }
 .wizard-aside li > span {
@@ -1612,11 +1612,11 @@ dialog::backdrop {
   place-items: center;
   border: 1px solid #ced9bf;
   border-radius: 50%;
-  font-size: 9px;
+  font-size: 11px;
 }
 .wizard-aside li.current {
   color: #2d472c;
-  font-weight: 650;
+  font-weight: 600;
 }
 .wizard-aside li.current > span {
   background: #29472d;
@@ -1646,7 +1646,7 @@ dialog::backdrop {
 }
 .wizard-top > small {
   color: #8c987b;
-  font-size: 10px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .progress-track {
@@ -1673,7 +1673,7 @@ dialog::backdrop {
   flex: 1;
 }
 .wizard-content > .eyebrow {
-  font-size: 9px;
+  font-size: 11px;
 }
 .wizard-content h1 {
   font-size: 34px;
@@ -1699,7 +1699,7 @@ dialog::backdrop {
 }
 .wizard-bottom > .fine {
   text-align: center;
-  font-size: 9px;
+  font-size: 11px;
   margin: 11px 0 0;
 }
 .wizard-bottom .button {
@@ -1731,7 +1731,7 @@ dialog::backdrop {
   display: block;
 }
 .option small {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
   line-height: 1.6;
   display: block;
@@ -1798,7 +1798,7 @@ dialog::backdrop {
 }
 .store-options .option b {
   font-size: 12px;
-  letter-spacing: -0.2px;
+  letter-spacing: 0;
 }
 .counter {
   display: flex;
@@ -1826,7 +1826,7 @@ dialog::backdrop {
 }
 .counter small {
   display: block;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
   margin-top: 10px;
 }
@@ -1853,7 +1853,7 @@ dialog::backdrop {
   padding: 40px 0;
 }
 .budget-field label {
-  font-size: 10px;
+  font-size: 12px;
   color: var(--muted);
 }
 .budget-field > div {
@@ -1883,7 +1883,7 @@ dialog::backdrop {
   color: #91a278;
 }
 .budget-field small {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--muted);
 }
 .small-picks {
@@ -1898,7 +1898,7 @@ dialog::backdrop {
   border-radius: 7px;
   background: white;
   padding: 9px 12px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .small-picks > button.selected {
   border-color: #9fba74;
@@ -1908,7 +1908,7 @@ dialog::backdrop {
   display: none;
 }
 .small-picks .option b {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 450;
 }
 .small-picks .option.selected {
@@ -1957,7 +1957,7 @@ dialog::backdrop {
   border-bottom: 1px solid var(--line);
   background: none;
   text-align: left;
-  font-size: 11px;
+  font-size: 12px;
 }
 .summary-list button > span {
   color: #8e9a7e;
@@ -2004,7 +2004,7 @@ dialog::backdrop {
   text-decoration: underline;
   margin-left: 10px;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
 }
 @media (min-width: 1600px) {
   main {
@@ -2042,7 +2042,7 @@ dialog::backdrop {
     gap: 14px;
   }
   .recipe-card .recipe-meta {
-    font-size: 8px;
+    font-size: 11px;
   }
   .diary-overview {
     gap: 18px;
@@ -2131,7 +2131,7 @@ dialog::backdrop {
     display: none;
   }
   .shopping-overview > div:last-child p {
-    font-size: 10px;
+    font-size: 12px;
     margin: 0;
   }
   .pantry-grid {
@@ -2156,7 +2156,7 @@ dialog::backdrop {
     font-size: 27px;
   }
   .wizard-aside li {
-    font-size: 10px;
+    font-size: 12px;
   }
 }
 @media (max-width: 700px) {
@@ -2178,11 +2178,11 @@ dialog::backdrop {
   .mobile-wordmark {
     display: block;
     font-size: 22px;
-    font-weight: 750;
+    font-weight: 700;
     letter-spacing: -1.2px;
   }
   .preview-label {
-    font-size: 8px;
+    font-size: 11px;
     margin-left: auto;
     gap: 5px;
   }
@@ -2191,7 +2191,7 @@ dialog::backdrop {
     height: 5px;
   }
   .topbar > a:last-child {
-    font-size: 10px;
+    font-size: 12px;
   }
   .page-heading {
     display: block;
@@ -2204,19 +2204,19 @@ dialog::backdrop {
     max-width: 370px;
   }
   .page-heading .eyebrow {
-    font-size: 8px;
-    letter-spacing: 1.4px;
+    font-size: 11px;
+    letter-spacing: 0;
     margin-bottom: 10px;
   }
   .page-heading .muted {
-    font-size: 11px;
+    font-size: 12px;
     max-width: 330px;
   }
   .page-heading > .button {
     margin-top: 16px;
     min-height: 38px;
     padding: 8px 13px;
-    font-size: 10px;
+    font-size: 12px;
   }
   .mobile-nav {
     position: fixed;
@@ -2235,7 +2235,7 @@ dialog::backdrop {
     display: grid;
     justify-items: center;
     gap: 4px;
-    font-size: 8px;
+    font-size: 11px;
     color: #8a967d;
     padding: 0 9px;
     min-height: 37px;
@@ -2260,7 +2260,7 @@ dialog::backdrop {
     font-size: 31px;
   }
   .week-overview > div > p:last-child {
-    font-size: 9px;
+    font-size: 11px;
   }
   .budget-track {
     max-width: none;
@@ -2289,7 +2289,7 @@ dialog::backdrop {
     margin: 0 0 3px;
   }
   .shopping-shortcut p {
-    font-size: 9px;
+    font-size: 11px;
   }
   .section-bar {
     margin: 25px 0 14px;
@@ -2298,11 +2298,11 @@ dialog::backdrop {
     font-size: 18px;
   }
   .section-bar p {
-    font-size: 9px;
+    font-size: 11px;
     max-width: 220px;
   }
   .section-bar .quiet {
-    font-size: 9px;
+    font-size: 11px;
     gap: 3px;
     min-height: 35px;
   }
@@ -2321,10 +2321,10 @@ dialog::backdrop {
     font-size: 21px;
   }
   .meal-day > span {
-    font-size: 7px;
+    font-size: 11px;
   }
   .meal-day small {
-    font-size: 7px;
+    font-size: 11px;
   }
   .meal-row .food-art {
     width: 49px;
@@ -2349,13 +2349,13 @@ dialog::backdrop {
   }
   .meal-copy > b {
     font-size: 12px;
-    letter-spacing: -0.15px;
+    letter-spacing: 0;
   }
   .meal-copy .recipe-category {
-    font-size: 8px;
+    font-size: 11px;
   }
   .meal-copy .recipe-meta {
-    font-size: 8px;
+    font-size: 11px;
     gap: 4px;
     flex-wrap: wrap;
     line-height: 1.4;
@@ -2372,20 +2372,20 @@ dialog::backdrop {
     display: none;
   }
   .plan-bottom > .button {
-    font-size: 10px;
+    font-size: 12px;
     padding: 10px 13px;
   }
   .plan-bottom > .quiet {
-    font-size: 10px;
+    font-size: 12px;
   }
   .fine {
-    font-size: 10px;
+    font-size: 12px;
   }
   .search-toolbar {
     gap: 8px;
   }
   .search-toolbar > .button {
-    font-size: 10px;
+    font-size: 12px;
     padding: 9px;
   }
   .search-toolbar > .button > svg {
@@ -2424,16 +2424,16 @@ dialog::backdrop {
     height: 38px;
   }
   .recipe-card .recipe-category {
-    font-size: 8px;
+    font-size: 11px;
   }
   .recipe-card h3 {
     font-size: 13px;
-    letter-spacing: -0.3px;
+    letter-spacing: 0;
     min-height: 37px;
     margin: 6px 0 10px;
   }
   .recipe-card .recipe-meta {
-    font-size: 8px;
+    font-size: 11px;
     flex-wrap: wrap;
     gap: 4px;
   }
@@ -2454,16 +2454,16 @@ dialog::backdrop {
     font-size: 26px;
   }
   .shopping-overview small {
-    font-size: 7px;
+    font-size: 11px;
   }
   .shopping-overview span {
-    font-size: 9px;
+    font-size: 11px;
   }
   .shopping-overview > div:last-child {
     padding: 14px 18px;
   }
   .shopping-overview .quiet {
-    font-size: 10px;
+    font-size: 12px;
   }
   .shopping-row {
     gap: 10px;
@@ -2477,12 +2477,12 @@ dialog::backdrop {
     font-size: 12px;
   }
   .shopping-check small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .shopping-row .store-select {
     order: 4;
     margin-left: 32px;
-    font-size: 9px;
+    font-size: 11px;
     min-height: 28px !important;
     padding: 3px 7px !important;
   }
@@ -2491,7 +2491,7 @@ dialog::backdrop {
     min-width: 65px;
   }
   .price-button small {
-    font-size: 8px;
+    font-size: 11px;
   }
   .shopping-group h2 {
     font-size: 16px;
@@ -2501,7 +2501,7 @@ dialog::backdrop {
     gap: 0 14px;
   }
   .pantry-grid .field {
-    font-size: 10px;
+    font-size: 12px;
   }
   .pantry-grid input {
     font-size: 12px;
@@ -2511,10 +2511,10 @@ dialog::backdrop {
     margin-bottom: 18px;
   }
   .pill {
-    font-size: 8px;
+    font-size: 11px;
   }
   .date-field input {
-    font-size: 11px;
+    font-size: 12px;
   }
   .diary-overview {
     gap: 17px;
@@ -2530,26 +2530,26 @@ dialog::backdrop {
     font-size: 26px;
   }
   .calorie-ring span {
-    font-size: 8px;
+    font-size: 11px;
   }
   .diary-totals h2 {
     font-size: 16px;
-    letter-spacing: -0.5px;
+    letter-spacing: 0;
   }
   .diary-totals p {
-    font-size: 10px;
+    font-size: 12px;
   }
   .diary-totals > div {
     gap: 6px;
   }
   .diary-totals > div > span {
-    font-size: 9px;
+    font-size: 11px;
   }
   .diary-totals > div > span > b {
     font-size: 13px;
   }
   .diary-totals .quiet {
-    font-size: 9px;
+    font-size: 11px;
     padding: 4px 0;
     min-height: 25px;
   }
@@ -2557,10 +2557,10 @@ dialog::backdrop {
     padding: 12px;
   }
   .scan-card b {
-    font-size: 11px;
+    font-size: 12px;
   }
   .scan-card span {
-    font-size: 8px;
+    font-size: 11px;
   }
   .diary-entry {
     gap: 10px;
@@ -2572,16 +2572,16 @@ dialog::backdrop {
     height: 35px;
   }
   .diary-entry b {
-    font-size: 11px;
+    font-size: 12px;
   }
   .diary-entry small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .diary-entry > strong {
     font-size: 14px;
   }
   .diary-entry .quiet {
-    font-size: 8px;
+    font-size: 11px;
     padding: 3px;
     min-height: 28px;
   }
@@ -2596,7 +2596,7 @@ dialog::backdrop {
     display: block;
   }
   .week-chart .fine {
-    font-size: 8px;
+    font-size: 11px;
   }
   .chart-bars {
     gap: 15px;
@@ -2604,7 +2604,7 @@ dialog::backdrop {
   }
   .chart-bars > div > span,
   .chart-bars > div > small {
-    font-size: 8px;
+    font-size: 11px;
   }
   .billing-toggle {
     margin: 0 auto 25px;
@@ -2617,7 +2617,7 @@ dialog::backdrop {
     padding: 25px;
   }
   .pricing-label {
-    font-size: 8px;
+    font-size: 11px;
     margin-bottom: 15px;
   }
   .pricing-card h2 {
@@ -2658,10 +2658,10 @@ dialog::backdrop {
     font-size: 17px;
   }
   .settings-card p {
-    font-size: 11px;
+    font-size: 12px;
   }
   .settings-card .button {
-    font-size: 10px;
+    font-size: 12px;
     padding: 9px 12px;
     min-height: 38px;
   }
@@ -2669,7 +2669,7 @@ dialog::backdrop {
     gap: 8px;
   }
   .settings-card .fine {
-    font-size: 9px;
+    font-size: 11px;
   }
   .prose p {
     font-size: 12px;
@@ -2679,7 +2679,7 @@ dialog::backdrop {
     padding: 20px 0;
     flex-wrap: wrap;
     gap: 8px 17px;
-    font-size: 8px;
+    font-size: 11px;
   }
   footer > span:first-child {
     width: 100%;
@@ -2706,7 +2706,7 @@ dialog::backdrop {
     min-width: 30px;
   }
   .wizard-top .quiet {
-    font-size: 9px;
+    font-size: 11px;
   }
   .wizard-content {
     padding-top: 28px;
@@ -2720,7 +2720,7 @@ dialog::backdrop {
     margin-bottom: 25px;
   }
   .wizard-content > .eyebrow {
-    font-size: 9px;
+    font-size: 11px;
   }
   .store-options {
     grid-template-columns: repeat(2, 1fr);
@@ -2731,7 +2731,7 @@ dialog::backdrop {
     padding: 12px;
   }
   .store-options .option b {
-    font-size: 11px;
+    font-size: 12px;
   }
   .options.two:not(.compact) .option {
     min-height: 107px;
@@ -2741,7 +2741,7 @@ dialog::backdrop {
     font-size: 12px;
   }
   .option small {
-    font-size: 9px;
+    font-size: 11px;
   }
   .wizard-bottom {
     padding-top: 13px;
@@ -2761,11 +2761,11 @@ dialog::backdrop {
   .summary-list button {
     grid-template-columns: 86px 1fr 14px;
     gap: 10px;
-    font-size: 10px;
+    font-size: 12px;
     padding: 14px 0;
   }
   .wizard-content .notice {
-    font-size: 11px;
+    font-size: 12px;
   }
   .counter {
     padding: 20px 0 30px;
@@ -2774,7 +2774,7 @@ dialog::backdrop {
     padding: 8px 10px;
   }
   .small-picks .option b {
-    font-size: 10px;
+    font-size: 12px;
   }
   .kitchen-art {
     padding: 30px;
@@ -2805,7 +2805,7 @@ dialog::backdrop {
     letter-spacing: -1px;
   }
   .recipe-detail-meta {
-    font-size: 10px;
+    font-size: 12px;
     gap: 12px;
   }
   .nutrition-strip {
@@ -2817,7 +2817,7 @@ dialog::backdrop {
     font-size: 21px;
   }
   .nutrition-strip small {
-    font-size: 8px;
+    font-size: 11px;
   }
   .recipe-columns {
     grid-template-columns: 1fr;
@@ -2829,7 +2829,7 @@ dialog::backdrop {
     gap: 12px;
   }
   .ingredient-line b {
-    font-size: 11px;
+    font-size: 12px;
   }
   .recipe-columns h3 {
     font-size: 17px;
@@ -2838,14 +2838,14 @@ dialog::backdrop {
     font-size: 12px;
   }
   .dialog-content .inline-actions .button {
-    font-size: 10px;
+    font-size: 12px;
     padding: 10px 12px;
   }
   .form-grid {
     gap: 0 12px;
   }
   .field {
-    font-size: 11px;
+    font-size: 12px;
   }
   .field input,
   .field select,
@@ -2862,7 +2862,7 @@ dialog::backdrop {
     bottom: 90px;
     width: max-content;
     max-width: 90vw;
-    font-size: 11px;
+    font-size: 12px;
     padding: 13px 17px;
   }
   .empty {
@@ -2887,7 +2887,7 @@ dialog::backdrop {
     display: none;
   }
   .recipe-card .recipe-meta {
-    font-size: 7px;
+    font-size: 11px;
   }
   .diary-overview {
     gap: 12px;

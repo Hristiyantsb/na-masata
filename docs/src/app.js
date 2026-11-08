@@ -356,7 +356,7 @@ function finishFitness(message) {
 }
 function scannerView() {
   modal(
-    `<p class="eyebrow">Твоите продукти</p><h2 class="dialog-title">От етикета в дневника.</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><p class="fine">Вече въведените продукти се разпознават от твоя дневник и „Мои храни“.</p>`,
+    `<p class="eyebrow">Твоите продукти</p><h2 class="dialog-title">От етикета в дневника</h2><p class="muted">Сканирай баркода на опаковката. Камерата не разпознава калории на готово ястие.</p><div class="scanner-frame"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 58)}<span>Постави баркода в рамката</span></div></div><div class="inline-actions">${button(icon('camera', 18) + ' Включи камерата', 'start-camera', '', 'button primary')}<label class="button outline file-label">Снимка на баркод<input type="file" accept="image/*" capture="environment" data-change="scan-image" hidden></label></div><form data-form="barcode" class="barcode-form">${field('Или въведи цифрите от баркода', 'barcode', '', 'text', 'inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required')}<button class="button outline" type="submit">Провери баркода ${icon('arrow', 16)}</button><p class="form-error" role="alert"></p></form><p class="fine">Кадрите остават на устройството. При свързан продуктов каталог се изпраща само баркодът.</p><p class="fine">Вече въведените продукти се разпознават от твоя дневник и „Мои храни“.</p>`,
   );
 }
 async function processBarcode(code) {
@@ -383,7 +383,7 @@ async function processBarcode(code) {
   } catch (e) {
     if (e.name === 'AbortError') return;
     modal(
-      `<h2 class="dialog-title">Не успяхме да намерим данните.</h2><p>${esc(e.message)}</p>${button('Въведи ръчно', 'manual-food', '', 'button primary')}`,
+      `<h2 class="dialog-title">Не успяхме да намерим данните</h2><p>${esc(e.message)}</p>${button('Въведи ръчно', 'manual-food', '', 'button primary')}`,
     );
   }
 }
@@ -889,7 +889,7 @@ const actions = {
   },
   'daily-target': () =>
     modal(
-      `<p class="eyebrow">Твоята лична цел</p><h2 class="dialog-title">Без автоматични препоръки.</h2><p class="muted">Въведи цел, която вече си избрал. Това приложение не определя подходящ калориен прием.</p><form data-form="target">${field('Дневна цел (ккал)', 'target', state.dailyTarget || '', 'number', 'min="0" max="10000" step="1" placeholder="Без зададена цел"')}<p class="fine">Остави празно или въведи 0, за да премахнеш целта.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази</button></form>`,
+      `<p class="eyebrow">Твоята лична цел</p><h2 class="dialog-title">Без автоматични препоръки</h2><p class="muted">Въведи цел, която вече си избрал. Това приложение не определя подходящ калориен прием.</p><form data-form="target">${field('Дневна цел (ккал)', 'target', state.dailyTarget || '', 'number', 'min="0" max="10000" step="1" placeholder="Без зададена цел"')}<p class="fine">Остави празно или въведи 0, за да премахнеш целта.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази</button></form>`,
     ),
   'billing-period': (el) => {
     interval = el.dataset.value;

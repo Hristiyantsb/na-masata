@@ -13,22 +13,24 @@ body.onboarding .mobile-nav{display:none}
 .nm-progress{flex:1;height:6px;border-radius:3px;background:var(--fill);overflow:hidden}
 .nm-progress>span{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .5s var(--spring)}
 .nm-progress-count{min-width:48px;text-align:right;font-size:13px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.nm-skip{min-height:44px;margin-right:-10px;padding:0 10px;border:0;border-radius:22px;background:transparent;color:var(--accent);font-size:16px;font-weight:500}
+.nm-skip:hover{background:var(--fill)}
 
 .nm-form{flex:1;display:flex;flex-direction:column;min-height:0}
 .nm-fields{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain;padding:8px 20px 28px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .nm-fields::-webkit-scrollbar{display:none}
-.nm-enter-forward{animation:nm-from-right .42s var(--spring) both}
-.nm-enter-back{animation:nm-from-left .42s var(--spring) both}
+.nm-enter-forward{animation:nm-from-right .32s var(--ease) both}
+.nm-enter-back{animation:nm-from-left .32s var(--ease) both}
 .nm-head{position:relative;margin-bottom:24px;padding-right:96px;min-height:88px}
 .nm-step-0 .nm-head{padding-right:0;min-height:0;margin-bottom:8px}
 .nm-heading{margin:0 0 8px;font:700 30px/1.12 var(--sans);letter-spacing:-.025em;color:var(--ink);outline:none;text-wrap:balance}
 .nm-subtitle{margin:0;font-size:16px;line-height:1.45;color:var(--ink-2);text-wrap:pretty}
 .nm-buddy{position:absolute;right:-8px;top:-12px;width:104px;height:104px;padding:0;border:0;background:none;cursor:pointer}
-.nm-buddy-img{width:100%;height:100%;object-fit:contain;animation:nm-idle 3.2s ease-in-out infinite;transform-origin:50% 90%}
+.nm-buddy-img{width:100%;height:100%;object-fit:contain;transform-origin:50% 90%}
 
 /* Mascot motion: a slow idle breath, a hop on every choice, a wiggle when poked */
 .mascot{display:block;user-select:none;-webkit-user-drag:none}
-.mascot.is-hopping{animation:nm-hop .5s var(--spring)}
+.mascot.is-hopping{animation:nm-hop .5s var(--bounce)}
 .mascot.is-wiggling{animation:nm-wiggle .6s var(--ease)}
 .nm-float{animation:nm-float 4s ease-in-out infinite}
 .nm-bounce{animation:nm-bounce 1s var(--ease) infinite}
@@ -47,9 +49,9 @@ body.onboarding .mobile-nav{display:none}
 .nm-step-0 .nm-subtitle{text-align:center}
 
 /* Shared choice states */
-.nm-check{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;opacity:0;transform:scale(.4);transition:opacity .2s var(--ease),transform .35s var(--spring)}
+.nm-check{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;opacity:0;transform:scale(.4);transition:opacity .2s var(--ease),transform .3s var(--bounce)}
 .is-selected>.nm-check{opacity:1;transform:scale(1)}
-.is-popping{animation:nm-pop .38s var(--spring)}
+.is-popping{animation:nm-pop .24s var(--ease)}
 button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recipe{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
 /* Stores */
@@ -59,7 +61,7 @@ button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recip
 .nm-store.is-selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
 .nm-store-name{font-size:12px;line-height:1.2;color:var(--ink-2);text-align:center;overflow-wrap:anywhere}
 .store-badge{display:grid;place-items:center;position:relative;width:100%;max-width:96px;aspect-ratio:2/1;border-radius:10px;background:var(--sb-bg);color:var(--sb-fg);overflow:hidden}
-.store-badge b{font:800 17px/1 var(--sans);letter-spacing:-.02em;white-space:nowrap}
+.store-badge b{font:700 17px/1 var(--sans);letter-spacing:0;white-space:nowrap}
 .store-badge.is-small b{font-size:13px;letter-spacing:-.01em}
 .store-badge.is-wrap b{white-space:normal;text-align:center;line-height:1.1;padding:0 6px}
 .nm-store>.nm-check{top:-7px;right:-7px;box-shadow:0 0 0 2px #fff}
@@ -83,7 +85,7 @@ button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recip
 .nm-chip:active{transform:scale(.95)}
 .nm-chip.is-selected{background:var(--accent);color:#fff}
 .nm-segmented{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;padding:3px;border-radius:14px;background:var(--fill)}
-.nm-segmented .nm-seg{min-height:40px;padding:0 6px;border-radius:11px;background:transparent;font-size:14px;font-variant-numeric:tabular-nums}
+.nm-segmented .nm-seg{min-height:44px;padding:0 6px;border-radius:11px;background:transparent;font-size:14px;font-variant-numeric:tabular-nums}
 .nm-segmented .nm-seg.is-selected{background:#fff;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04)}
 .nm-group{margin:28px 0 0;padding:0;border:0;min-width:0}
 .nm-group legend{display:flex;align-items:baseline;justify-content:space-between;width:100%;padding:0;margin-bottom:12px;font-size:15px;font-weight:600;color:var(--ink)}
@@ -112,7 +114,7 @@ button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recip
 .nm-appl .nm-check{top:-9px;right:-9px}
 .nm-appl:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
 .nm-legend{margin-top:12px;flex-wrap:nowrap;justify-content:space-between;gap:6px}
-.nm-legend .nm-chip{flex:1 1 auto;min-height:40px;padding:0 8px;font-size:13px;white-space:nowrap}
+.nm-legend .nm-chip{flex:1 1 auto;min-height:44px;padding:0 8px;font-size:13px;white-space:nowrap}
 .nm-appl-hob .nm-check{top:-14px;right:auto;left:50%;margin-left:-11px}
 .nm-appl-oven .nm-check{top:auto;bottom:6px;right:6px}
 
@@ -165,7 +167,6 @@ button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recip
 .nm-recipe-info strong{font-size:16px;font-weight:600;line-height:1.3}
 .nm-recipe-meta{font-size:13px;color:var(--ink-2);font-variant-numeric:tabular-nums}
 .nm-empty{display:grid;justify-items:center;gap:8px;padding:8px 0;text-align:center}
-.nm-empty .mascot{animation:nm-idle 3.2s ease-in-out infinite}
 .nm-empty h2{margin:8px 0 0;font:700 22px/1.25 var(--sans)}
 .nm-empty p{margin:0;color:var(--ink-2);max-width:32ch}
 .nm-empty-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:8px}
@@ -191,6 +192,7 @@ button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recip
 .nm-onboarding.nm-building{display:grid;grid-template-columns:1fr;place-items:center;padding:24px}
 .nm-building-inner{display:grid;justify-items:center;gap:20px;width:min(360px,100%);text-align:center}
 .nm-building .mascot{width:200px;height:auto}
+.nm-onboarding .nm-store-grid .nm-store,.nm-onboarding .nm-goal,.nm-onboarding .nm-chip{transition-timing-function:var(--ease)}
 .nm-building .nm-heading{font-size:26px}
 .nm-build-list{display:grid;gap:14px;width:100%;margin:0;padding:18px 20px;list-style:none;border-radius:20px;background:var(--fill);text-align:left}
 .nm-build-list li{display:flex;align-items:center;gap:12px;font-size:15px;color:var(--ink-3);animation:nm-done .2s var(--ease) both;animation-delay:calc(.3s + var(--i) * .38s)}
@@ -199,7 +201,7 @@ button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recip
 @keyframes nm-from-right{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
 @keyframes nm-from-left{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
 @keyframes nm-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-@keyframes nm-pop{0%{transform:scale(1)}40%{transform:scale(1.08)}100%{transform:scale(1)}}
+@keyframes nm-pop{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
 @keyframes nm-idle{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-3px) rotate(-1.5deg)}}
 @keyframes nm-hop{0%{transform:translateY(0) scale(1)}30%{transform:translateY(-10px) scale(1.04,.97)}60%{transform:translateY(0) scale(.97,1.03)}100%{transform:none}}
 @keyframes nm-wiggle{0%,100%{transform:rotate(0)}20%{transform:rotate(-8deg)}40%{transform:rotate(7deg)}60%{transform:rotate(-5deg)}80%{transform:rotate(3deg)}}

@@ -253,7 +253,7 @@ export function wizardView(d, step, error = '', canCancel = true, dir = 'forward
       : '';
   const top = isIntro
     ? `<div class="nm-top">${wordmark('nm-top-logo')}${canCancel ? button('Затвори', 'wizard-cancel', '', 'nm-close') : ''}</div>`
-    : `<div class="nm-top nm-top-progress"><button type="button" data-action="wizard-back" class="nm-back" aria-label="Назад">${icon('back', 20)}</button><div class="nm-progress" role="progressbar" aria-label="Напредък" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><span style="width:${progress}%"></span></div><span class="nm-progress-count">${isResult ? 'Готово' : `${step} от ${QUESTIONS}`}</span></div>`;
+    : `<div class="nm-top nm-top-progress"><button type="button" data-action="wizard-back" class="nm-back" aria-label="Назад">${icon('back', 20)}</button><div class="nm-progress" role="progressbar" aria-label="Напредък" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}" aria-valuetext="Стъпка ${Math.min(step, QUESTIONS)} от ${QUESTIONS}"><span style="width:${progress}%"></span></div>${isResult ? '<span class="nm-progress-count">Готово</span>' : button('Пропусни', 'wizard-step', `data-index="${LAST_STEP}"`, 'nm-skip')}</div>`;
   const buddy = isIntro
     ? ''
     : `<button type="button" class="nm-buddy" data-action="mascot-poke" aria-label="Маскотът на На маса" tabindex="-1">${mascot(pose, 120, 'nm-buddy-img')}</button>`;

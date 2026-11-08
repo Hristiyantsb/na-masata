@@ -43,8 +43,8 @@ strong,
   letter-spacing: -0.06em;
 }
 .eyebrow {
-  letter-spacing: 0.12em;
-  font-size: 11px;
+  letter-spacing: 0;
+  font-size: 12px;
   font-weight: 700;
 }
 .fine {
@@ -108,7 +108,7 @@ main {
   margin-bottom: 8px;
 }
 footer {
-  font-size: 11px;
+  font-size: 12px;
 }
 .plan-store-line {
   display: flex;
@@ -131,7 +131,7 @@ footer {
   padding: 20px 24px;
 }
 .week-overview .eyebrow {
-  font-size: 10px;
+  font-size: 12px;
 }
 .budget-total {
   font-family: var(--display);
@@ -175,9 +175,9 @@ footer {
   font-size: 13px;
 }
 .shopping-shortcut small {
-  font-size: 10px;
+  font-size: 12px;
   display: block;
-  letter-spacing: 0.1em;
+  letter-spacing: 0;
 }
 .plan-tools {
   border-bottom: 1px solid var(--line);
@@ -199,7 +199,7 @@ footer {
   align-items: center;
   justify-content: space-between;
   font: 700 13px var(--sans);
-  letter-spacing: 0.01em;
+  letter-spacing: 0;
   margin: 0 0 9px;
 }
 .day-heading span:last-child {
@@ -227,7 +227,7 @@ footer {
   line-height: 1.2;
 }
 .planned-meal .recipe-category {
-  font-size: 11px;
+  font-size: 12px;
   color: #52623b;
 }
 .planned-meal .recipe-meta {
@@ -408,7 +408,7 @@ footer {
   gap: 45px;
 }
 .pricing-label {
-  font-size: 10px;
+  font-size: 12px;
 }
 .pricing-card h2 {
   font-family: var(--display);
@@ -562,7 +562,7 @@ footer {
     max-width: 100%;
   }
   .page-heading .eyebrow {
-    font-size: 10px;
+    font-size: 12px;
   }
   .page-heading .muted {
     font-size: 13px;
@@ -586,8 +586,8 @@ footer {
   }
   .week-overview .eyebrow,
   .shopping-shortcut small {
-    font-size: 8px;
-    letter-spacing: 0.07em;
+    font-size: 11px;
+    letter-spacing: 0;
   }
   .shopping-shortcut h3 {
     font-size: 19px;
@@ -598,7 +598,7 @@ footer {
   }
   .shopping-shortcut p,
   .week-overview > div > p:last-child {
-    font-size: 11px;
+    font-size: 12px;
   }
   .plan-tools {
     gap: 6px;
@@ -621,7 +621,7 @@ footer {
     font-size: 17px;
   }
   .planned-meal .recipe-meta {
-    font-size: 11px;
+    font-size: 12px;
   }
   .planned-meal .food-art {
     width: 52px;
@@ -660,7 +660,7 @@ footer {
     padding-top: 12px;
   }
   .mobile-nav > a {
-    font-size: 10px;
+    font-size: 12px;
     color: #666b60;
   }
   .mobile-nav > a[aria-current='page'] {
@@ -703,13 +703,13 @@ footer {
     font-size: 14px;
   }
   .wizard-content > .eyebrow {
-    font-size: 10px;
+    font-size: 12px;
   }
   .wizard-bottom {
     padding-bottom: max(18px, env(safe-area-inset-bottom));
   }
   .wizard-bottom .fine {
-    font-size: 11px;
+    font-size: 12px;
   }
   .wizard-content .option b {
     font-size: 14px;

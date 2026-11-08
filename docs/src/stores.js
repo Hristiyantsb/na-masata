@@ -4,7 +4,7 @@ import { esc } from './ui.js';
 export const STORE_STYLE = Object.freeze({
   Lidl: { id: 'lidl', bg: '#0050aa', fg: '#fff000', label: 'Lidl', dot: '#e60a14' },
   Kaufland: { id: 'kaufland', bg: '#e10915', fg: '#ffffff', label: 'Kaufland', small: true },
-  BILLA: { id: 'billa', bg: '#ffe500', fg: '#e2001a', label: 'BILLA' },
+  BILLA: { id: 'billa', bg: '#ffe500', fg: '#c4001a', label: 'BILLA' },
   METRO: { id: 'metro', bg: '#002d72', fg: '#ffed00', label: 'METRO' },
   Фантастико: { id: 'fantastico', bg: '#d7141e', fg: '#ffffff', label: 'Фантастико', small: true },
   'T MARKET': {
@@ -17,9 +17,9 @@ export const STORE_STYLE = Object.freeze({
   },
   CBA: { id: 'cba', bg: '#ffffff', fg: '#d6001c', label: 'CBA', ring: true, dot: '#2b9a3c' },
   ProMarket: { id: 'promarket', bg: '#00843d', fg: '#ffffff', label: 'ProMarket', small: true },
-  'KAM Market': { id: 'kam', bg: '#f39200', fg: '#ffffff', label: 'KAM Market', small: true },
+  'KAM Market': { id: 'kam', bg: '#f39200', fg: '#1d1d1b', label: 'KAM Market', small: true },
   КООП: { id: 'coop', bg: '#0069b4', fg: '#ffffff', label: 'КООП' },
-  Стопчето: { id: 'stopcheto', bg: '#6cb33f', fg: '#ffffff', label: 'Стопчето', small: true },
+  Стопчето: { id: 'stopcheto', bg: '#3d7d22', fg: '#ffffff', label: 'Стопчето', small: true },
   minimart: { id: 'minimart', bg: '#1d1d1b', fg: '#ffffff', label: 'minimart', small: true },
   'Квартален магазин': {
     id: 'local',
