@@ -7,7 +7,7 @@
 ## Репозиторий и продукт
 - Hristiyantsb/na-masata, GitHub Pages main:/docs, frontend native JS/CSS, Worker+D1 в server/.
 - Видимо име: **На маса**. Името на репото и Pages path /na-masata/ са различно нещо; не замествай технически ключове за localStorage и PWA без migration.
-- Бранд: wordmark assets/wordmark.webp и иконка brand-icon-*.png от потребителя; маскотът (дървена маса с очи) е в 10 пози в assets/mascot/*.webp, ползвай brand.js mascot(pose). Чисто бял фон, системен шрифт (SF на Apple), акцент #013c26. Токените са в docs/assets/brand.css. Баджовете на магазините са в docs/src/stores.js (цветове на веригите, не оригинални логота). Без eDish имена.
+- Бранд: wordmark assets/wordmark.webp и иконка brand-icon-*.png от потребителя; маскотът (дървена маса с очи) е в 10 пози в assets/mascot/*.webp, ползвай brand.js mascot(pose). Чисто бял фон, системен шрифт (SF на Apple), акцент #013c26. Токените са в docs/assets/brand.css. Магазините са 6 (Lidl, Kaufland, BILLA, METRO, Фантастико, T MARKET) с официални логота в docs/assets/stores, вързани в docs/src/stores.js. Без eDish имена.
 - Без преход към React/Expo без реална нужда. Реалните Stripe/Supabase/Apple/OFF и Worker не са активирани в статичното демо.
 
 ## Твърди правила

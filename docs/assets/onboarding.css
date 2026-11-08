@@ -55,19 +55,14 @@ body.onboarding .mobile-nav{display:none}
 button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recipe{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
 /* Stores */
-.nm-store-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
-.nm-store{position:relative;display:grid;place-items:center;padding:10px;border:1.5px solid var(--line-2);border-radius:18px;background:#fff;color:var(--ink);transition:border-color .2s var(--ease),box-shadow .2s var(--ease),transform .15s var(--ease)}
-.nm-store:active{transform:scale(.96)}
+.nm-store-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.nm-store{position:relative;display:grid;place-items:center;aspect-ratio:16/10;padding:16px;border:1.5px solid var(--line-2);border-radius:20px;background:#fff;color:var(--ink);transition:border-color .2s var(--ease),box-shadow .2s var(--ease),transform .15s var(--ease)}
+.nm-store:active{transform:scale(.97)}
 .nm-store.is-selected{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
-.nm-store-name{font-size:12px;line-height:1.2;color:var(--ink-2);text-align:center;overflow-wrap:anywhere}
-.store-badge{display:grid;place-items:center;position:relative;width:100%;max-width:96px;aspect-ratio:2/1;border-radius:10px;background:var(--sb-bg);color:var(--sb-fg);overflow:hidden}
-.store-badge b{font:700 17px/1 var(--sans);letter-spacing:0;white-space:nowrap}
-.store-badge.is-small b{font-size:13px;letter-spacing:-.01em}
-.store-badge.is-wrap b{white-space:normal;text-align:center;line-height:1.1;padding:0 6px}
 .nm-store>.nm-check{top:-7px;right:-7px;box-shadow:0 0 0 2px #fff}
-.store-badge.is-ring{box-shadow:inset 0 0 0 1.5px var(--line-2)}
-.store-badge i{position:absolute;right:6px;top:6px;width:8px;height:8px;border-radius:50%}
-.store-badge.has-logo{background:#fff}.store-badge.has-logo img{width:100%;height:100%;object-fit:contain}
+.store-badge{display:grid;place-items:center;width:100%;height:100%}
+.store-badge img{display:block;max-width:100%;max-height:64px;width:auto;height:auto;object-fit:contain;user-select:none;-webkit-user-drag:none}
+.store-badge.is-text b{font-size:16px;font-weight:600}
 
 /* Direction */
 .nm-goal-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
@@ -211,7 +206,7 @@ button.nm-store,button.nm-goal,button.nm-chip,button.nm-appl,.nm-round,.nm-recip
 @keyframes nm-done{to{color:var(--ink)}}
 @keyframes nm-dot{to{background:var(--accent);color:#fff;box-shadow:none}}
 
-@media (max-width:360px){.nm-heading{font-size:27px}.nm-head{padding-right:76px}.nm-buddy{width:84px;height:84px}.nm-store-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.nm-segmented-6{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}}
+@media (max-width:360px){.nm-heading{font-size:27px}.nm-head{padding-right:76px}.nm-buddy{width:84px;height:84px}.nm-segmented-6{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}}
 @media (max-height:700px){.nm-hero-mascot{width:min(190px,52vw)}.nm-promises li{padding:8px 0}}
 @media (min-width:900px){
  .nm-onboarding{grid-template-columns:minmax(380px,44%) 1fr}

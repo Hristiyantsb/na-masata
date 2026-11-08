@@ -266,9 +266,23 @@ export function diaryEntry(input) {
     name: input.name.trim(),
     brand: typeof input.brand === 'string' ? input.brand.trim().slice(0, 120) : '',
     servingLabel: typeof input.servingLabel === 'string' ? input.servingLabel.slice(0, 120) : '',
-    servingGrams: Number.isFinite(Number(input.servingGrams)) && Number(input.servingGrams) > 0 && Number(input.servingGrams) <= 10000 ? Number(input.servingGrams) : null,
-    displayUnit: typeof input.displayUnit === 'string' && ['г', 'мл', 'кг', 'л', 'oz', 'fl oz', 'порции', 'именувана порция'].includes(input.displayUnit) ? input.displayUnit : input.unit,
-    displayAmount: Number.isFinite(Number(input.displayAmount)) && Number(input.displayAmount) > 0 ? Number(input.displayAmount) : amount,
+    servingGrams:
+      Number.isFinite(Number(input.servingGrams)) &&
+      Number(input.servingGrams) > 0 &&
+      Number(input.servingGrams) <= 10000
+        ? Number(input.servingGrams)
+        : null,
+    displayUnit:
+      typeof input.displayUnit === 'string' &&
+      ['г', 'мл', 'кг', 'л', 'oz', 'fl oz', 'порции', 'именувана порция'].includes(
+        input.displayUnit,
+      )
+        ? input.displayUnit
+        : input.unit,
+    displayAmount:
+      Number.isFinite(Number(input.displayAmount)) && Number(input.displayAmount) > 0
+        ? Number(input.displayAmount)
+        : amount,
     ...extraNutrition,
     date: input.date,
     meal: input.meal,
@@ -292,10 +306,26 @@ export function diaryTotals(entries) {
     { kcal: 0, protein: 0, unknownProtein: 0 },
   );
 }
+// Older builds offered more chains. Keep their saved data working: unknown stores are dropped
+// from the choice (falling back to the defaults) and their shopping rows move to a known store.
+function migrateStores(raw, fallback) {
+  const chosen = Array.isArray(raw.settings?.stores) ? raw.settings.stores : null;
+  if (!chosen) return raw;
+  const stores = chosen.filter((s) => STORES.includes(s));
+  const kept = stores.length ? stores : fallback;
+  return {
+    ...raw,
+    settings: { ...raw.settings, stores: kept },
+    extras: Array.isArray(raw.extras)
+      ? raw.extras.map((e) => (e && !STORES.includes(e.store) ? { ...e, store: kept[0] } : e))
+      : raw.extras,
+  };
+}
 /** Reject invalid backups atomically; import never executes code or copies arbitrary keys. */
 export function normalizeState(raw) {
   if (!raw || typeof raw !== 'object') throw Error('Невалидно копие.');
   const d = defaults();
+  raw = migrateStores(raw, d.settings.stores);
   d.settings = { ...d.settings, ...raw.settings };
   if (settingsErrors(d.settings).length) throw Error('Копието съдържа невалидни настройки.');
   d.settings = Object.fromEntries(Object.keys(defaults().settings).map((k) => [k, d.settings[k]]));

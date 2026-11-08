@@ -43,7 +43,7 @@ test('every setup screen has the На маса identity and a usable form', () =
 });
 test('each question uses the control that fits it', () => {
   const stores = html(1);
-  assert.equal(stores.querySelectorAll('.nm-store .store-badge').length, 13);
+  assert.equal(stores.querySelectorAll('.nm-store .store-badge img[src^="assets/stores/"]').length, 6);
   assert.equal(html(2).querySelectorAll('.nm-goal').length, 4);
   const kitchen = html(3);
   assert.equal(kitchen.querySelectorAll('.nm-kitchen .nm-appl').length, 4);

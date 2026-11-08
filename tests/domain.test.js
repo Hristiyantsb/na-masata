@@ -337,3 +337,27 @@ test('per-meal servings scale ingredients once, preserve other meals and honor l
   state.locked = true;
   assert.throws(() => changeServings(state, 0, 4), /Отключи/);
 });
+
+test('saved data with a store that is no longer offered still loads', () => {
+  const old = defaults();
+  old.settings.stores = ['CBA', 'Lidl'];
+  old.extras = [
+    {
+      id: 'x1',
+      name: 'Хляб',
+      amount: 1,
+      unit: 'бр.',
+      price: null,
+      store: 'Стопчето',
+      checked: false,
+    },
+  ];
+  const s = normalizeState(JSON.parse(JSON.stringify(old)));
+  assert.deepEqual(s.settings.stores, ['Lidl']);
+  assert.equal(s.extras[0].store, 'Lidl');
+  old.settings.stores = ['КООП'];
+  assert.deepEqual(
+    normalizeState(JSON.parse(JSON.stringify(old))).settings.stores,
+    defaults().settings.stores,
+  );
+});

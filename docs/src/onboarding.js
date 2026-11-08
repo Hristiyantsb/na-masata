@@ -91,7 +91,7 @@ function previewCard(r, i) {
 /* ---------- step parts ---------- */
 
 function welcome() {
-  return `<div class="nm-welcome"><button type="button" class="nm-hero-mascot" data-action="mascot-poke" aria-label="Здравей от масата">${mascot('chef', 260, 'nm-float')}<span class="nm-hero-shadow"></span></button><ul class="nm-promises"><li>${icon('bag', 20)}<span><strong>Твоите магазини</strong>Lidl, Kaufland, BILLA и още 10</span></li><li>${icon('plan', 20)}<span><strong>Цяла седмица наведнъж</strong>Според режима, уредите и времето ти</span></li><li>${icon('check', 20)}<span><strong>Един списък за покупки</strong>Всичко събрано, без повторения</span></li></ul></div>`;
+  return `<div class="nm-welcome"><button type="button" class="nm-hero-mascot" data-action="mascot-poke" aria-label="Здравей от масата">${mascot('chef', 260, 'nm-float')}<span class="nm-hero-shadow"></span></button><ul class="nm-promises"><li>${icon('bag', 20)}<span><strong>Твоите магазини</strong>Lidl, Kaufland, BILLA, METRO, Фантастико и T MARKET</span></li><li>${icon('plan', 20)}<span><strong>Цяла седмица наведнъж</strong>Според режима, уредите и времето ти</span></li><li>${icon('check', 20)}<span><strong>Един списък за покупки</strong>Всичко събрано, без повторения</span></li></ul></div>`;
 }
 
 function stores(d) {

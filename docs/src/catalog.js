@@ -1,20 +1,6 @@
 'use strict';
 // Original Bulgarian recipe catalogue; prices are editable examples, not retailer quotations.
-export const STORES = [
-  'Lidl',
-  'Kaufland',
-  'BILLA',
-  'METRO',
-  'Фантастико',
-  'T MARKET',
-  'CBA',
-  'ProMarket',
-  'KAM Market',
-  'КООП',
-  'Стопчето',
-  'minimart',
-  'Квартален магазин',
-];
+export const STORES = ['Lidl', 'Kaufland', 'BILLA', 'METRO', 'Фантастико', 'T MARKET'];
 // name, package quantity, unit, illustrative package price EUR, allergens, animal origin
 export const PRODUCTS = {
   tomato: ['Домати', 1000, 'г', 2.8, [], false],
