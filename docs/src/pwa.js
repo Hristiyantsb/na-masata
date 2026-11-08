@@ -50,6 +50,10 @@ export async function initPwa() {
       }
     });
     window.addEventListener('online', () => registration.update().catch(() => {}));
+    // Installed iPhone apps resume without a page load, so look for a new release on return.
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') registration.update().catch(() => {});
+    });
   } catch {
     state.error = true;
     notify();

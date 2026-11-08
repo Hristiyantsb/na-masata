@@ -6,7 +6,7 @@ const source = fs.readFileSync('docs/sw.js', 'utf8');
 function harness(failDownload = false) {
   const handlers = {},
     stores = new Map(),
-    calls = { network: [], downloads: [], deleted: [], claimed: 0, skipped: 0 };
+    calls = { network: [], downloads: [], deleted: [], claimed: 0, skipped: 0, reloaded: [] };
   const scope = 'https://example.org/na-masata/';
   const caches = {
     async open(name) {
@@ -37,6 +37,14 @@ function harness(failDownload = false) {
     clients: {
       async claim() {
         calls.claimed++;
+      },
+      async matchAll() {
+        return [scope, 'https://other.org/'].map((url) => ({
+          url,
+          async navigate(to) {
+            calls.reloaded.push(to);
+          },
+        }));
       },
     },
     skipWaiting() {
@@ -71,7 +79,7 @@ function harness(failDownload = false) {
     if (waiting) await waiting;
     return response ? await response : null;
   }
-  return { event, calls, stores, scope };
+  return { event, calls, stores, scope, self };
 }
 test('offline install precaches the complete local release including Cyrillic fonts and decoder', async () => {
   const h = harness();
@@ -114,6 +122,19 @@ test('activation deletes only old caches owned by this app and scope', async () 
   await h.event('activate');
   assert.deepEqual(h.calls.deleted, ['na-masata:/na-masata/:old']);
   assert.equal(h.calls.claimed, 1);
+  assert.deepEqual(h.calls.reloaded, [h.scope]);
+});
+test('a new release replaces an old one without waiting, but a first install does not reload', async () => {
+  const first = harness();
+  await first.event('install');
+  await first.event('activate');
+  assert.equal(first.calls.skipped, 0);
+  assert.deepEqual(first.calls.reloaded, []);
+  const update = harness();
+  update.stores.set('na-masata:/na-masata/:old', new Map());
+  update.self.registration.active = {};
+  await update.event('install');
+  assert.equal(update.calls.skipped, 1);
 });
 test('an update requires an explicit message from a scoped app client', async () => {
   const h = harness();

@@ -15,16 +15,27 @@ self.addEventListener('install', (event) => {
         await caches.delete(CACHE);
         throw error;
       }
-      // Waiting updates activate only after a user action, preserving open forms.
+      // A new release replaces the old one right away. People were stuck on an old copy
+      // because the update waited for a tap they never saw. Saved data lives in localStorage
+      // and is not touched; only the app files change.
+      if (self.registration.active) self.skipWaiting();
     })(),
   );
 });
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
+      let replaced = false;
       for (const key of await caches.keys())
-        if (key.startsWith(PREFIX) && key !== CACHE) await caches.delete(key);
+        if (key.startsWith(PREFIX) && key !== CACHE) {
+          await caches.delete(key);
+          replaced = true;
+        }
       await self.clients.claim();
+      // Open windows still run the previous release from memory: reload them once.
+      if (replaced && self.clients.matchAll)
+        for (const client of await self.clients.matchAll({ type: 'window' }))
+          if (client.url.startsWith(SCOPE)) client.navigate?.(client.url).catch(() => {});
     })(),
   );
 });
