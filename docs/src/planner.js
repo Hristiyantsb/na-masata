@@ -1,0 +1,271 @@
+// Weekly planner. Hard rules (diet, allergens, needs, appliances, time, calories, stores) are
+// applied by `candidates` and are never relaxed. Inside that set the planner searches for the
+// week with the lowest score, where the score adds up:
+//   - the real shopping bill (whole packages, minus what is already at home);
+//   - a strong penalty for going over the budget;
+//   - fit to the chosen direction (protein, lighter, quicker) and to the daily calorie goal;
+//   - variety: no repeated dishes, no same main protein or cuisine on neighbouring meals;
+//   - food waste: opened fresh packages that are left half used;
+//   - favourites and dishes that were not in last week's menu.
+// Search: several randomised greedy builds, then local improvement until no single swap helps.
+import { PRODUCTS } from './catalog.js';
+import { candidates, recipe, packPrice, packSize, recipeCost, total } from './domain.js';
+import { nutrition } from './nutrition.js';
+import { AISLE } from './products-more.js';
+import { dayName, money } from './ui.js';
+
+const FAMILIES = [
+  ['shrimp', 'seafood', 1],
+  ['salmon', 'fish', 1],
+  ['mackerel', 'fish', 1],
+  ['hake', 'fish', 1],
+  ['tuna', 'fish', 1],
+  ['fish', 'fish', 1],
+  ['beef', 'beef', 1],
+  ['pork', 'pork', 1],
+  ['bacon', 'pork', 0.6],
+  ['turkey', 'poultry', 1],
+  ['chicken', 'poultry', 1],
+  ['chickenthigh', 'poultry', 1],
+  ['mince', 'mince', 1],
+  ['tofu', 'tofu', 1],
+  ['chickpea', 'legume', 0.8],
+  ['redbean', 'legume', 0.8],
+  ['bean', 'legume', 2],
+  ['lentil', 'legume', 2],
+  ['redlentil', 'legume', 2],
+  ['egg', 'egg', 55],
+  ['cottage', 'dairy', 0.8],
+  ['cheese', 'dairy', 0.8],
+  ['kashkaval', 'dairy', 0.8],
+  ['mozzarella', 'dairy', 0.8],
+];
+/** Main protein family of a dish, used to keep neighbouring meals different. */
+export function mainProtein(r) {
+  let best = 'veg',
+    weight = 0;
+  for (const [k, family, factor] of FAMILIES) {
+    const w = (r.ing[k] || 0) * factor;
+    if (w > weight) {
+      weight = w;
+      best = family;
+    }
+  }
+  return best;
+}
+
+const PERISHABLE = new Set(['produce', 'meat', 'fish', 'dairy', 'bakery']);
+const perishable = (k) => PERISHABLE.has(AISLE[k]);
+
+/** Seeded generator so a plan can be reproduced in tests. */
+export function seeded(seed) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Lean version of `total(groceries(...))`: same whole-package arithmetic, no sorting or labels.
+function bill(state, plan) {
+  const need = {};
+  for (const e of plan) {
+    const r = recipe(e.id);
+    for (const [k, v] of Object.entries(r.ing)) need[k] = (need[k] || 0) + (v * e.people) / 2;
+  }
+  let cost = 0,
+    waste = 0;
+  for (const [k, amount] of Object.entries(need)) {
+    const size = packSize(k, state),
+      missing = Math.max(0, amount - (state.pantry[k] || 0)),
+      packs = Math.ceil(Math.max(0, missing - 1e-8) / size),
+      price = packPrice(k, state);
+    cost += packs * price;
+    if (packs && perishable(k)) {
+      const left = (state.pantry[k] || 0) + packs * size - amount;
+      waste += (left / size) * price;
+    }
+  }
+  return { cost, waste };
+}
+
+function mealTarget(state) {
+  if (!(state.dailyTarget > 0)) return 0;
+  return state.dailyTarget * (state.settings.slots.length > 1 ? 0.35 : 0.4);
+}
+
+function dishScore(state, r, ctx) {
+  const n = nutrition(r),
+    s = state.settings;
+  let score = 0;
+  if (s.goal === 'protein') score -= 0.12 * (n.protein - 25);
+  if (s.goal === 'light') score += 0.01 * Math.max(0, n.kcal - 420);
+  if (s.goal === 'quick') score += 0.08 * Math.max(0, r.time - 20);
+  if (s.goal === 'balanced')
+    score += 0.006 * Math.abs(n.kcal - 560) + 0.08 * Math.max(0, 18 - n.protein);
+  if (ctx.target) score += Math.abs(n.kcal - ctx.target) / 120;
+  if (state.favorites.includes(r.id)) score -= 1.5;
+  if (ctx.previous.has(r.id)) score += 1.5;
+  if ((s.needs || []).includes('kids') && r.tags?.includes('kids')) score -= 1;
+  if (r.prepNote) score += 0.4;
+  // People who choose fish-but-no-meat expect fish on the table, not only beans.
+  const family = mainProtein(r);
+  if (s.diet === 'pescatarian' && (family === 'fish' || family === 'seafood')) score -= 2.5;
+  return score;
+}
+
+/** Total score of a week; lower is better. */
+export function planScore(state, plan, ctx = context(state)) {
+  const { cost, waste } = bill(state, plan);
+  // The budget is a limit, not the goal: under it, price only breaks ties between similar weeks.
+  let score = cost * 0.35 + Math.max(0, cost - state.settings.budget) * 8 + waste * 0.2;
+  const seen = new Map(),
+    families = new Map();
+  let prev = null;
+  for (const e of plan) {
+    const r = recipe(e.id),
+      family = mainProtein(r);
+    score += ctx.dish.get(e.id) ?? dishScore(state, r, ctx);
+    seen.set(e.id, (seen.get(e.id) || 0) + 1);
+    families.set(family, (families.get(family) || 0) + 1);
+    if (prev) {
+      if (prev.family === family && family !== 'veg') score += 8;
+      if (prev.r.cuisine && prev.r.cuisine === r.cuisine) score += 1.5;
+    }
+    prev = { r, family };
+  }
+  for (const count of seen.values()) score += (count - 1) * 30;
+  const cap = Math.ceil(plan.length / 3);
+  for (const count of families.values()) score += Math.max(0, count - cap) * 8;
+  score -= families.size * 0.8;
+  return score;
+}
+
+function context(state) {
+  return {
+    target: mealTarget(state),
+    previous: new Set(state.plan.map((e) => e.id)),
+    dish: new Map(),
+  };
+}
+
+function shuffled(list, random) {
+  const copy = list.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
+export function generatePlan(state, random = Math.random) {
+  const pool = candidates(state.settings);
+  if (!pool.length)
+    return {
+      plan: null,
+      reason: 'Няма рецепти за тези ограничения. Промени избора си; няма да го пренебрегнем.',
+    };
+  const s = state.settings,
+    ctx = context(state);
+  // A small per-run bias: every new menu explores a different good week, never a worse rule.
+  for (const r of pool) ctx.dish.set(r.id, dishScore(state, r, ctx) + random() * 2.5);
+  const slots = [];
+  for (let day = 0; day < s.days; day++)
+    for (const slot of s.slots) slots.push({ day, slot, people: s.people });
+  // Best-first shortlist keeps the search fast without losing good dishes.
+  const ranked = pool.slice().sort((a, b) => ctx.dish.get(a.id) - ctx.dish.get(b.id));
+  const width = Math.min(pool.length, 36);
+  let best = null,
+    bestScore = Infinity;
+  const starts = pool.length > 1 ? 8 : 1;
+  for (let attempt = 0; attempt < starts; attempt++) {
+    const plan = [];
+    for (const place of slots) {
+      // No dish twice in one week while the allowed set is large enough.
+      const used = new Set(plan.map((e) => e.id));
+      const fresh = ranked.filter((r) => !used.has(r.id));
+      const source = fresh.length ? fresh : ranked;
+      const options = new Set([
+        ...source.slice(0, Math.ceil(width / 2)),
+        ...shuffled(source, random).slice(0, width),
+      ]);
+      let choice = null,
+        choiceScore = Infinity;
+      for (const r of options) {
+        const e = { id: r.id, ...place };
+        const score = planScore(state, [...plan, e], ctx) + random() * 1.5;
+        if (score < choiceScore) {
+          choice = e;
+          choiceScore = score;
+        }
+      }
+      plan.push(choice);
+    }
+    const score = planScore(state, plan, ctx);
+    if (score < bestScore) {
+      best = plan;
+      bestScore = score;
+    }
+  }
+  improve(state, best, pool, ctx);
+  const cost = total(state, best);
+  return {
+    plan: best,
+    cost,
+    withinBudget: cost <= s.budget,
+    available: pool.length,
+  };
+}
+
+// Local search: replace one meal at a time while that lowers the score.
+function improve(state, plan, pool, ctx) {
+  let current = planScore(state, plan, ctx);
+  const unique = pool.length >= plan.length;
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (let i = 0; i < plan.length; i++)
+      for (const r of pool) {
+        const keep = plan[i];
+        if (r.id === keep.id || (unique && plan.some((e) => e.id === r.id))) continue;
+        plan[i] = { ...keep, id: r.id };
+        const score = planScore(state, plan, ctx);
+        if (score < current - 1e-9) {
+          current = score;
+          changed = true;
+        } else plan[i] = keep;
+      }
+    if (!changed) break;
+  }
+  return current;
+}
+
+/** Up to three short, true reasons why a planned meal was chosen. */
+export function explainEntry(state, index) {
+  const e = state.plan[index],
+    r = e && recipe(e.id);
+  if (!r) return [];
+  const n = nutrition(r),
+    s = state.settings,
+    reasons = [];
+  if (s.goal === 'protein') reasons.push(`${Math.round(n.protein)} г протеин`);
+  if (s.diet === 'keto' || (s.needs || []).includes('lowcarb'))
+    reasons.push(`${Math.round(n.netCarbs)} г нетни въглехидрати`);
+  else if (s.goal === 'light' || s.maxCalories) reasons.push(`${n.kcal} ккал`);
+  if (s.goal === 'quick' || r.time <= 20) reasons.push(`${r.time} мин`);
+  if (state.favorites.includes(r.id)) reasons.push('Любима');
+  for (const [k] of Object.entries(r.ing)) {
+    if (!perishable(k) || ['salt', 'oil', 'garlic', 'onion'].includes(k)) continue;
+    const other = state.plan.find((x, j) => j !== index && recipe(x.id)?.ing[k]);
+    if (other) {
+      const day = dayName(other.day).toLowerCase();
+      reasons.push(`Общи продукти ${/^[сз]/.test(day) ? 'със' : 'с'} ${day}`);
+      break;
+    }
+  }
+  if (reasons.length < 3)
+    reasons.push(`≈ ${money(recipeCost(r, e.people, state) / e.people)} на порция`);
+  return reasons.slice(0, 3);
+}

@@ -105,6 +105,60 @@ body:not(.onboarding) .dialog-bar{background:#fff;border:0}
 .empty .mascot{width:160px;height:auto;margin:0 auto 8px}
 .empty-icon{background:none!important;width:auto!important;height:auto!important}
 
+.meal-why{display:block;margin-top:4px;font-size:13px;line-height:1.35;color:var(--accent)}
+.macro-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:16px 8px;border:0;border-radius:20px;background:var(--fill);text-align:center}
+.macro-strip>div{display:grid;gap:2px;padding:0;border:0;background:none}
+.macro-strip b{font-size:22px;font-weight:700;letter-spacing:-.02em;color:var(--accent);font-variant-numeric:tabular-nums}
+.macro-strip small{font-size:12px;color:var(--ink-2)}
+.macro-note{margin:8px 0 0;font-size:13px;color:var(--ink-3)}
+
+/* Shopping: by aisle, with a cart progress bar and a large shop mode */
+.aisle-heading{margin:16px 0 4px;font-size:13px;font-weight:600;color:var(--ink-3)}
+.shopping-group .section-bar h2{display:flex;align-items:center;gap:12px}
+.shopping-group .store-badge{width:64px;height:32px}
+.shopping-group .store-badge img{max-height:28px}
+.store-title{font-size:20px;font-weight:700}
+.cart-progress{display:grid;gap:8px;margin:0 0 16px;padding:16px;border-radius:20px;background:var(--accent-tint);color:var(--accent);font-size:15px}
+.cart-progress>span{display:block;height:8px;border-radius:4px;background:#fff;overflow:hidden}
+.cart-progress i{display:block;height:100%;border-radius:4px;background:var(--accent);transition:width .4s var(--ease)}
+.shopping-row.checked b{text-decoration:line-through;color:var(--ink-3)}
+.shop-mode{padding-bottom:32px}
+.shop-mode-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+.shop-mode-head h1{margin:0}
+.shop-mode-head .button{flex-shrink:0;white-space:nowrap;min-width:96px}
+.shop-mode-row{min-height:64px;padding:8px 0;border-bottom:1px solid var(--line)}
+.shop-mode-row .shopping-check{width:100%;min-height:56px}
+.shop-mode-row b{font-size:18px}
+.shop-mode-row .check-display{width:28px;height:28px}
+body.shopping-now .mobile-nav,body.shopping-now .topbar{display:none}
+
+/* Cooking mode: one step at a time, large text, timers from the step itself */
+.cook-start{width:100%;margin:0 0 12px}
+.cook-mode{display:grid;gap:16px;min-height:60vh;align-content:start}
+.cook-progress{display:flex;gap:4px}
+.cook-progress i{flex:1;height:4px;border-radius:2px;background:var(--fill-2)}
+.cook-progress i.is-done{background:var(--accent)}
+.cook-count{margin:0;font-size:15px;font-weight:600;color:var(--accent)}
+.cook-text{margin:0;font-size:24px;line-height:1.4;font-weight:500;letter-spacing:-.01em}
+.cook-timer{display:flex;align-items:center;gap:16px}
+.cook-timer strong{font-size:40px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--accent)}
+.cook-nav{display:grid;grid-template-columns:1fr 1.4fr;gap:12px;margin-top:auto;padding-top:16px}
+.cook-nav .button{min-height:54px;justify-content:center;font-size:17px}
+
+/* Plus: water and weight */
+.water-card,.weight-card{margin:16px 0;padding:16px 20px;border-radius:var(--r-panel);background:#fff;box-shadow:var(--shadow)}
+.water-card .section-bar,.weight-card .section-bar{margin:0 0 8px}
+.water-card h2,.weight-card h2{font-size:20px;margin:0}
+.water-glasses{display:flex;flex-wrap:wrap;align-items:center;gap:4px}
+.water-glass{display:grid;place-items:end center;width:32px;height:44px;padding:4px;border:0;border-radius:6px 6px 12px 12px;background:var(--fill);transition:background-color .2s var(--ease)}
+.water-glass span{display:block;width:100%;height:0;border-radius:4px 4px 9px 9px;background:#5aa9e6;transition:height .3s var(--ease)}
+.water-glass.is-full span{height:100%}
+.weight-now{display:grid;gap:2px;margin-bottom:8px}
+.weight-now strong{font-size:34px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.weight-now small{font-size:17px;color:var(--ink-2)}
+.weight-now span{font-size:14px;color:var(--ink-2)}
+.weight-chart{display:block;width:100%;height:auto;color:var(--accent);fill:var(--accent)}
+
 /* Food plates: ingredient colours on every card */
 .food-art,.food-art.art-1,.food-art.art-2,.food-art.art-3{display:block;padding:4px;background:var(--fill)!important;color:inherit!important;border-radius:16px;overflow:hidden}
 .food-art svg,.meal-row .food-art svg,.recipe-card .food-art svg,.planned-meal .food-art svg{display:block;width:100%;height:100%;margin:0 auto}

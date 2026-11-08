@@ -20,9 +20,25 @@ import {
   packSize,
   SHOPPING_UNITS,
   shoppingSummary,
+  explainEntry,
+  WATER_GLASS_ML,
 } from './domain.js';
 import { mascot, wordmark } from './brand.js';
-import { esc, icon, button, money, num, heading, foodArt, empty, field, badge, dayName } from './ui.js';
+import { storeBadge } from './stores.js';
+import { AISLE, AISLES } from './products-more.js';
+import {
+  esc,
+  icon,
+  button,
+  money,
+  num,
+  heading,
+  foodArt,
+  empty,
+  field,
+  badge,
+  dayName,
+} from './ui.js';
 export function shell(page, content, connectivity = {}) {
   const items = [
     ['plan', 'plan', 'Меню'],
@@ -36,7 +52,10 @@ export function planView(state, undo) {
   return withMascot(planViewInner(state, undo), state.plan.length ? 'serve' : 'curious');
 }
 function withMascot(html, pose) {
-  return html.replace('<header class="page-heading">', `<header class="page-heading has-mascot">${mascot(pose, 120, 'heading-mascot')}`);
+  return html.replace(
+    '<header class="page-heading">',
+    `<header class="page-heading has-mascot">${mascot(pose, 120, 'heading-mascot')}`,
+  );
 }
 function planViewInner(state, undo) {
   const s = state.settings,
@@ -72,7 +91,7 @@ function planViewInner(state, undo) {
             if (e.day !== day) return '';
             const r = recipe(e.id),
               n = nutrition(r);
-            return `<article class="planned-meal ${state.cooked[i] ? 'is-cooked' : ''}"><div class="meal-row"><button class="meal-main" data-action="recipe" data-id="${r.id}" data-index="${i}">${foodArt(r)}<span class="meal-copy"><span class="recipe-category">${esc(r.type)}</span><b>${esc(r.name)}</b><span class="recipe-meta">${r.time} мин <i></i>${e.people} порции <i></i>≈ ${n.kcal} ккал</span></span></button>${button(icon('check', 17), 'cooked', `data-index="${i}" aria-label="${state.cooked[i] ? 'Отмени сготвено' : 'Отбележи като сготвено'}" aria-pressed="${!!state.cooked[i]}"`, 'icon-button done-button')}</div><div class="meal-actions"><span>${money(recipeCost(r, e.people, state))}<small> съставки</small></span><div>${button('Премести', 'move-meal', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}${button('Повтори', 'repeat-meal', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}${button(icon('swap', 14) + ' Смени', 'swap', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}</div></div></article>`;
+            return `<article class="planned-meal ${state.cooked[i] ? 'is-cooked' : ''}"><div class="meal-row"><button class="meal-main" data-action="recipe" data-id="${r.id}" data-index="${i}">${foodArt(r)}<span class="meal-copy"><span class="recipe-category">${esc(r.type)}</span><b>${esc(r.name)}</b><span class="recipe-meta">${r.time} мин <i></i>${e.people} порции <i></i>≈ ${n.kcal} ккал</span><span class="meal-why">${explainEntry(state, i).map(esc).join(' · ')}</span></span></button>${button(icon('check', 17), 'cooked', `data-index="${i}" aria-label="${state.cooked[i] ? 'Отмени сготвено' : 'Отбележи като сготвено'}" aria-pressed="${!!state.cooked[i]}"`, 'icon-button done-button')}</div><div class="meal-actions"><span>${money(recipeCost(r, e.people, state))}<small> съставки</small></span><div>${button('Премести', 'move-meal', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}${button('Повтори', 'repeat-meal', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}${button(icon('swap', 14) + ' Смени', 'swap', `data-index="${i}" ${state.locked ? 'disabled' : ''}`, 'quiet')}</div></div></article>`;
           })
           .join('')}</section>`,
     )
@@ -109,7 +128,7 @@ export function recipeDetail(r, state, index = null, completed = []) {
       index === null ? state.settings.people : state.plan[index]?.people || state.settings.people,
     allergens = [...new Set(Object.keys(r.ing).flatMap((k) => PRODUCTS[k][4]))],
     macros = nutrition(r);
-  return `<p class="eyebrow">${r.type}</p><h2 class="dialog-title">${r.name}</h2><div class="recipe-detail-meta"><span>${icon('clock', 16)}${r.time} мин${r.prepNote ? ' + накисване' : ''}</span><span>${n} порции</span><span>${r.equipment.map((k) => EQUIPMENT[k]).join(' + ') || 'Без уреди'}</span></div>${index !== null ? `<form data-form="servings" data-index="${index}" class="servings-form"><label>Порции за това хранене <select name="people" ${state.locked ? 'disabled' : ''}>${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${n === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label><button type="submit" class="button outline" ${state.locked ? 'disabled' : ''}>Преизчисли</button><p class="form-error" role="alert"></p></form>` : ''}<div class="nutrition-strip"><div><b>≈ ${macros.kcal}</b><small>ккал / порция</small></div><div><b>${macros.protein} г</b><small>протеин / порция</small></div><div><b>${money(recipeCost(r, n, state))}</b><small>съставки за ${n} порции</small></div></div>${r.prepNote ? `<div class="notice">${esc(r.prepNote)}</div>` : ''}<div class="recipe-columns"><section><h3>Съставки</h3>${Object.entries(
+  return `<p class="eyebrow">${r.type}</p><h2 class="dialog-title">${r.name}</h2><div class="recipe-detail-meta"><span>${icon('clock', 16)}${r.time} мин${r.prepNote ? ' + накисване' : ''}</span><span>${n} порции</span><span>${r.equipment.map((k) => EQUIPMENT[k]).join(' + ') || 'Без уреди'}</span></div>${index !== null ? `<form data-form="servings" data-index="${index}" class="servings-form"><label>Порции за това хранене <select name="people" ${state.locked ? 'disabled' : ''}>${Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}" ${n === i + 1 ? 'selected' : ''}>${i + 1}</option>`).join('')}</select></label><button type="submit" class="button outline" ${state.locked ? 'disabled' : ''}>Преизчисли</button><p class="form-error" role="alert"></p></form>` : ''}<div class="nutrition-strip macro-strip"><div><b>${macros.kcal}</b><small>ккал</small></div><div><b>${Math.round(macros.protein)} г</b><small>протеин</small></div><div><b>${Math.round(macros.carbs)} г</b><small>въглехидрати</small></div><div><b>${Math.round(macros.fat)} г</b><small>мазнини</small></div></div><p class="macro-note">На порция. Съставки за ${n} порции ≈ ${money(recipeCost(r, n, state))}</p>${r.prepNote ? `<div class="notice">${esc(r.prepNote)}</div>` : ''}<div class="recipe-columns"><section><h3>Съставки</h3>${Object.entries(
     r.ing,
   )
     .map(
@@ -118,32 +137,95 @@ export function recipeDetail(r, state, index = null, completed = []) {
     )
     .join(
       '',
-    )}<p class="fine">Алергени: ${allergens.map((k) => ALLERGENS[k]).join(', ') || 'няма от отбелязаните'}. Проверявай етикетите.</p></section><section><h3>Стъпка по стъпка</h3><p class="cooking-progress" role="status" data-cooking-progress>${completed.length} от ${r.steps.length} стъпки готови</p>${r.steps.map((s, i) => `<label class="recipe-step cooking-step"><input type="checkbox" data-change="cooking-step" data-id="${r.id}" data-index="${i}" ${completed.includes(i) ? 'checked' : ''} aria-label="Стъпка ${i+1} е готова"><span>${i+1}</span><p>${esc(s.replace(/(\d+) мл/g, (_, v) => num((Number(v) * n) / 2, 1) + ' мл').replace(/ за 2 порции/g, ''))}</p></label>`).join('')}<p class="fine">Количествата са за ${n} порции. При части от яйце го разбий и отмери съответната част. При повече порции времето може да се увеличи.</p></section></div><div class="inline-actions">${button(icon('heart', 16) + (state.favorites.includes(r.id) ? ' В любими' : ' Запази'), 'favorite', `data-id="${r.id}"`, 'button outline')}${button(icon('plus', 16) + ' В дневника', 'diary-recipe', `data-id="${r.id}"`, 'button primary')}${button('JSON', 'export-recipe', `data-id="${r.id}"`, 'quiet')}</div><form data-form="note" data-id="${r.id}" class="note-form"><label class="field"><span>Моята бележка</span><textarea name="note" maxlength="4000" rows="3" placeholder="Следващия път…">${esc(state.notes[r.id] || '')}</textarea></label><button class="button outline" type="submit">Запази бележка</button></form>`;
+    )}<p class="fine">Алергени: ${allergens.map((k) => ALLERGENS[k]).join(', ') || 'няма от отбелязаните'}. Проверявай етикетите.</p></section><section><h3>Стъпка по стъпка</h3>${button(icon('clock', 17) + ' Готви стъпка по стъпка', 'cook-mode', `data-id="${r.id}" data-step="0"`, 'button primary cook-start')}<p class="cooking-progress" role="status" data-cooking-progress>${completed.length} от ${r.steps.length} стъпки готови</p>${r.steps.map((s, i) => `<label class="recipe-step cooking-step"><input type="checkbox" data-change="cooking-step" data-id="${r.id}" data-index="${i}" ${completed.includes(i) ? 'checked' : ''} aria-label="Стъпка ${i + 1} е готова"><span>${i + 1}</span><p>${esc(s.replace(/(\d+) мл/g, (_, v) => num((Number(v) * n) / 2, 1) + ' мл').replace(/ за 2 порции/g, ''))}</p></label>`).join('')}<p class="fine">Количествата са за ${n} порции. При части от яйце го разбий и отмери съответната част. При повече порции времето може да се увеличи.</p></section></div><div class="inline-actions">${button(icon('heart', 16) + (state.favorites.includes(r.id) ? ' В любими' : ' Запази'), 'favorite', `data-id="${r.id}"`, 'button outline')}${button(icon('plus', 16) + ' В дневника', 'diary-recipe', `data-id="${r.id}"`, 'button primary')}${button('JSON', 'export-recipe', `data-id="${r.id}"`, 'quiet')}</div><form data-form="note" data-id="${r.id}" class="note-form"><label class="field"><span>Моята бележка</span><textarea name="note" maxlength="4000" rows="3" placeholder="Следващия път…">${esc(state.notes[r.id] || '')}</textarea></label><button class="button outline" type="submit">Запази бележка</button></form>`;
 }
-export function shoppingView(state) {
+const AISLE_ORDER = Object.keys(AISLES);
+const aisleIndex = (k) => {
+  const i = AISLE_ORDER.indexOf(AISLE[k] || 'dry');
+  return i < 0 ? AISLE_ORDER.length : i;
+};
+// Only food that spoils within days gets a "left over" hint; staples like potatoes keep.
+const SHORT_LIFE = new Set([
+  'spinach',
+  'dill',
+  'parsley',
+  'mushroom',
+  'rocket',
+  'lettuce',
+  'avocado',
+  'greenonion',
+  'zucchini',
+  'broccoli',
+  'cauliflower',
+  'tomato',
+  'cucumber',
+  'eggplant',
+  'bread',
+  'tortilla',
+]);
+const leftoverMatters = (k) =>
+  SHORT_LIFE.has(k) ||
+  (['meat', 'fish', 'dairy'].includes(AISLE[k]) &&
+    k !== 'egg' &&
+    k !== 'butter' &&
+    k !== 'parmesan' &&
+    k !== 'kashkaval');
+function shoppingRow(r, state, shopMode) {
+  const done = !!state.checked[r.k];
+  const leftover =
+    leftoverMatters(r.k) && r.left / r.size >= 0.3
+      ? `<i>·</i> остават ${num(r.left, 0)} ${r.unit}`
+      : '';
+  const check = `<label class="shopping-check"><input type="checkbox" data-change="purchased" data-id="${r.k}" ${done ? 'checked' : ''}><span class="check-display">${icon('check', 14)}</span><span><b>${esc(r.name)}</b><small>${r.packs} × ${num(r.size, 1)} ${r.unit}${shopMode ? '' : ` <i>·</i> за менюто ${num(r.need, 1)} ${r.unit}`}${leftover}</small></span></label>`;
+  if (shopMode)
+    return `<div class="shopping-row shop-mode-row ${done ? 'checked' : ''}">${check}</div>`;
+  return `<div class="shopping-row ${done ? 'checked' : ''}">${check}<select class="store-select" aria-label="Магазин за ${esc(r.name)}" data-change="store" data-id="${r.k}">${state.settings.stores.map((s) => `<option ${s === r.store ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>${button(money(r.cost) + '<small>Редактирай</small>', 'price', `data-id="${r.k}"`, 'price-button')}</div>`;
+}
+export function shoppingView(state, shopMode = false) {
   const rows = groceries(state),
-    summary = shoppingSummary(state);
+    summary = shoppingSummary(state),
+    toBuy = rows.filter((r) => r.packs),
+    done = toBuy.filter((r) => state.checked[r.k]).length;
+  const progress = toBuy.length ? Math.round((done / toBuy.length) * 100) : 0;
+  const stores = state.settings.stores
+    .map((store) => {
+      const list = toBuy
+        .filter((r) => r.store === store)
+        .sort((a, b) => aisleIndex(a.k) - aisleIndex(b.k) || a.name.localeCompare(b.name, 'bg'));
+      if (!list.length) return '';
+      let aisle = null;
+      const body = list
+        .map((r) => {
+          const header =
+            AISLE[r.k] !== aisle
+              ? `<h3 class="aisle-heading">${esc(AISLES[(aisle = AISLE[r.k])] || 'Други')}</h3>`
+              : '';
+          return header + shoppingRow(r, state, shopMode);
+        })
+        .join('');
+      return `<section class="shopping-group"><div class="section-bar"><h2>${storeBadge(store)}<span class="store-title">${esc(store)}</span></h2><span>${shopMode ? `${list.filter((r) => state.checked[r.k]).length} / ${list.length}` : money(list.reduce((s, r) => s + r.cost, 0))}</span></div>${body}</section>`;
+    })
+    .join('');
+  const bar = toBuy.length
+    ? `<div class="cart-progress" role="progressbar" aria-label="В количката" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}"><div><b>${done} от ${toBuy.length}</b> в количката</div><span><i style="width:${progress}%"></i></span></div>`
+    : '';
+  if (shopMode)
+    return `<div class="shop-mode"><header class="shop-mode-head"><div><p class="eyebrow">Пазарувам</p><h1>Списък по щандове</h1></div>${button('Готово', 'shop-mode', '', 'button primary')}</header>${bar}${stores || empty('Няма какво да купуваш', 'Всичко за менюто е вкъщи.')}${done === toBuy.length && toBuy.length ? '<p class="notice compact">Всичко е в количката.</p>' : ''}</div>`;
   return (
     heading(
       'Покупки',
       'Списък за пазаруване',
-      'Количествата са събрани за цялото меню.',
-      button(icon('download', 17) + ' Списък', 'export-shopping', '', 'button outline'),
+      'Подреден по щандове, както вървиш из магазина.',
+      toBuy.length ? button(icon('bag', 17) + ' Пазарувам', 'shop-mode', '', 'button primary') : '',
     ) +
-    `<section class="shopping-overview"><div><small>Цели опаковки</small><strong>${money(summary.knownTotal)}</strong><span>${summary.unknownPrices ? `+ ${summary.unknownPrices} продукта без цена` : 'Известна сума за покупките'}</span></div><div><small>Продукти</small><strong>${rows.filter((r) => r.packs).length}</strong><span>${rows.filter((r) => r.packs && state.checked[r.k]).length} отметнати</span></div><div><small>Първо погледни вкъщи</small><p>Наличностите се приспадат автоматично.</p>${button('Моите наличности ' + icon('arrow', 16), 'pantry', '', 'quiet')}</div></section><div class="notice compact">Примерни цени, не оферти на магазините. Редактирай цената и размера на опаковката от сумата вдясно.</div>${state.settings.stores
-      .map((store) => {
-        const list = rows.filter((r) => r.store === store && r.packs);
-        if (!list.length) return '';
-        return `<section class="shopping-group"><div class="section-bar"><h2>${esc(store)}</h2><span>${money(list.reduce((s, r) => s + r.cost, 0))}</span></div>${list.map((r) => `<div class="shopping-row ${state.checked[r.k] ? 'checked' : ''}"><label class="shopping-check"><input type="checkbox" data-change="purchased" data-id="${r.k}" ${state.checked[r.k] ? 'checked' : ''}><span class="check-display">${icon('check', 14)}</span><span><b>${r.name}</b><small>${r.packs} × ${num(r.size, 1)} ${r.unit} <i>·</i> За менюто ${num(r.need, 1)} ${r.unit}</small></span></label><select class="store-select" aria-label="Магазин за ${r.name}" data-change="store" data-id="${r.k}">${state.settings.stores.map((s) => `<option ${s === r.store ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>${button(money(r.cost) + '<small>Редактирай</small>', 'price', `data-id="${r.k}"`, 'price-button')}</div>`).join('')}</section>`;
-      })
-      .join('')}${
+    `${bar}<section class="shopping-overview"><div><small>Цели опаковки</small><strong>${money(summary.knownTotal)}</strong><span>${summary.unknownPrices ? `+ ${summary.unknownPrices} продукта без цена` : 'Известна сума за покупките'}</span></div><div><small>Продукти</small><strong>${toBuy.length}</strong><span>${done} отметнати</span></div><div><small>Първо погледни вкъщи</small><p>Наличностите се приспадат автоматично.</p>${button('Моите наличности ' + icon('arrow', 16), 'pantry', '', 'quiet')}</div></section><div class="notice compact">Примерни цени, не оферти на магазините. Редактирай цената и размера на опаковката от сумата вдясно.</div>${stores}${
       rows.some((r) => !r.packs)
         ? `<details class="owned-products"><summary>Имаш достатъчно вкъщи (${rows.filter((r) => !r.packs).length})</summary>${rows
             .filter((r) => !r.packs)
-            .map((r) => `<p>${r.name} <span>${num(r.need, 1)} ${r.unit}</span></p>`)
+            .map((r) => `<p>${esc(r.name)} <span>${num(r.need, 1)} ${r.unit}</span></p>`)
             .join('')}</details>`
         : ''
-    }${!rows.length ? empty('Списъкът чака твоето меню', 'Избери ястия, за да съберем съставките.', button('Създай меню', 'wizard', '', 'button primary')) : ''}${extraGroceriesView(state)}<div class="inline-actions">${button('Копирай списъка', 'copy-shopping', '', 'button outline')}${button('Изчисти отметките', 'uncheck-all', '', 'quiet')}</div><p class="fine">Отмятането отбелязва покупката; не добавя автоматично наличност. След готвене актуализирай количествата вкъщи.</p>`
+    }${!rows.length ? empty('Списъкът чака твоето меню', 'Избери ястия, за да съберем съставките.', button('Създай меню', 'wizard', '', 'button primary')) : ''}${extraGroceriesView(state)}<div class="inline-actions">${button('Копирай списъка', 'copy-shopping', '', 'button outline')}${button(icon('download', 17) + ' Изтегли', 'export-shopping', '', 'button outline')}${button('Изчисти отметките', 'uncheck-all', '', 'quiet')}</div><p class="fine">Отмятането отбелязва покупката; не добавя автоматично наличност. След готвене актуализирай количествата вкъщи.</p>`
   );
 }
 export function pantryView(state) {
@@ -180,7 +262,7 @@ export function diaryView(state, date) {
       'Без догадки. Записваш количеството, виждаш сметката.',
       button(icon('plus', 17) + ' Добави храна', 'add-food', '', 'button primary'),
     ) +
-    `<div class="diary-date-bar"><label class="date-field">${icon('diary', 18)}<input type="date" value="${date}" data-change="diary-date" aria-label="Дата в дневника"></label><span class="pill">Меню Плюс · демо</span></div>${diaryWeek(state, date)}<section class="diary-overview"><div class="calorie-ring" style="--progress:${target ? Math.min((totals.kcal / target) * 100, 100) : 0}%"><div><strong>${num(totals.kcal)}</strong><span>ккал записани</span></div></div><div class="diary-totals"><h2>${entries.length ? 'Денят ти дотук' : 'Всяко хранене има място'}</h2><p>${target ? (totals.kcal <= target ? `${num(target - totals.kcal)} ккал до твоята цел` : `${num(totals.kcal - target)} ккал над твоята цел`) : 'Задай лична цел, ако искаш да следиш напредък.'}</p><div><span><b>${num(totals.protein, 1)} г</b> протеин${totals.unknownProtein ? ' *' : ''}</span>${button(target ? 'Промени целта' : 'Задай цел', 'daily-target', '', 'quiet')}</div>${totals.unknownProtein ? '<p class="fine">* Някои записи нямат стойност за протеин.</p>' : ''}</div><button class="scan-card" data-action="scanner">${icon('scan', 32)}<b>Сканирай баркод</b><span>От опаковката към дневника</span>${icon('arrow', 18)}</button></section>${macroSummary(state, date)}<div class="diary-day-tools">${button('Бърз запис на калории', 'quick-food', '', 'button outline')}${button('Цели за макроси', 'macro-targets', '', 'quiet')}${button('Експорт CSV', 'export-diary', '', 'quiet')}</div><div class="diary-list">${MEALS.map(
+    `<div class="diary-date-bar"><label class="date-field">${icon('diary', 18)}<input type="date" value="${date}" data-change="diary-date" aria-label="Дата в дневника"></label><span class="pill">Меню Плюс · демо</span></div>${diaryWeek(state, date)}<section class="diary-overview"><div class="calorie-ring" style="--progress:${target ? Math.min((totals.kcal / target) * 100, 100) : 0}%"><div><strong>${num(totals.kcal)}</strong><span>ккал записани</span></div></div><div class="diary-totals"><h2>${entries.length ? 'Денят ти дотук' : 'Всяко хранене има място'}</h2><p>${target ? (totals.kcal <= target ? `${num(target - totals.kcal)} ккал до твоята цел` : `${num(totals.kcal - target)} ккал над твоята цел`) : 'Задай лична цел, ако искаш да следиш напредък.'}</p><div><span><b>${num(totals.protein, 1)} г</b> протеин${totals.unknownProtein ? ' *' : ''}</span>${button(target ? 'Промени целта' : 'Задай цел', 'daily-target', '', 'quiet')}</div>${totals.unknownProtein ? '<p class="fine">* Някои записи нямат стойност за протеин.</p>' : ''}</div><button class="scan-card" data-action="scanner">${icon('scan', 32)}<b>Сканирай баркод</b><span>От опаковката към дневника</span>${icon('arrow', 18)}</button></section>${macroSummary(state, date)}${waterCard(state, date)}${weightCard(state, date)}<div class="diary-day-tools">${button('Бърз запис на калории', 'quick-food', '', 'button outline')}${button('Цели за макроси', 'macro-targets', '', 'quiet')}${button('Експорт CSV', 'export-diary', '', 'quiet')}</div><div class="diary-list">${MEALS.map(
       (meal) => {
         const list = entries.filter((e) => e.meal === meal),
           t = diaryTotals(list);
@@ -209,17 +291,33 @@ export function diaryView(state, date) {
 }
 export function foodForm(date, meal = 'Обяд', entry = null) {
   const e = entry || {
-    name: '', date, meal, unit: 'г', amount: 100, basis: 100, kcal: '', protein: '', source: 'manual',
+    name: '',
+    date,
+    meal,
+    unit: 'г',
+    amount: 100,
+    basis: 100,
+    kcal: '',
+    protein: '',
+    source: 'manual',
   };
   const q = displayQuantity(e);
-  const options = measureOptions(e.unit, e.basis, e.servingLabel || '') ;
+  const options = measureOptions(e.unit, e.basis, e.servingLabel || '');
   if (e.basis === 100 && !options.includes('именувана порция')) options.push('именувана порция');
   const servingQuantity = e.servingGrams || suggestedServingQuantity(e.servingLabel, e.unit) || '';
   const labelText = e.basis === 1 ? 'една порция' : e.unit === 'мл' ? '100 мл' : '100 г';
   return `<p class="eyebrow">Хранителен дневник</p><h2 class="dialog-title">${entry?.id ? 'Редактирай храната' : 'Какво хапна?'}</h2><form data-form="food" ${entry?.id ? `data-id="${esc(e.id)}"` : ''} data-source="${e.source}" data-basis="${e.basis}" data-unit="${esc(e.unit)}" data-barcode="${e.barcode || ''}" data-brand="${esc(e.brand || '')}">${field('Име на храната', 'name', e.name, 'text', 'maxlength="120" required')}<div class="form-grid">${field('Дата', 'date', e.date, 'date', 'required')}<label class="field"><span>Хранене</span><select name="meal">${MEALS.map((m) => `<option ${m === e.meal ? 'selected' : ''}>${m}</option>`).join('')}</select></label>${field('Изядено количество', 'amount', q.amount, 'number', 'min="0.01" max="10000" step="any" required')}<label class="field"><span>Мерна единица</span><select name="measure">${options.map((u) => `<option ${q.measure === u ? 'selected' : ''}>${esc(u)}</option>`).join('')}</select></label>${field('Наименование на порцията (от етикета)', 'servingLabel', e.servingLabel || '', 'text', 'maxlength="120" placeholder="например 1 купичка"')}<div class="food-serving-confirm" data-serving-details ${q.measure === 'именувана порция' ? '' : 'hidden'}>${field(e.unit === 'мл' ? 'Милилитри в 1 порция' : 'Грамове в 1 порция', 'servingQuantity', servingQuantity, 'number', 'min="0.01" max="10000" step="any"')}<label class="field"><span><input type="checkbox" name="servingConfirmed" value="yes"> Потвърдих ${e.unit === 'мл' ? 'милилитрите' : 'грамажа'} от етикета или везна.</span></label></div>${field(`Ккал за ${labelText}`, 'kcal', e.kcal, 'number', 'min="0" max="2000" step="0.1" required')}${field(`Протеин (г) за ${labelText}`, 'protein', e.protein ?? '', 'number', 'min="0" max="200" step="0.1"')}</div><div data-food-preview role="status" aria-live="polite"></div>${macroFields(e)}${e.source === 'openfoodfacts' ? '<label class="field"><span><input type="checkbox" name="labelConfirmed" required> Проверих стойностите и дали етикетът е за 100 г или 100 мл.</span></label>' : ''}<p class="fine">Порции с име се изчисляват само след потвърден грамаж/милилитри. Не гадаем. Стойностите са за ${labelText}; празно поле = неизвестно.</p><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази в дневника ${icon('check', 18)}</button></form>`;
 }
 export function pricingView(interval) {
-  if (!CONFIG.apiBase) return heading('На маса','Твоят кулинарен ритъм','Всички локални функции са достъпни без акаунт и без абонамент.') + '<div class="local-features"><a href="#plan"><h2>Меню за седмицата</h2><p>Порции, предпочитания и лесна смяна на ястията.</p><span>Отвори менюто →</span></a><a href="#shopping"><h2>Подредени покупки</h2><p>Общ списък, наличности вкъщи и редакция на цените.</p><span>Към покупките →</span></a><a href="#diary"><h2>Хранителен дневник</h2><p>Твоите храни, порции и лични цели.</p><span>Отвори дневника →</span></a></div><div class="notice"><strong>Данните ти остават тук.</strong><p>Изтегли резервно копие от Настройки, за да ги прехвърлиш на друго устройство. Синхронизацията и плащанията не са включени.</p><a class="button outline" href="#settings">Настройки и резервно копие</a></div>';
+  if (!CONFIG.apiBase)
+    return (
+      heading(
+        'На маса',
+        'Твоят кулинарен ритъм',
+        'Всички локални функции са достъпни без акаунт и без абонамент.',
+      ) +
+      '<div class="local-features"><a href="#plan"><h2>Меню за седмицата</h2><p>Над 110 рецепти, подбрани по режима, уредите и магазините ти.</p><span>Отвори менюто →</span></a><a href="#shopping"><h2>Подредени покупки</h2><p>Списък по щандове, режим „Пазарувам“ и наличности вкъщи.</p><span>Към покупките →</span></a><a href="#diary"><h2>Хранителен дневник</h2><p>Храни, макроси, тегло и вода.</p><span>Отвори дневника →</span></a></div><div class="notice"><strong>Данните ти остават тук.</strong><p>Изтегли резервно копие от Настройки, за да ги прехвърлиш на друго устройство. Синхронизацията и плащанията не са включени.</p><a class="button outline" href="#settings">Настройки и резервно копие</a></div>'
+    );
 
   const annual = interval === 'yearly';
   return (
@@ -229,7 +327,7 @@ export function pricingView(interval) {
     )
       .map(
         ([id, p]) =>
-          `<article class="pricing-card ${id === 'plus' ? 'plus-plan' : ''}"><div class="pricing-label"><span>${id === 'plus' ? 'Цялата картина' : 'Ежедневието, подредено'}</span>${icon(id === 'plus' ? 'scan' : 'book', 25)}</div><h2>${p.name}</h2><p>${id === 'plus' ? 'Менюто и хранителният ти дневник на едно място.' : 'По-малко време в чудене какво да сготвиш.'}</p><div class="plan-price">${p[interval]} €<span>/ ${annual ? 'година' : 'месец'}</span></div><p class="price-detail">${annual ? `${money(p.yearly / 12)} на месец · ${p.yearly} € наведнъж годишно` : 'Плащане всеки месец'}${annual ? `<br>Спестяваш ${p.monthly * 12 - p.yearly} € спрямо 12 месечни плащания` : ''}</p><ul>${(id === 'menu' ? ['Персонално седмично меню', 'Филтри за хранене, уреди и съставки', 'Общ списък и бюджет за покупки', 'Любими рецепти и лични бележки'] : ['Всичко от план Меню', 'Хранителен дневник и калории', 'Баркод скенер и данни за продукти', 'Протеин, въглехидрати, мазнини и лични цели']).map((t) => `<li>${icon('check', 16)}${t}</li>`).join('')}</ul>${button('За този план ' + icon('arrow', 16), 'plan-info', `data-plan="${id}"`, 'button ' + (id === 'plus' ? 'primary' : 'outline') + ' full')}${id === 'plus' ? '<div class="planned-feature">Следващ етап: оценка на ястие по снимка с потвърждение на порцията.</div>' : ''}</article>`,
+          `<article class="pricing-card ${id === 'plus' ? 'plus-plan' : ''}"><div class="pricing-label"><span>${id === 'plus' ? 'Цялата картина' : 'Ежедневието, подредено'}</span>${icon(id === 'plus' ? 'scan' : 'book', 25)}</div><h2>${p.name}</h2><p>${id === 'plus' ? 'Менюто и хранителният ти дневник на едно място.' : 'По-малко време в чудене какво да сготвиш.'}</p><div class="plan-price">${p[interval]} €<span>/ ${annual ? 'година' : 'месец'}</span></div><p class="price-detail">${annual ? `${money(p.yearly / 12)} на месец · ${p.yearly} € наведнъж годишно` : 'Плащане всеки месец'}${annual ? `<br>Спестяваш ${p.monthly * 12 - p.yearly} € спрямо 12 месечни плащания` : ''}</p><ul>${(id === 'menu' ? ['Седмично меню от над 110 рецепти', 'Кето, веган, риба, деца, сензорно щадящо', 'Списък по щандове и режим „Пазарувам“', 'Готвене стъпка по стъпка с таймери'] : ['Всичко от план Меню', 'Хранителен дневник с баркод скенер', 'Протеин, въглехидрати, мазнини и цели', 'Тегло с графика и вода за деня']).map((t) => `<li>${icon('check', 16)}${t}</li>`).join('')}</ul>${button('За този план ' + icon('arrow', 16), 'plan-info', `data-plan="${id}"`, 'button ' + (id === 'plus' ? 'primary' : 'outline') + ' full')}${id === 'plus' ? '<div class="planned-feature">Следващ етап: оценка на ястие по снимка с потвърждение на порцията.</div>' : ''}</article>`,
       )
       .join(
         '',
@@ -265,4 +363,75 @@ export function extraGroceryForm(state, entry = null) {
     store: state.settings.stores[0],
   };
   return `<h2 class="dialog-title">${entry ? 'Редактирай продукта' : 'Добави към покупките'}</h2><form data-form="extra" ${entry ? `data-id="${esc(entry.id)}"` : ''}>${field('Продукт', 'name', e.name, 'text', 'maxlength="100" required')}<div class="form-grid">${field('Количество', 'amount', e.amount, 'number', 'min="0.01" max="100000" step="0.01" required')}<label class="field"><span>Единица</span><select name="unit">${SHOPPING_UNITS.map((u) => `<option ${u === e.unit ? 'selected' : ''}>${u}</option>`).join('')}</select></label>${field('Обща цена за този ред (€), ако я знаеш', 'price', e.price ?? '', 'number', 'min="0" max="100000" step="0.01"')}<label class="field"><span>Магазин</span><select name="store">${[...new Set([...state.settings.stores, e.store])].map((store) => `<option ${store === e.store ? 'selected' : ''}>${esc(store)}</option>`).join('')}</select></label></div><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази продукта</button></form>`;
+}
+
+/** Minutes mentioned in a cooking step ("25–30 минути", "2,5 часа"); the larger value wins. */
+export function stepMinutes(text) {
+  const hours = text.match(/(\d+(?:,\d+)?)\s*час/);
+  if (hours) return Math.round(Number(hours[1].replace(',', '.')) * 60);
+  const minutes = text.match(/(\d+)(?:\s*[–-]\s*(\d+))?\s*мин/);
+  return minutes ? Number(minutes[2] || minutes[1]) : 0;
+}
+export function cookView(r, step, timer) {
+  const total = r.steps.length,
+    text = r.steps[step],
+    minutes = stepMinutes(text),
+    running = timer && timer.id === r.id && timer.step === step;
+  return `<div class="cook-mode"><p class="eyebrow">${esc(r.name)}</p><div class="cook-progress" aria-hidden="true">${r.steps.map((_, i) => `<i class="${i <= step ? 'is-done' : ''}"></i>`).join('')}</div><p class="cook-count">Стъпка ${step + 1} от ${total}</p><p class="cook-text">${esc(text)}</p>${
+    minutes
+      ? `<div class="cook-timer">${
+          running
+            ? `<strong data-timer-left>${timer.label}</strong>${button('Спри таймера', 'cook-timer-stop', '', 'button outline')}`
+            : button(
+                `${icon('clock', 18)} Таймер ${minutes} мин`,
+                'cook-timer',
+                `data-minutes="${minutes}" data-id="${r.id}" data-step="${step}"`,
+                'button outline',
+              )
+        }</div>`
+      : ''
+  }<div class="cook-nav">${step > 0 ? button(icon('back', 18) + ' Назад', 'cook-mode', `data-id="${r.id}" data-step="${step - 1}"`, 'button outline') : '<span></span>'}${
+    step < total - 1
+      ? button(
+          'Следваща ' + icon('arrow', 18),
+          'cook-mode',
+          `data-id="${r.id}" data-step="${step + 1}"`,
+          'button primary',
+        )
+      : button('Готово ' + icon('check', 18), 'cook-done', `data-id="${r.id}"`, 'button primary')
+  }</div></div>`;
+}
+
+export function waterCard(state, date) {
+  const glasses = state.water[date] || 0,
+    goal = 8;
+  return `<section class="water-card"><div class="section-bar"><h2>Вода</h2><span>${num((glasses * WATER_GLASS_ML) / 1000, 2)} л</span></div><div class="water-glasses" role="group" aria-label="Чаши вода за деня">${Array.from({ length: goal }, (_, i) => `<button type="button" class="water-glass ${i < glasses ? 'is-full' : ''}" data-action="water" data-count="${i + 1 === glasses ? i : i + 1}" aria-label="${i + 1} ${i ? 'чаши' : 'чаша'}" aria-pressed="${i < glasses}"><span></span></button>`).join('')}${glasses > goal ? `<b>+${glasses - goal}</b>` : ''}</div><p class="fine">Чаша = ${WATER_GLASS_ML} мл. Докосни чашите, които си изпил днес.${glasses >= goal ? button(' Още една', 'water', `data-count="${glasses + 1}"`, 'quiet') : ''}</p></section>`;
+}
+export function weightCard(state, date) {
+  const list = state.weights;
+  const last = list[list.length - 1];
+  const since = daysBefore(date, 30),
+    month = list.filter((e) => e.date >= since && e.date <= date);
+  const change = month.length > 1 ? month[month.length - 1].kg - month[0].kg : null;
+  let chart = '';
+  const points = list.slice(-20);
+  if (points.length > 1) {
+    const min = Math.min(...points.map((p) => p.kg)) - 0.5,
+      max = Math.max(...points.map((p) => p.kg)) + 0.5,
+      w = 300,
+      h = 90;
+    const xy = points.map((p, i) => [
+      Math.round((i / (points.length - 1)) * w),
+      Math.round(h - ((p.kg - min) / (max - min)) * h),
+    ]);
+    chart = `<svg class="weight-chart" viewBox="-6 -6 ${w + 12} ${h + 12}" role="img" aria-label="Тегло: ${points.map((p) => num(p.kg, 1)).join(', ')} кг"><polyline points="${xy.map((p) => p.join(',')).join(' ')}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${xy.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="${i === xy.length - 1 ? 5 : 3}"/>`).join('')}</svg>`;
+  }
+  return `<section class="weight-card"><div class="section-bar"><h2>Тегло</h2>${button(icon('plus', 16) + ' Запиши', 'weight-form', '', 'quiet')}</div>${
+    last
+      ? `<div class="weight-now"><strong>${num(last.kg, 1)} <small>кг</small></strong><span>${change === null ? 'Запиши отново след няколко дни, за да видиш промяната' : `${change > 0 ? '+' : change < 0 ? '−' : ''}${num(Math.abs(change), 1)} кг за последните 30 дни`}</span></div>${chart}`
+      : '<p class="meal-empty">Записвай теглото си веднъж седмично, по едно и също време.</p>'
+  }</section>`;
+}
+export function weightForm(date, current) {
+  return `<h2 class="dialog-title">Тегло</h2><form data-form="weight"><div class="form-grid">${field('Дата', 'date', date, 'date', 'required')}${field('Килограми', 'kg', current ?? '', 'number', 'min="20" max="400" step="0.1" inputmode="decimal" required')}</div><p class="form-error" role="alert"></p><button class="button primary full" type="submit">Запази</button></form><p class="fine">Само за твоя справка. Приложението не дава медицински препоръки.</p>`;
 }

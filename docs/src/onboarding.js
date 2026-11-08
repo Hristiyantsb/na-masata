@@ -1,5 +1,5 @@
 import { STORES, PRODUCTS, EQUIPMENT, ALLERGENS } from './catalog.js';
-import { GOALS, DIETS, candidates } from './domain.js';
+import { GOALS, DIETS, NEEDS, candidates } from './domain.js';
 import { nutrition } from './nutrition.js';
 import { esc, icon, button, num, foodArt } from './ui.js';
 import { mascot, wordmark } from './brand.js';
@@ -56,7 +56,7 @@ export const CALORIE_OPTIONS = [
   [800, '800'],
 ];
 const PLATE_SCALE = { 0: 1, 400: 0.58, 500: 0.68, 600: 0.78, 700: 0.88, 800: 0.95 };
-const LIST_KEYS = ['stores', 'slots', 'equipment', 'allergens', 'dislikes'];
+const LIST_KEYS = ['stores', 'slots', 'equipment', 'allergens', 'dislikes', 'needs'];
 
 const attrs = (key, value, selected) =>
   `data-action="wizard-pick" data-key="${esc(key)}" data-value="${esc(value)}" aria-pressed="${selected}"`;
@@ -68,7 +68,7 @@ const group = (label, body, note = '') =>
 
 export function isSelected(d, key, value) {
   if (key === 'clear') return !d[value]?.length;
-  if (LIST_KEYS.includes(key)) return d[key].includes(value);
+  if (LIST_KEYS.includes(key)) return (d[key] || []).includes(value);
   return String(d[key]) === String(value);
 }
 
@@ -103,7 +103,15 @@ function stores(d) {
   )}</div><p class="nm-note">Цените в приложението са ориентировъчни, не са от магазина.</p>`;
 }
 
+const DIET_LABELS = {
+  all: 'Ям от всичко',
+  pescatarian: 'Риба, без месо',
+  veggie: 'Вегетарианско',
+  vegan: 'Веганско',
+  keto: 'Кето',
+};
 function direction(d) {
+  const needs = d.needs || [];
   return `<div class="nm-goal-grid">${Object.entries(GOALS)
     .map(([v, [name, sub]]) => {
       const on = d.goal === v;
@@ -111,17 +119,18 @@ function direction(d) {
     })
     .join('')}</div>${group(
     'Режим',
-    `<div class="nm-segmented" role="group" aria-label="Режим">${Object.entries(DIETS)
-      .map(([v, name]) =>
-        chip(
-          'diet',
-          v,
-          v === 'all' ? 'Всичко' : v === 'pescatarian' ? 'Риба' : name,
-          d.diet === v,
-          'nm-seg',
-        ),
-      )
+    `<div class="nm-chips" role="group" aria-label="Режим">${Object.keys(DIETS)
+      .map((v) => chip('diet', v, DIET_LABELS[v] || DIETS[v], d.diet === v))
       .join('')}</div>`,
+  )}${group(
+    'За кого готвим',
+    `<div class="nm-needs">${Object.entries(NEEDS)
+      .map(([v, [name, sub]]) => {
+        const on = needs.includes(v);
+        return `<button type="button" class="nm-need ${on ? 'is-selected' : ''}" ${attrs('needs', v, on)}><span><strong>${esc(name)}</strong><small>${esc(sub)}</small></span><span class="nm-switch" aria-hidden="true"></span></button>`;
+      })
+      .join('')}</div>`,
+    'по желание',
   )}`;
 }
 
@@ -201,6 +210,7 @@ function result(d) {
   const tags = [
     d.stores.slice(0, 2).join(', ') + (d.stores.length > 2 ? ' +' + (d.stores.length - 2) : ''),
     DIETS[d.diet],
+    ...(d.needs || []).map((k) => NEEDS[k][0]),
     d.maxCalories ? `до ${d.maxCalories} ккал` : 'без калориен лимит',
     `${d.people} ${d.people === 1 ? 'човек' : 'души'} · ${d.days} дни`,
   ];

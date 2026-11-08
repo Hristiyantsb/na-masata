@@ -1,5 +1,7 @@
-import { RECIPES, PRODUCTS, MEAT, STORES, EQUIPMENT, ALLERGENS } from './catalog.js';
+import { RECIPES, PRODUCTS, MEAT, SEAFOOD, STORES, EQUIPMENT, ALLERGENS } from './catalog.js';
+import { LARGE_STORES, LARGE_ONLY } from './products-more.js';
 import { nutrition, nutritionMatches } from './nutrition.js';
+export { generatePlan, explainEntry, mainProtein } from './planner.js';
 export const recipe = (id) => RECIPES.find((r) => r.id === id);
 export const GOALS = {
   balanced: ['Балансирано', 'Разнообразни домашни ястия'],
@@ -9,9 +11,19 @@ export const GOALS = {
 };
 export const DIETS = {
   all: 'Без ограничения',
+  pescatarian: 'Риба, без месо',
   veggie: 'Вегетарианско',
   vegan: 'Веган',
-  pescatarian: 'Риба, без месо',
+  keto: 'Кето',
+};
+// Keto: at most this many net carbohydrates (carbs minus fibre) per serving.
+export const KETO_NET_CARBS = 15;
+export const LOWCARB_NET_CARBS = 35;
+// Household needs. Each one is a hard rule, never relaxed to fill a week.
+export const NEEDS = {
+  kids: ['Деца на масата', 'Без люто, познати вкусове'],
+  sensory: ['Сензорно щадящо', 'При АДХД и аутизъм: предвидими текстури, части поотделно'],
+  lowcarb: ['По-малко въглехидрати', 'До 35 г нетни въглехидрати на порция'],
 };
 export const PLANS = Object.freeze({
   menu: { name: 'Меню', monthly: 9, yearly: 90 },
@@ -40,6 +52,7 @@ export function defaults() {
       allergens: [],
       equipment: ['hob', 'oven'],
       dislikes: [],
+      needs: [],
       stores: ['Lidl', 'Kaufland'],
       slots: ['Вечеря'],
     },
@@ -58,6 +71,8 @@ export function defaults() {
     dailyTarget: 0,
     macroTargets: { protein: 0, carbs: 0, fat: 0 },
     savedFoods: [],
+    weights: [],
+    water: {},
   };
 }
 export function settingsErrors(s) {
@@ -84,6 +99,7 @@ export function settingsErrors(s) {
     ['equipment', Object.keys(EQUIPMENT), false],
     ['allergens', Object.keys(ALLERGENS), false],
     ['dislikes', Object.keys(PRODUCTS), false],
+    ['needs', Object.keys(NEEDS), false],
   ]) {
     if (
       !Array.isArray(s[key]) ||
@@ -96,16 +112,29 @@ export function settingsErrors(s) {
   }
   return errors;
 }
+// A product is buyable when at least one chosen chain reliably stocks it.
+export const storesCarry = (k, stores) =>
+  !LARGE_ONLY.includes(k) || stores.some((store) => LARGE_STORES.includes(store));
 export function matches(r, s) {
   const keys = Object.keys(r.ing);
+  const needs = s.needs || [];
+  const n = nutrition(r);
   return (
     nutritionMatches(r, s) &&
-    !(s.diet === 'veggie' && keys.some((k) => MEAT.includes(k))) &&
+    !(
+      (s.diet === 'veggie' || s.diet === 'vegan') &&
+      keys.some((k) => MEAT.includes(k) || SEAFOOD.includes(k))
+    ) &&
     !(s.diet === 'vegan' && keys.some((k) => PRODUCTS[k][5])) &&
-    !(s.diet === 'pescatarian' && keys.some((k) => ['chicken', 'mince'].includes(k))) &&
+    !(s.diet === 'pescatarian' && keys.some((k) => MEAT.includes(k))) &&
+    !(s.diet === 'keto' && n.netCarbs > KETO_NET_CARBS) &&
+    !(needs.includes('lowcarb') && n.netCarbs > LOWCARB_NET_CARBS) &&
+    !(needs.includes('sensory') && !r.tags?.includes('sensory')) &&
+    !(needs.includes('kids') && keys.includes('chili')) &&
     !keys.some(
       (k) => s.dislikes.includes(k) || PRODUCTS[k][4].some((a) => s.allergens.includes(a)),
     ) &&
+    keys.every((k) => storesCarry(k, s.stores)) &&
     r.equipment.every((k) => s.equipment.includes(k))
   );
 }
@@ -148,60 +177,14 @@ export function groceries(state, plan = state.plan) {
         left: have + packs * size - need,
         store: state.settings.stores.includes(state.storeFor[k])
           ? state.storeFor[k]
-          : state.settings.stores[0],
+          : state.settings.stores.find((store) => storesCarry(k, [store])) ||
+            state.settings.stores[0],
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'bg'));
 }
 export const total = (state, plan = state.plan) =>
   groceries(state, plan).reduce((s, r) => s + r.cost, 0);
-/** Finite candidate search. Hard dietary/equipment limits are NEVER relaxed. */
-export function generatePlan(state, random = Math.random) {
-  const pool = candidates(state.settings);
-  if (!pool.length)
-    return {
-      plan: null,
-      reason: 'Няма рецепти за тези ограничения. Промени избора си; няма да го пренебрегнем.',
-    };
-  let best = null,
-    bestScore = Infinity;
-  for (let attempt = 0; attempt < 24; attempt++) {
-    const plan = [],
-      used = new Map();
-    for (let day = 0; day < state.settings.days; day++)
-      for (const slot of state.settings.slots) {
-        const unused = pool.filter((r) => !used.has(r.id)),
-          options = unused.length ? unused : pool;
-        const before = total(state, plan);
-        const ranked = options
-          .map((r) => {
-            const e = { id: r.id, day, slot, people: state.settings.people };
-            return {
-              e,
-              score: total(state, [...plan, e]) - before + (used.get(r.id) || 0) * 8 + random() * 5,
-            };
-          })
-          .sort((a, b) => a.score - b.score);
-        const e = ranked[0].e;
-        plan.push(e);
-        used.set(e.id, (used.get(e.id) || 0) + 1);
-      }
-    const cost = total(state, plan),
-      over = Math.max(0, cost - state.settings.budget),
-      previous = new Set(state.plan.map((e) => e.id));
-    const score = over * 20 + cost + plan.filter((e) => previous.has(e.id)).length * 0.3;
-    if (score < bestScore) {
-      best = plan;
-      bestScore = score;
-    }
-  }
-  return {
-    plan: best,
-    cost: total(state, best),
-    withinBudget: total(state, best) <= state.settings.budget,
-    available: pool.length,
-  };
-}
 export function planSnapshot(state) {
   return structuredClone({
     plan: state.plan,
@@ -296,6 +279,20 @@ export function diaryEntry(input) {
       typeof input.barcode === 'string' && isValidBarcode(input.barcode) ? input.barcode : null,
   };
 }
+export const WATER_GLASS_ML = 250;
+export function weightEntry(input) {
+  const kg = Number(input?.kg);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input?.date || '') || !Number.isFinite(kg) || kg < 20 || kg > 400)
+    throw Error('Теглото е от 20 до 400 кг с валидна дата.');
+  return { date: input.date, kg: Math.round(kg * 10) / 10 };
+}
+/** Adds or replaces the weight for a date; returns a new sorted list. */
+export function withWeight(list, input) {
+  const entry = weightEntry(input);
+  return [...list.filter((e) => e.date !== entry.date), entry].sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+}
 export function diaryTotals(entries) {
   return entries.reduce(
     (s, e) => ({
@@ -329,7 +326,7 @@ export function normalizeState(raw) {
   d.settings = { ...d.settings, ...raw.settings };
   if (settingsErrors(d.settings).length) throw Error('Копието съдържа невалидни настройки.');
   d.settings = Object.fromEntries(Object.keys(defaults().settings).map((k) => [k, d.settings[k]]));
-  for (const k of ['stores', 'slots', 'allergens', 'dislikes', 'equipment'])
+  for (const k of ['stores', 'slots', 'allergens', 'dislikes', 'equipment', 'needs'])
     d.settings[k] = [...new Set(d.settings[k])];
   if (!Array.isArray(raw.plan) || raw.plan.length > 14) throw Error('Невалидно меню.');
   d.plan = raw.plan.map((e) => {
@@ -394,6 +391,21 @@ export function normalizeState(raw) {
   )
     throw Error('Невалидна библиотека с храни.');
   d.savedFoods = (raw.savedFoods || []).map(diaryEntry);
+  if (raw.weights !== undefined && (!Array.isArray(raw.weights) || raw.weights.length > 3000))
+    throw Error('Невалиден запис за тегло.');
+  d.weights = (raw.weights || []).map(weightEntry).sort((a, b) => a.date.localeCompare(b.date));
+  if (new Set(d.weights.map((e) => e.date)).size !== d.weights.length)
+    throw Error('Дублирано тегло.');
+  for (const [day, glasses] of Object.entries(raw.water || {})) {
+    if (
+      !/^\d{4}-\d{2}-\d{2}$/.test(day) ||
+      !Number.isInteger(glasses) ||
+      glasses < 0 ||
+      glasses > 30
+    )
+      throw Error('Невалиден запис за вода.');
+    if (glasses) d.water[day] = glasses;
+  }
   if (new Set(d.savedFoods.map((e) => e.id)).size !== d.savedFoods.length)
     throw Error('Дублирани храни в библиотеката.');
   return d;

@@ -1,4 +1,6 @@
-'use strict';
+import { MORE_PRODUCTS } from './products-more.js';
+import { MORE_RECIPES } from './recipes-more.js';
+('use strict');
 // Original Bulgarian recipe catalogue; prices are editable examples, not retailer quotations.
 export const STORES = ['Lidl', 'Kaufland', 'BILLA', 'METRO', 'Фантастико', 'T MARKET'];
 // name, package quantity, unit, illustrative package price EUR, allergens, animal origin
@@ -403,7 +405,9 @@ export const ALLERGENS = {
   fish: 'Риба',
   nuts: 'Ядки',
 };
-export const MEAT = ['chicken', 'mince', 'fish'];
+// Land meat and seafood are separate so pescatarian and vegetarian rules stay exact.
+export const MEAT = ['chicken', 'mince', 'chickenthigh', 'pork', 'beef', 'turkey', 'bacon'];
+export const SEAFOOD = ['fish', 'salmon', 'mackerel', 'hake', 'tuna', 'shrimp'];
 
 // Additional appliance-specific recipes. No automatic substitution of cooking equipment.
 EQUIPMENT.airfryer = 'Еърфрайър';
@@ -519,3 +523,9 @@ RECIPES.push(
     ],
   },
 );
+
+// Larger catalogue: products sold in all six chains and recipes written for them.
+ALLERGENS.shellfish = 'Ракообразни';
+ALLERGENS.sesame = 'Сусам';
+Object.assign(PRODUCTS, MORE_PRODUCTS);
+RECIPES.push(...MORE_RECIPES);
