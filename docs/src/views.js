@@ -22,7 +22,7 @@ import {
   shoppingSummary,
 } from './domain.js';
 import { mascot, wordmark } from './brand.js';
-import { esc, icon, button, money, num, heading, foodArt, empty, field, badge } from './ui.js';
+import { esc, icon, button, money, num, heading, foodArt, empty, field, badge, dayName } from './ui.js';
 export function shell(page, content, connectivity = {}) {
   const items = [
     ['plan', 'plan', 'Меню'],
@@ -30,9 +30,15 @@ export function shell(page, content, connectivity = {}) {
     ['shopping', 'bag', 'Покупки'],
     ['diary', 'diary', 'Дневник'],
   ];
-  return `<a class="skip-link" href="#content">Към съдържанието</a><aside class="sidebar"><a class="wordmark" href="#plan" aria-label="На маса, към менюто">${wordmark()}</a><p class="sidebar-caption">Меню, рецепти и покупки.</p><nav aria-label="Основно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}</nav><div class="sidebar-bottom"><a class="plan-link" href="#plans"><span class="plan-seal">${mascot(32)}</span><span><b>Твоят На маса</b><small>Всичко на едно място</small></span>${icon('arrow', 16)}</a><a class="settings-link" href="#settings">${icon('settings', 18)}Настройки и данни</a></div></aside><main id="content" tabindex="-1"><div class="topbar"><a class="mobile-wordmark" href="#plan" aria-label="На маса, към менюто">${wordmark()}</a><span class="preview-label"><i></i> На това устройство</span><a href="#settings">Настройки ${icon('arrow', 14)}</a></div><div id="connection-status" class="connection-status" role="status" ${!connectivity.offline && !connectivity.update ? 'hidden' : ''}>${connectivity.offline ? '<span>Без интернет · локален режим</span>' : ''}${connectivity.update ? button('Нова версия · Обнови', 'app-update', '', 'quiet') : ''}</div>${content}<footer><span>На маса · България</span><a href="#privacy">Поверителност</a><span>България · EUR</span></footer></main><nav class="mobile-nav" aria-label="Мобилно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}<a href="#settings" ${page === 'settings' ? 'aria-current="page"' : ''}>${icon('settings')}<span>Още</span></a></nav>`;
+  return `<a class="skip-link" href="#content">Към съдържанието</a><aside class="sidebar"><a class="wordmark" href="#plan" aria-label="На маса, към менюто">${wordmark()}</a><p class="sidebar-caption">Меню, рецепти и покупки.</p><nav aria-label="Основно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}</nav><div class="sidebar-bottom"><a class="plan-link" href="#plans"><span class="plan-seal">${mascot('calm', 40)}</span><span><b>Твоят На маса</b><small>Всичко на едно място</small></span>${icon('arrow', 16)}</a><a class="settings-link" href="#settings">${icon('settings', 18)}Настройки и данни</a></div></aside><main id="content" tabindex="-1"><div class="topbar"><a class="mobile-wordmark" href="#plan" aria-label="На маса, към менюто">${wordmark()}</a><span class="preview-label"><i></i> На това устройство</span><a href="#settings">Настройки ${icon('arrow', 14)}</a></div><div id="connection-status" class="connection-status" role="status" ${!connectivity.offline && !connectivity.update ? 'hidden' : ''}>${connectivity.offline ? '<span>Без интернет · локален режим</span>' : ''}${connectivity.update ? button('Нова версия · Обнови', 'app-update', '', 'quiet') : ''}</div>${content}<footer><span>На маса · България</span><a href="#privacy">Поверителност</a><span>България · EUR</span></footer></main><nav class="mobile-nav" aria-label="Мобилно меню">${items.map(([id, i, n]) => `<a href="#${id}" ${id === page ? 'aria-current="page"' : ''}>${icon(i)}<span>${n}</span></a>`).join('')}<a href="#settings" ${page === 'settings' ? 'aria-current="page"' : ''}>${icon('settings')}<span>Още</span></a></nav>`;
 }
 export function planView(state, undo) {
+  return withMascot(planViewInner(state, undo), state.plan.length ? 'serve' : 'curious');
+}
+function withMascot(html, pose) {
+  return html.replace('<header class="page-heading">', `<header class="page-heading has-mascot">${mascot(pose, 120, 'heading-mascot')}`);
+}
+function planViewInner(state, undo) {
   const s = state.settings,
     cost = total(state),
     rows = groceries(state).filter((r) => r.packs);
@@ -40,7 +46,7 @@ export function planView(state, undo) {
   return (
     heading(
       'Седмично меню',
-      'Твоята вкусна седмица',
+      'Твоята седмица',
       `${s.people} ${s.people === 1 ? 'човек' : 'души'} · ${s.days} дни`,
       button(icon('settings', 16) + ' Предпочитания', 'wizard', '', 'button outline'),
     ) +
@@ -58,7 +64,7 @@ export function planView(state, undo) {
   <div class="week-days">${days
     .map(
       (day) =>
-        `<section class="plan-day"><h2 class="day-heading"><span>Ден ${day + 1}</span><span>${state.plan
+        `<section class="plan-day"><h2 class="day-heading"><span>${dayName(day)}</span><span>${state.plan
           .filter((e) => e.day === day)
           .map((e) => e.slot)
           .join(' и ')}</span></h2>${state.plan

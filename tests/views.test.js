@@ -111,7 +111,7 @@ test('custom shopping names remain escaped and missing prices are explicitly dis
     },
   ];
   const d = safeMarkup(views.shoppingView(state));
-  assert.equal(d.querySelectorAll('img').length, 0);
+  assert.equal(d.querySelectorAll('img:not([src^="assets/"])').length, 0);
   assert.match(d.body.textContent, /1 продукта без цена/);
   assert.equal(d.querySelectorAll('[data-change="extra-checked"]').length, 1);
   safeMarkup(views.extraGroceryForm(state, state.extras[0]));

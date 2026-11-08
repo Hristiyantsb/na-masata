@@ -2,12 +2,12 @@
 
 Прочети HANDOFF.md преди работа и отваряй само файловете за конкретната задача. Използвай скриптовете за QA, не предполагай production готовност.
 
-Текуща версия 0.9.0: локален режим. Не активирай Cloudflare; следвай HANDOFF.md.
+Текуща версия 0.10.0: локален режим. Не активирай Cloudflare; следвай HANDOFF.md.
 
 ## Репозиторий и продукт
 - Hristiyantsb/na-masata, GitHub Pages main:/docs, frontend native JS/CSS, Worker+D1 в server/.
 - Видимо име: **На маса**. Името на репото и Pages path /na-masata/ са различно нещо; не замествай технически ключове за localStorage и PWA без migration.
-- Бранд: маскот дървена маса с очи (docs/src/brand.js, векторен) + wordmark „на маса“ в Lora 700. Акцент forest green #013c26, топли неутрални повърхности. Токените са в docs/assets/brand.css (последният CSS слой). Без eDish имена никъде във видимия продукт.
+- Бранд: wordmark assets/wordmark.webp и иконка brand-icon-*.png от потребителя; маскотът (дървена маса с очи) е в 10 пози в assets/mascot/*.webp, ползвай brand.js mascot(pose). Чисто бял фон, системен шрифт (SF на Apple), акцент #013c26. Токените са в docs/assets/brand.css. Баджовете на магазините са в docs/src/stores.js (цветове на веригите, не оригинални логота). Без eDish имена.
 - Без преход към React/Expo без реална нужда. Реалните Stripe/Supabase/Apple/OFF и Worker не са активирани в статичното демо.
 
 ## Твърди правила
@@ -28,7 +28,7 @@ npm run check
 Commit-ни docs/sw.js след промяна. Ако CI дава Offline bundle is stale, изпълни build:offline и commit-ни новия bundle.
 
 ## Бърз маршрут по файлове
-- Onboarding (7 екрана: начало, магазини, насоченост, уреди, без това, калории и порции, резултат): docs/src/onboarding.js, docs/src/brand.js, docs/assets/onboarding.css.
+- Onboarding (7 екрана): docs/src/onboarding.js, docs/src/brand.js, docs/src/stores.js, docs/assets/onboarding.css. Изборите се обновяват на място чрез syncWizard (без повторен render), за да не се губят анимации и фокус.
 - Mobile: docs/assets/mobile-polish.css, docs/assets/app.css, docs/src/views.js.
 - Diary: docs/src/fitness.js, docs/src/servings.js, docs/src/diary-sync.js.
 - Auth/API: docs/src/auth.js, docs/src/api.js, server/worker.js, server/diary.js, server/cloud.js.

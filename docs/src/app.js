@@ -40,8 +40,8 @@ import {
   privacyView,
   extraGroceryForm,
 } from './views.js';
-import { wizardView, previewRecipes, buildingView, LAST_STEP } from './onboarding.js';
-import { esc, icon, button, money, num, field } from './ui.js';
+import { wizardView, previewRecipes, buildingView, syncWizard, LAST_STEP } from './onboarding.js';
+import { esc, icon, button, money, num, field, dayName } from './ui.js';
 import { Scanner } from './scanner.js';
 import { lookupBarcode, searchProducts, setTokenProvider, request } from './api.js';
 import {
@@ -167,6 +167,7 @@ function render() {
       wizard.step,
       wizard.error,
       state.onboarded || state.plan.length > 0,
+      wizard.dir,
     );
     document.body.classList.add('onboarding');
     return;
@@ -322,7 +323,7 @@ function chooseMealDestination(el, mode) {
   const from = Number(el.dataset.index),
     current = recipe(state.plan[from].id);
   modal(
-    `<p class="eyebrow">${mode === 'move' ? 'Премести ястие' : 'Повтори ястие'}</p><h2 class="dialog-title">${esc(current.name)}</h2><p class="muted">${mode === 'move' ? 'Избери хранене, с което да разменим местата.' : 'Избери кое хранене да заменим със същото ястие. Количествата за покупки ще се преизчислят.'}</p><div class="destination-list">${state.plan.map((entry, to) => (to === from ? '' : button(`<span>Ден ${entry.day + 1} · ${entry.slot}</span><b>${esc(recipe(entry.id).name)}</b>${icon('arrow', 16)}`, 'place-meal', `data-from="${from}" data-to="${to}" data-mode="${mode}"`, 'destination-option'))).join('')}</div>${state.plan.length < 2 ? '<p>Добави още дни или хранения от предпочитанията.</p>' : ''}`,
+    `<p class="eyebrow">${mode === 'move' ? 'Премести ястие' : 'Повтори ястие'}</p><h2 class="dialog-title">${esc(current.name)}</h2><p class="muted">${mode === 'move' ? 'Избери хранене, с което да разменим местата.' : 'Избери кое хранене да заменим със същото ястие. Количествата за покупки ще се преизчислят.'}</p><div class="destination-list">${state.plan.map((entry, to) => (to === from ? '' : button(`<span>${dayName(entry.day)} · ${entry.slot}</span><b>${esc(recipe(entry.id).name)}</b>${icon('arrow', 16)}`, 'place-meal', `data-from="${from}" data-to="${to}" data-mode="${mode}"`, 'destination-option'))).join('')}</div>${state.plan.length < 2 ? '<p>Добави още дни или хранения от предпочитанията.</p>' : ''}`,
   );
 }
 function showFoodPicker() {
@@ -526,6 +527,7 @@ const actions = {
   'wizard-back': () => {
     if (wizard.step) {
       wizard.step--;
+      wizard.dir = 'back';
       wizard.error = '';
       render();
       window.scrollTo(0, 0);
@@ -537,6 +539,7 @@ const actions = {
   'wizard-step': (el) => {
     const index = Number(el.dataset.index);
     if (!Number.isInteger(index) || index < 0 || index > LAST_STEP) return;
+    wizard.dir = index < wizard.step ? 'back' : 'forward';
     wizard.step = index;
     wizard.error = '';
     render();
@@ -550,15 +553,23 @@ const actions = {
       d[key] = d[key].includes(value) ? d[key].filter((v) => v !== value) : [...d[key], value];
     else d[key] = ['days', 'maxTime', 'maxCalories'].includes(key) ? Number(value) : value;
     wizard.error = '';
-    render();
-    // Keep keyboard focus on the selected option after replacing the screen.
-    Array.from(root.querySelectorAll('[data-action="wizard-pick"]'))
-      .find((node) => node.dataset.key === key && node.dataset.value === value)
-      ?.focus({ preventScroll: true });
+    const error = root.querySelector('.nm-error');
+    if (error) error.textContent = '';
+    // Update in place: the screen keeps its scroll, focus and running animations.
+    syncWizard(root, d, wizard.step, key);
+    if (navigator.userActivation?.isActive) navigator.vibrate?.(8);
   },
   counter: (el) => {
     wizard.draft.people = Math.max(1, Math.min(12, wizard.draft.people + Number(el.dataset.delta)));
-    render();
+    syncWizard(root, wizard.draft, wizard.step, 'people');
+    if (navigator.userActivation?.isActive) navigator.vibrate?.(8);
+  },
+  'mascot-poke': (el) => {
+    const img = el.querySelector('.mascot');
+    if (!img) return;
+    img.classList.remove('is-wiggling');
+    void img.offsetWidth;
+    img.classList.add('is-wiggling');
   },
   'wizard-budget': (el) => {
     wizard.draft.budget = Number(el.dataset.value);
@@ -681,7 +692,7 @@ const actions = {
       'na-masa-menu.txt',
       'На маса\n\n' +
         state.plan
-          .map((e) => `Ден ${e.day + 1} · ${e.slot}: ${recipe(e.id).name} (${e.people} порции)`)
+          .map((e) => `${dayName(e.day)} · ${e.slot}: ${recipe(e.id).name} (${e.people} порции)`)
           .join('\n') +
         '\n\n' +
         shoppingText(),
@@ -1007,6 +1018,7 @@ document.addEventListener('submit', async (event) => {
         }
         if (step < LAST_STEP) {
           wizard.step += 1;
+          wizard.dir = 'forward';
           wizard.error = '';
           render();
           root.querySelector('.nm-heading')?.focus({ preventScroll: true });

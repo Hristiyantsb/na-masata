@@ -3,6 +3,8 @@ export const esc = (value) =>
     /[&<>"']/g,
     (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
   );
+export const WEEKDAYS = ['Понеделник', 'Вторник', 'Сряда', 'Четвъртък', 'Петък', 'Събота', 'Неделя'];
+export const dayName = (i) => WEEKDAYS[i % 7];
 export const money = (n) =>
   new Intl.NumberFormat('bg-BG', { style: 'currency', currency: 'EUR' }).format(n);
 export const num = (n, d = 0) =>
@@ -61,8 +63,12 @@ export function foodArt(r) {
     .filter(([k]) => FOOD_COLORS[k] && !SKIP.has(k))
     .sort((a, b) => b[1] - a[1])
     .map(([k]) => k);
-  const base = FOOD_COLORS[keys[0]] || '#e7c27a';
-  const accents = (keys.length > 1 ? keys.slice(1, 5) : keys).map((k) => FOOD_COLORS[k]);
+  // The main ingredient sets the base; sauces and aromatics become garnish.
+  const SAUCE = ['tomato', 'canned', 'onion', 'pepper', 'garlic', 'lemon', 'paprika'];
+  const hero = keys.find((k) => !SAUCE.includes(k)) || keys[0];
+  const rest = keys.filter((k) => k !== hero);
+  const base = FOOD_COLORS[hero] || '#e7c27a';
+  const accents = (rest.length ? rest.slice(0, 4) : [hero]).map((k) => FOOD_COLORS[k]);
   let seed = [...r.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
   const rand = () => ((seed = (seed * 1103515245 + 12345) >>> 0) % 1000) / 1000;
   let bits = '';
@@ -80,12 +86,12 @@ export function foodArt(r) {
   }
   const herb = keys.find((k) => ['parsley', 'dill', 'savory', 'spinach'].includes(k));
   if (herb) bits += `<path d="M33 20c3-2 6-1 7 1-2 2-5 2-7-1zm-2 3c-1-3 0-6 3-6 1 3 0 5-3 6z" fill="${FOOD_COLORS[herb]}"/>`;
-  return `<div class="food-art" aria-hidden="true"><svg viewBox="0 0 56 56" width="100%" height="100%"><circle cx="28" cy="29.5" r="25" fill="#1f2420" opacity=".08"/><circle cx="28" cy="28" r="25" fill="#fff"/><circle cx="28" cy="28" r="25" fill="none" stroke="#1f2420" stroke-opacity=".08"/><circle cx="28" cy="28" r="18.5" fill="${base}"/><circle cx="28" cy="28" r="18.5" fill="url(#fa-shade)"/>${bits}<defs><radialGradient id="fa-shade" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></radialGradient></defs></svg></div>`;
+  return `<div class="food-art" aria-hidden="true"><svg viewBox="0 0 56 56" width="100%" height="100%"><circle cx="28" cy="29.5" r="25" fill="#1f2420" opacity=".08"/><circle cx="28" cy="28" r="25" fill="#fff"/><circle cx="28" cy="28" r="25" fill="none" stroke="#1f2420" stroke-opacity=".08"/><circle cx="28" cy="28" r="18.5" fill="${base}" stroke="#1f2420" stroke-opacity=".08"/><circle cx="28" cy="28" r="18.5" fill="url(#fa-shade)"/>${bits}<defs><radialGradient id="fa-shade" cx=".38" cy=".32" r=".8"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".12"/></radialGradient></defs></svg></div>`;
 }
 export const badge = (text) => `<span class="badge">${esc(text)}</span>`;
 export const heading = (eyebrow, title, sub, action = '') =>
   `<header class="page-heading"><div><p class="eyebrow">${eyebrow}</p><h1>${title}</h1>${sub ? `<p class="muted">${sub}</p>` : ''}</div>${action}</header>`;
 export const empty = (title, text, action = '') =>
-  `<section class="empty"><span class="empty-icon">${icon('leaf', 32)}</span><h2>${title}</h2><p>${text}</p>${action}</section>`;
+  `<section class="empty"><img class="mascot" src="assets/mascot/sleepy.webp" width="160" height="160" alt="" aria-hidden="true" decoding="async"><h2>${title}</h2><p>${text}</p>${action}</section>`;
 export const field = (label, name, value, type = 'text', extra = '') =>
   `<label class="field"><span>${label}</span><input name="${name}" type="${type}" value="${esc(value)}" ${extra}></label>`;
