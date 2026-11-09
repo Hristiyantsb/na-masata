@@ -127,6 +127,19 @@ test('the real controller runs the week, the shopping list and the diary', async
   await submit('[data-form="weight"]');
   assert.equal(saved().weights[0].kg, 72.4);
 
+  // daily goal helper: weight comes from the diary, the rest is typed in
+  await click('daily-target');
+  const goal = sheet.querySelector('[data-form="goal-calc"]');
+  assert.equal(goal.querySelector('[name="weight"]').value, '72.4');
+  goal.querySelector('[name="age"]').value = '35';
+  goal.querySelector('[name="height"]').value = '165';
+  await submit('[data-form="goal-calc"]');
+  assert.equal(saved().dailyTarget, 1950);
+  assert.equal(saved().profile.activity, 'light');
+  assert.deepEqual(saved().macroTargets, { protein: 98, carbs: 244, fat: 65 });
+  assert.equal(saved().weights.length, 1, 'same weight, no duplicate entry');
+  assert.match(app.textContent, /Остават/);
+
   // food search, quick calories and a barcode, like a food tracker
   await click('add-food', { meal: 'Закуска' });
   const search = sheet.querySelector('[data-input="food-search"]');

@@ -1,7 +1,7 @@
 // Food diary (Меню Плюс). Records what was eaten; it never sets a calorie goal by itself.
 import { NUTRIENTS, nutritionTotals, weekDates } from './fitness.js';
 import { searchLocal } from './foods.js';
-import { MEALS, daysBefore, WATER_GLASS_ML } from './domain.js';
+import { MEALS, daysBefore, WATER_GLASS_ML, ACTIVITY, WEIGHT_GOALS, PACES, CALORIE_FLOOR, calorieGoal } from './domain.js';
 import { measureOptions, displayQuantity, suggestedServingQuantity } from './servings.js';
 import { esc, icon, num, SHORT_DAYS, plural } from './ui.js';
 import { mascot } from './brand.js';
@@ -73,7 +73,7 @@ export function diaryView(state, date, today) {
     (_, i) =>
       `<button type="button" class="glass ${i < water ? 'is-full' : ''}" data-action="water" data-count="${i + 1 === water ? i : i + 1}" aria-pressed="${i < water}" aria-label="${plural(i + 1, 'чаша', 'чаши')}"><span></span></button>`,
   ).join('')}${water > 8 ? `<b class="glass-more">+${water - 8}</b>` : ''}</div><p class="fine">Чаша = ${WATER_GLASS_ML} мл. Докосни, за да отбележиш.</p></section>`;
-  return `<header class="page-head"><div class="page-head-text"><p class="eyebrow">Меню Плюс · демо</p><h1>Дневник</h1><p class="page-meta">${esc(todayLabel(date, today))}</p></div><button type="button" class="btn btn-primary btn-small" data-action="add-food">${icon('plus', 18)} Добави</button></header>${weekStrip(state, date, today)}<section class="card day-card">${ring(totals.kcal, target)}<div class="day-side">${macroBars(state, totals)}<div class="day-links"><button type="button" class="btn btn-plain btn-small" data-action="daily-target">${target ? 'Смени целта' : 'Задай цел'}</button><button type="button" class="btn btn-plain btn-small" data-action="macro-targets">Цели за макроси</button></div></div>${equation(totals.kcal, target)}${missing ? `<p class="fine day-note">* Някои записи нямат стойност за всички макроси.</p>` : ''}</section>${meals}${waterCard}${weightCard(state, date)}${weekChart(state, date)}<section class="list-group"><h2>Данни</h2><div class="list"><button type="button" class="list-row" data-action="export-diary"><span class="list-ic">${icon('download', 20)}</span><span class="list-text"><b>Изтегли дневника</b><small>CSV за Excel и Google Sheets</small></span>${icon('chevron', 18)}</button><label class="list-row"><span class="list-ic">${icon('upload', 20)}</span><span class="list-text"><b>Внеси записи</b><small>JSON от приложението adios</small></span>${icon('chevron', 18)}<input type="file" accept="application/json,.json" data-change="import-adios" class="sr-only"></label></div></section><p class="fine">Дневникът записва, не съветва. Не задаваме калорийна цел вместо теб.</p>`;
+  return `<header class="page-head"><div class="page-head-text"><p class="eyebrow">Меню Плюс · демо</p><h1>Дневник</h1><p class="page-meta">${esc(todayLabel(date, today))}</p></div><button type="button" class="btn btn-primary btn-small" data-action="add-food">${icon('plus', 18)} Добави</button></header>${weekStrip(state, date, today)}<section class="card day-card">${ring(totals.kcal, target)}<div class="day-side">${macroBars(state, totals)}<div class="day-links"><button type="button" class="btn btn-plain btn-small" data-action="daily-target">${target ? 'Смени целта' : 'Задай цел'}</button><button type="button" class="btn btn-plain btn-small" data-action="macro-targets">Цели за макроси</button></div></div>${equation(totals.kcal, target)}${missing ? `<p class="fine day-note">* Някои записи нямат стойност за всички макроси.</p>` : ''}</section>${meals}${waterCard}${weightCard(state, date)}${weekChart(state, date)}<section class="list-group"><h2>Данни</h2><div class="list"><button type="button" class="list-row" data-action="export-diary"><span class="list-ic">${icon('download', 20)}</span><span class="list-text"><b>Изтегли дневника</b><small>CSV за Excel и Google Sheets</small></span>${icon('chevron', 18)}</button><label class="list-row"><span class="list-ic">${icon('upload', 20)}</span><span class="list-text"><b>Внеси записи</b><small>JSON от приложението adios</small></span>${icon('chevron', 18)}<input type="file" accept="application/json,.json" data-change="import-adios" class="sr-only"></label></div></section><p class="fine">Целта е твоя: въведи я или я пресметни ориентировъчно от „Задай цел“. Числата не са медицински съвет.</p>`;
 }
 
 function weekChart(state, date) {
@@ -119,8 +119,63 @@ export function weightForm(date, current) {
   return `<h2 class="sheet-title">Тегло</h2><form data-form="weight"><div class="form-grid"><label class="field"><span>Дата</span><input name="date" type="date" value="${date}" required></label><label class="field"><span>Килограми</span><input name="kg" type="number" inputmode="decimal" min="20" max="400" step="0.1" value="${current ?? ''}" required></label></div><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запази</button></form><p class="fine">Само за твоя справка. Приложението не дава медицински съвети.</p>`;
 }
 
+const ok = (v) => v !== '' && v !== null && v !== undefined;
+
+/** Live preview of the calculated goal; neutral until the numbers are filled in. */
+export function goalPreview(values) {
+  if (!ok(values.age) || !ok(values.height) || !ok(values.weight))
+    return '<p class="goal-line">Попълни възраст, ръст и тегло, за да видиш целта.</p>';
+  try {
+    const g = calorieGoal(values);
+    const change = g.change
+      ? `${g.change < 0 ? 'минус' : 'плюс'} ${num(Math.abs(g.change))} ккал за ${num(g.profile.pace, 2)} кг седмично`
+      : 'без промяна на теглото';
+    return `<p class="eyebrow">Твоята цел</p><p class="goal-kcal"><b>${num(g.target)}</b> ккал на ден</p><p class="goal-line">За поддържане около ${num(g.maintenance)} ккал, ${change}.</p>${
+      g.floorApplied
+        ? `<p class="goal-line is-warn">Не предлагаме цел под ${num(CALORIE_FLOOR[g.profile.sex])} ккал на ден. За по-бързо отслабване говори с лекар.</p>`
+        : ''
+    }<div class="goal-macros" aria-label="Макроси на ден"><div><b>${g.macros.protein} г</b><small>протеин</small></div><div><b>${g.macros.carbs} г</b><small>въглехидрати</small></div><div><b>${g.macros.fat} г</b><small>мазнини</small></div></div>`;
+  } catch (error) {
+    return `<p class="goal-line is-warn">${esc(error.message)}</p>`;
+  }
+}
+
+const pick = (name, value, label, sub, checked) =>
+  `<label class="pick"><input type="radio" name="${name}" value="${value}" ${checked ? 'checked' : ''}><span><b>${esc(label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></label>`;
+export const paceOptions = (goal, current) =>
+  (PACES[goal] || PACES.lose).map((v) => pick('pace', v, `${num(v, 2)} кг`, 'на седмица', Number(current) === v)).join('');
+
+export function goalValues(state) {
+  const p = state.profile || {};
+  return {
+    sex: p.sex || 'female',
+    age: p.age ?? '',
+    height: p.height ?? '',
+    weight: state.weights.at(-1)?.kg ?? p.weight ?? '',
+    activity: p.activity || 'light',
+    goal: p.goal || 'keep',
+    pace: p.pace || 0.5,
+  };
+}
+
+export function goalSheet(state, mode = 'calc') {
+  const tabs = `<div class="seg seg-2" role="group" aria-label="Как да зададеш целта"><button type="button" class="seg-item" data-action="goal-mode" data-mode="calc" aria-pressed="${mode !== 'manual'}">Пресметни</button><button type="button" class="seg-item" data-action="goal-mode" data-mode="manual" aria-pressed="${mode === 'manual'}">Въведи сам</button></div>`;
+  if (mode === 'manual') return `<h2 class="sheet-title">Дневна цел</h2>${tabs}${manualTarget(state)}`;
+  const values = goalValues(state);
+  return `<h2 class="sheet-title">Дневна цел</h2><p class="sheet-sub">Пресмятаме ориентировъчно колко калории на ден ти трябват. Числото можеш да смениш по всяко време.</p>${tabs}<form data-form="goal-calc" novalidate><fieldset class="field"><legend>Целта ти</legend><div class="picks picks-3">${Object.entries(WEIGHT_GOALS)
+    .map(([k, label]) => pick('goal', k, label, '', values.goal === k))
+    .join('')}</div></fieldset><fieldset class="field" data-pace ${values.goal === 'keep' ? 'hidden' : ''}><legend>Темпо</legend><div class="picks picks-3" data-pace-options>${paceOptions(values.goal === 'gain' ? 'gain' : 'lose', values.pace)}</div></fieldset><div class="form-grid"><label class="field"><span>Пол</span><select name="sex"><option value="female" ${values.sex === 'female' ? 'selected' : ''}>Жена</option><option value="male" ${values.sex === 'male' ? 'selected' : ''}>Мъж</option></select></label><label class="field"><span>Възраст</span><input name="age" type="number" inputmode="numeric" min="18" max="100" step="1" value="${esc(values.age)}"></label><label class="field"><span>Ръст, см</span><input name="height" type="number" inputmode="numeric" min="120" max="230" step="1" value="${esc(values.height)}"></label><label class="field"><span>Тегло, кг</span><input name="weight" type="number" inputmode="decimal" min="35" max="300" step="0.1" value="${esc(values.weight)}"></label></div><fieldset class="field"><legend>Колко се движиш</legend><div class="picks">${Object.entries(ACTIVITY)
+    .map(([k, [, label, sub]]) => pick('activity', k, label, sub, values.activity === k))
+    .join('')}</div></fieldset><div class="goal-preview" data-goal-preview aria-live="polite">${goalPreview(values)}</div><p class="fine">Ориентир по формулата на Mifflin–St Jeor и нивото на движение, не медицински съвет. При бременност, кърмене, заболяване или специален режим се посъветвай с лекар. Макросите са разпределени 20% протеин, 50% въглехидрати, 30% мазнини; можеш да ги смениш в „Цели за макроси“.</p><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запази целта</button></form>`;
+}
+
+function manualTarget(state) {
+  return `<p class="sheet-sub">Въведи цел, която вече си избрал, например с лекар или треньор.</p><form data-form="target"><label class="field"><span>Ккал на ден</span><input name="target" type="number" inputmode="numeric" min="0" max="10000" step="1" value="${state.dailyTarget || ''}" placeholder="Без цел"></label><p class="fine">Празно или 0 маха целта.</p><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запази</button></form>`;
+}
+
+/** The manual form on its own (kept for older links and tests). */
 export function targetSheet(state) {
-  return `<h2 class="sheet-title">Дневна цел</h2><p class="sheet-sub">Въведи цел, която вече си избрал, например с лекар или треньор. Приложението не изчислява калориен прием вместо теб.</p><form data-form="target"><label class="field"><span>Ккал на ден</span><input name="target" type="number" inputmode="numeric" min="0" max="10000" step="1" value="${state.dailyTarget || ''}" placeholder="Без цел"></label><p class="fine">Празно или 0 маха целта.</p><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запази</button></form>`;
+  return goalSheet(state, 'manual');
 }
 
 export function macroTargetsSheet(state) {

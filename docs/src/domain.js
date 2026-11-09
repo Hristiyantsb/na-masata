@@ -73,6 +73,68 @@ export function defaults() {
     savedFoods: [],
     weights: [],
     water: {},
+    profile: null,
+  };
+}
+
+/* ---------- daily calorie goal (optional helper for the diary) ---------- */
+
+export const ACTIVITY = Object.freeze({
+  sedentary: [1.2, 'Почти без движение', 'Седяща работа, малко ходене'],
+  light: [1.375, 'Леко активен', 'Ходене или лека тренировка 1–3 пъти седмично'],
+  moderate: [1.55, 'Активен', 'Тренировка 3–5 пъти седмично или работа на крак'],
+  high: [1.725, 'Много активен', 'Тежка работа или спорт почти всеки ден'],
+});
+export const WEIGHT_GOALS = Object.freeze({ lose: 'Да отслабна', keep: 'Да задържа', gain: 'Да кача' });
+export const PACES = Object.freeze({ lose: [0.25, 0.5, 0.75], gain: [0.25, 0.5] });
+// Never suggest less than this, whatever the formula says.
+export const CALORIE_FLOOR = Object.freeze({ female: 1200, male: 1500 });
+// About 7700 kcal per kilogram of body weight, spread over seven days.
+const KCAL_PER_KG_WEEK = 7700 / 7;
+
+/** Validates the inputs of the goal helper; throws a message a person can act on. */
+export function profileEntry(input) {
+  const p = input || {};
+  const sex = p.sex === 'male' ? 'male' : p.sex === 'female' ? 'female' : null;
+  const age = Number(p.age),
+    height = Number(p.height),
+    weight = Number(String(p.weight ?? '').replace(',', '.'));
+  if (!sex) throw Error('Избери пол: формулата е различна за жени и мъже.');
+  if (!Number.isInteger(age) || age < 18 || age > 100)
+    throw Error('Помощникът е за възрастни от 18 до 100 години. За деца и тийнейджъри се посъветвай с лекар.');
+  if (!Number.isFinite(height) || height < 120 || height > 230) throw Error('Ръстът е от 120 до 230 см.');
+  if (!Number.isFinite(weight) || weight < 35 || weight > 300) throw Error('Теглото е от 35 до 300 кг.');
+  if (!Object.hasOwn(ACTIVITY, p.activity)) throw Error('Избери колко се движиш.');
+  if (!Object.hasOwn(WEIGHT_GOALS, p.goal)) throw Error('Избери целта си.');
+  const pace = p.goal === 'keep' ? 0 : Number(p.pace);
+  if (p.goal !== 'keep' && !PACES[p.goal].includes(pace)) throw Error('Избери темпо.');
+  return { sex, age, height: Math.round(height), weight: Math.round(weight * 10) / 10, activity: p.activity, goal: p.goal, pace };
+}
+
+/**
+ * Daily calories from the Mifflin-St Jeor equation times activity, minus or plus the chosen pace.
+ * Macros follow a common default split: 50% carbohydrates, 20% protein, 30% fat by energy.
+ */
+export function calorieGoal(input) {
+  const p = profileEntry(input);
+  const bmr = 10 * p.weight + 6.25 * p.height - 5 * p.age + (p.sex === 'male' ? 5 : -161);
+  const maintenance = bmr * ACTIVITY[p.activity][0];
+  const change = p.goal === 'lose' ? -p.pace * KCAL_PER_KG_WEEK : p.goal === 'gain' ? p.pace * KCAL_PER_KG_WEEK : 0;
+  const raw = maintenance + change;
+  const floor = CALORIE_FLOOR[p.sex];
+  const target = Math.round(Math.max(raw, floor) / 10) * 10;
+  return {
+    profile: p,
+    bmr: Math.round(bmr),
+    maintenance: Math.round(maintenance / 10) * 10,
+    change: Math.round(change),
+    target,
+    floorApplied: raw < floor,
+    macros: {
+      protein: Math.round((target * 0.2) / 4),
+      carbs: Math.round((target * 0.5) / 4),
+      fat: Math.round((target * 0.3) / 9),
+    },
   };
 }
 export function settingsErrors(s) {
@@ -408,6 +470,13 @@ export function normalizeState(raw) {
   }
   if (new Set(d.savedFoods.map((e) => e.id)).size !== d.savedFoods.length)
     throw Error('Дублирани храни в библиотеката.');
+  if (raw.profile !== undefined && raw.profile !== null) {
+    try {
+      d.profile = profileEntry(raw.profile);
+    } catch {
+      throw Error('Невалидни данни за дневната цел.');
+    }
+  }
   return d;
 }
 export function recipeJSON(r) {

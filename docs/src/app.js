@@ -19,6 +19,7 @@ import {
   settingsErrors,
   generatePlan,
   withWeight,
+  calorieGoal,
   planSnapshot,
   rearrangePlan,
   changeServings,
@@ -66,7 +67,9 @@ import {
   foodCopyForm,
   entrySheet,
   weightForm,
-  targetSheet,
+  goalSheet,
+  goalPreview,
+  paceOptions,
   macroTargetsSheet,
   scannerSheet,
 } from './diary-views.js';
@@ -984,7 +987,8 @@ const actions = {
     render();
     toast('Върнахме дневника.');
   },
-  'daily-target': () => openSheet(targetSheet(state)),
+  'daily-target': () => openSheet(goalSheet(state, 'calc'), { size: 'tall' }),
+  'goal-mode': (el) => openSheet(goalSheet(state, el.dataset.mode === 'manual' ? 'manual' : 'calc'), { size: 'tall' }),
   'macro-targets': () => openSheet(macroTargetsSheet(state)),
   water: (el) => {
     const count = Number(el.dataset.count);
@@ -1241,6 +1245,18 @@ const forms = {
     closeSheet();
     render();
   },
+  'goal-calc': (f) => {
+    const g = calorieGoal(goalFormValues(f));
+    state.profile = g.profile;
+    state.dailyTarget = g.target;
+    state.macroTargets = { ...g.macros };
+    const last = state.weights.at(-1);
+    if (!last || last.kg !== g.profile.weight) state.weights = withWeight(state.weights, { date: localDate(), kg: g.profile.weight });
+    persist();
+    closeSheet();
+    render();
+    toast(`Целта ти е ${num(g.target)} ккал на ден.`);
+  },
   target: (f) => {
     const target = Number(f.get('target') || 0);
     if (!Number.isFinite(target) || target < 0 || target > 10000) throw Error('Целта е от 0 до 10 000 ккал.');
@@ -1293,6 +1309,32 @@ const forms = {
   },
 };
 
+function goalFormValues(f) {
+  return {
+    sex: f.get('sex'),
+    age: f.get('age') === '' || f.get('age') === null ? '' : Number(f.get('age')),
+    height: f.get('height') ?? '',
+    weight: f.get('weight') ?? '',
+    activity: f.get('activity'),
+    goal: f.get('goal'),
+    pace: Number(f.get('pace')),
+  };
+}
+// The goal helper recalculates while you type; the pace list follows lose or gain.
+function updateGoalForm(form, changed) {
+  const values = goalFormValues(new FormData(form));
+  const paceBox = form.querySelector('[data-pace]');
+  if (changed?.name === 'goal' && paceBox) {
+    paceBox.hidden = values.goal === 'keep';
+    if (values.goal !== 'keep') {
+      form.querySelector('[data-pace-options]').innerHTML = paceOptions(values.goal, values.pace || 0.5);
+      values.pace = Number(new FormData(form).get('pace'));
+    }
+  }
+  const preview = form.querySelector('[data-goal-preview]');
+  if (preview) preview.innerHTML = goalPreview(values);
+}
+
 /* ---------- events ---------- */
 
 document.addEventListener('click', async (event) => {
@@ -1333,6 +1375,8 @@ document.addEventListener('change', async (event) => {
     if (details) details.hidden = food.querySelector('[name="measure"]')?.value !== 'именувана порция';
     updateFoodPreview();
   }
+  const goalForm = el.closest?.('[data-form="goal-calc"]');
+  if (goalForm) updateGoalForm(goalForm, el);
   if (ui.wizard && el.dataset.input === 'budget-range') {
     applyScene(stage(), sceneFor(ui.wizard.step, ui.wizard.draft));
     react(stage(), 'nod');
@@ -1420,6 +1464,7 @@ let searchTimer;
 document.addEventListener('input', (event) => {
   const el = event.target;
   if (el.closest?.('[data-form="food"]')) updateFoodPreview();
+  if (el.closest?.('[data-form="goal-calc"]') && el.type !== 'radio') updateGoalForm(el.closest('form'), el);
   const w = ui.wizard;
   if (w && el.dataset.input === 'budget-range') {
     w.draft = pick(w.draft, 'budget', el.value);

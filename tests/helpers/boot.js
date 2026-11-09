@@ -45,7 +45,8 @@ export async function boot({ state = null, hash = '#menu', reducedMotion = true 
   globalThis.FormData = class {
     constructor(form) {
       this.pairs = [...form.querySelectorAll('input[name],select[name],textarea[name]')]
-        .filter((e) => !['checkbox', 'radio'].includes(e.type) || e.checked)
+        // linkedom leaves .checked undefined for markup like <input checked>: fall back to the attribute.
+        .filter((e) => !['checkbox', 'radio'].includes(e.type) || (e.checked ?? e.hasAttribute('checked')))
         .map((e) => [
           e.name,
           e.tagName === 'SELECT'
