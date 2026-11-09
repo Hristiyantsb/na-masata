@@ -28,8 +28,10 @@ export async function initPwa() {
     registration = await navigator.serviceWorker.register(new URL('../sw.js', import.meta.url), {
       updateViaCache: 'none',
     });
+    // A waiting worker is an update only when an older version controls this page.
+    // On the very first install there is nothing to update from.
     const check = () => {
-      state.update = !!registration.waiting;
+      state.update = !!registration.waiting && !!navigator.serviceWorker.controller;
       notify();
     };
     check();
