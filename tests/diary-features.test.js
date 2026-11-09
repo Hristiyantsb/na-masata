@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { convertQuantity, suggestedServingQuantity, displayQuantity } from '../docs/src/servings.js';
 import { diaryEntry } from '../docs/src/domain.js';
-import { foodForm } from '../docs/src/views.js';
+import { foodForm } from '../docs/src/diary-views.js';
 import { createAuth } from '../docs/src/auth.js';
 import { createDiarySync } from '../docs/src/diary-sync.js';
 

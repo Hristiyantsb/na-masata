@@ -1,21 +1,23 @@
-// На маса identity: the approved wordmark and the wooden-table mascot in its poses.
-// Every pose is a transparent WebP in assets/mascot. Decorative, so hidden from screen readers.
-export const POSES = Object.freeze([
-  'chef',
-  'hero',
-  'love',
-  'curious',
-  'calm',
-  'juggle',
-  'serve',
-  'party',
-  'sleepy',
-  'toss',
-]);
+// На маса identity: the approved wordmark and the wooden-table mascot.
+// The mascot is drawn in SVG (table.js) so it can move; here it is placed as a still picture
+// for empty states and headers. Decorative, so hidden from screen readers.
+import { tableSVG } from './table.js';
 
-export function mascot(pose = 'calm', size = 96, className = '') {
-  const name = POSES.includes(pose) ? pose : 'calm';
-  return `<img class="mascot ${className}" src="assets/mascot/${name}.webp" width="${size}" height="${size}" alt="" aria-hidden="true" decoding="async" draggable="false" data-pose="${name}">`;
+let count = 0;
+export const MASCOT_SCENES = Object.freeze({
+  hello: { mood: 'wink', hat: true },
+  happy: { mood: 'happy' },
+  curious: { mood: 'curious' },
+  sleepy: { mood: 'sleepy', fx: 'zzz' },
+  serve: { mood: 'happy', cloche: 'open', revealed: { diet: 'all' } },
+  list: { mood: 'open', notepad: true },
+  done: { mood: 'happy', cloth: true },
+});
+
+/** A still table with one of the named scenes (unknown names fall back to "hello"). */
+export function mascot(name = 'hello', className = '') {
+  const scene = MASCOT_SCENES[name] || MASCOT_SCENES.hello;
+  return tableSVG({ uid: `m${++count}`, scene, className: `mascot ${className}` });
 }
 
 // Text logo exactly as supplied: green "На", wooden "маса".

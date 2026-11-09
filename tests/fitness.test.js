@@ -8,8 +8,8 @@ import {
   weekDates,
   parseAdiosExport,
 } from '../docs/src/fitness.js';
-import { foodForm } from '../docs/src/views.js';
-import { foodPicker } from '../docs/src/fitness-views.js';
+import { foodForm } from '../docs/src/diary-views.js';
+import { foodPicker } from '../docs/src/diary-views.js';
 import { normalizeProduct } from '../server/products.js';
 const entry = (more = {}) =>
   diaryEntry({

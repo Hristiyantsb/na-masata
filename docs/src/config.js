@@ -1,6 +1,6 @@
 /** Public, non-secret configuration. Never put Stripe/Supabase service-role keys here. */
 export const CONFIG = Object.freeze({
-  version: '0.8.1',
+  version: '1.0.0',
   mode: 'local',
   apiBase: '',
   supabaseUrl: '',

@@ -81,12 +81,13 @@ function harness(failDownload = false) {
   }
   return { event, calls, stores, scope, self };
 }
-test('offline install precaches the complete local release including Cyrillic fonts and decoder', async () => {
+test('offline install precaches the complete local release including the table and the decoder', async () => {
   const h = harness();
   await h.event('install');
   assert.ok(h.calls.downloads.includes(h.scope + 'index.html'));
   assert.ok(h.calls.downloads.includes(h.scope + 'src/app.js'));
-  assert.ok(h.calls.downloads.includes(h.scope + 'assets/fonts/lora-cyrillic-700-normal.woff2'));
+  assert.ok(h.calls.downloads.includes(h.scope + 'assets/styles.css'));
+  assert.ok(h.calls.downloads.includes(h.scope + 'src/table.js'));
   assert.ok(h.calls.downloads.includes(h.scope + 'vendor/zxing-browser.min.js'));
   assert.ok(h.calls.downloads.every((url) => url.startsWith(h.scope)));
   assert.equal(h.calls.skipped, 0);

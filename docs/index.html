@@ -3,13 +3,16 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="theme-color" content="#f7f6f2" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#101311" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="На маса" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta
       name="description"
-      content="Българско приложение за седмично меню, списък за пазаруване и хранителен дневник."
+      content="Седмично меню по твоите магазини и правила, списък за покупки по щандове и хранителен дневник. На български, без регистрация."
     />
     <meta
       http-equiv="Content-Security-Policy"
@@ -17,23 +20,16 @@
     />
     <title>На маса</title>
     <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" sizes="any" />
-    <link rel="apple-touch-icon" href="assets/brand-icon-192.png" />
+    <link rel="apple-touch-icon" href="assets/icon-180.png" />
     <link rel="manifest" href="manifest.webmanifest" />
-    <link rel="stylesheet" href="assets/fonts.css" />
-    <link rel="stylesheet" href="assets/app.css" />
-    <link rel="stylesheet" href="assets/editorial.css" />
-    <link rel="stylesheet" href="assets/onboarding.css" />
-    <link rel="stylesheet" href="assets/fitness.css" />
-    <link rel="stylesheet" href="assets/mobile-polish.css" />
-    <link rel="stylesheet" href="assets/brand.css" />
+    <link rel="stylesheet" href="assets/styles.css" />
+    <link rel="stylesheet" href="assets/table.css" />
   </head>
   <body>
     <div id="app"></div>
-    <dialog id="dialog" aria-label="Подробности"></dialog>
-    <div id="toast" role="status" aria-live="polite"></div>
-    <noscript
-      >За „На маса“ е необходим JavaScript. Разреши го в настройките на браузъра.</noscript
-    >
+    <dialog id="sheet" class="sheet" aria-label="Подробности"></dialog>
+    <div id="toast" class="toast" role="status" aria-live="polite" popover="manual"></div>
+    <noscript>„На маса“ има нужда от JavaScript. Разреши го в настройките на браузъра.</noscript>
     <script type="module" src="src/app.js"></script>
   </body>
 </html>

@@ -1,5 +1,7 @@
 import { defaults, normalizeState, isValidBarcode } from './domain.js';
-export const DRAFT_KEY='na-masa-onboarding-v2';
+// v3: the setup has eight screens; drafts from the seven-screen flow are dropped on start.
+export const DRAFT_KEY='na-masa-onboarding-v3';
+const OLD_DRAFTS=['na-masa-onboarding-v2'];
 export const COOKING_KEY='na-masa-cooking-v1';
 // Keys written by builds before the rename. Cooking ticks move over once; old setup drafts
 // belonged to a longer flow with different step numbers, so they are dropped.
@@ -9,13 +11,14 @@ export function migrateLocalKeys(storage){
   const old=storage.getItem(LEGACY_KEYS.cooking);
   if(old!==null&&storage.getItem(COOKING_KEY)===null)storage.setItem(COOKING_KEY,old);
   storage.removeItem(LEGACY_KEYS.cooking);storage.removeItem(LEGACY_KEYS.draft);
+  for(const key of OLD_DRAFTS)storage.removeItem(key);
  }catch{}
 }
-const LAST_STEP=6;
+const LAST_STEP=7;
 export function saveDraft(storage,wizard){try{storage.setItem(DRAFT_KEY,JSON.stringify({draft:wizard.draft,step:wizard.step}))}catch{}}
 export function restoreDraft(storage){
  try{const d=JSON.parse(storage.getItem(DRAFT_KEY));if(!d||!Number.isInteger(d.step)||d.step<0||d.step>LAST_STEP||!d.draft)return null;
- return {draft:normalizeState({...defaults(),settings:d.draft}).settings,step:d.step,error:''};}catch{return null}
+ return {draft:normalizeState({...defaults(),settings:d.draft}).settings,step:d.step,error:'',dir:'forward'};}catch{return null}
 }
 export function clearDraft(storage){try{storage.removeItem(DRAFT_KEY);storage.removeItem(LEGACY_KEYS.draft)}catch{}}
 export function cookingSteps(storage,id,length){try{const data=JSON.parse(storage.getItem(COOKING_KEY)||'{}');return Array.isArray(data[id])?data[id].filter(n=>Number.isInteger(n)&&n>=0&&n<length):[]}catch{return []}}

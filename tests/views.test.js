@@ -1,136 +1,159 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseHTML } from 'linkedom';
-import { defaults, generatePlan } from '../docs/src/domain.js';
+import { defaults, generatePlan, diaryEntry, extraGrocery, PLANS } from '../docs/src/domain.js';
 import { RECIPES } from '../docs/src/catalog.js';
-import { wizardView, STEPS } from '../docs/src/onboarding.js';
+import { onboardingView, STEPS } from '../docs/src/onboarding.js';
+import { seeded } from '../docs/src/planner.js';
 import * as views from '../docs/src/views.js';
+import * as diary from '../docs/src/diary-views.js';
+
 const dom = (html) => parseHTML(`<html><body>${html}</body></html>`).document;
-function safeMarkup(html) {
+function safeMarkup(html, name = '') {
   const document = dom(html);
-  for (const el of document.querySelectorAll('*')) {
-    for (const attr of el.attributes)
-      assert.ok(!/^on/i.test(attr.name), 'no inline event handlers');
-  }
+  for (const el of document.querySelectorAll('*'))
+    for (const attr of el.attributes) assert.ok(!/^on/i.test(attr.name), `no inline handlers in ${name}`);
   assert.equal(document.querySelectorAll('script').length, 0);
-  assert.ok(!html.includes('undefined'), 'no missing interpolated values');
+  assert.doesNotMatch(html, /undefined|NaN|\[object Object\]/, `no missing values in ${name}`);
   return document;
 }
-test('every setup step renders a labeled form and one primary heading', () => {
+function planned() {
+  const state = defaults();
+  state.onboarded = true;
+  state.plan = generatePlan(state, seeded(3)).plan;
+  return state;
+}
+
+test('every setup step labels its inputs and has one heading', () => {
   const state = defaults();
   for (let i = 0; i < STEPS.length; i++) {
-    const d = safeMarkup(wizardView(state.settings, i));
+    const d = safeMarkup(onboardingView(state.settings, i), STEPS[i]);
     assert.equal(d.querySelectorAll('h1').length, 1);
-    assert.ok(d.querySelector('form[data-form=wizard] button[type=submit]'));
-    for (const input of d.querySelectorAll('input:not([type=hidden]), select')) {
+    for (const input of d.querySelectorAll('input, select')) {
       assert.ok(
-        input.closest('label') ||
-          input.getAttribute('aria-label') ||
-          (input.id && d.querySelector(`label[for="${input.id}"]`)),
+        input.closest('label') || input.getAttribute('aria-label') || (input.id && d.querySelector(`label[for="${input.id}"]`)),
         input.outerHTML,
       );
     }
   }
 });
-test('all main views render empty and populated states without missing values', () => {
-  const state = defaults();
-  for (const populated of [false, true]) {
-    if (populated) state.plan = generatePlan(state, () => 0.2).plan;
-    for (const [page, html] of [
-      ['plan', views.planView(state, null)],
-      ['recipes', views.recipesView(state, '', false)],
-      ['shopping', views.shoppingView(state)],
-      ['pantry', views.pantryView(state)],
-      ['diary', views.diaryView(state, '2026-10-25')],
-      ['settings', views.settingsView(state)],
-      ['privacy', views.privacyView()],
-    ]) {
-      const d = safeMarkup(views.shell(page, html));
-      assert.equal(d.querySelectorAll('main').length, 1);
-      assert.equal(d.querySelectorAll('h1').length, 1, page);
+
+test('all screens render empty and filled without missing values', () => {
+  for (const state of [defaults(), planned()]) {
+    const today = '2026-11-10';
+    const r = RECIPES[0];
+    const screens = {
+      menu: views.menuView(state, {}),
+      keep: views.menuView(state, { keep: new Set([0]) }),
+      recipes: views.recipesView(state, '', 'all'),
+      favourites: views.recipesView(state, '', 'fav'),
+      cuisine: views.recipesView(state, '', 'bg'),
+      shopping: views.shoppingView(state),
+      shop: views.shopModeView(state),
+      pantry: views.pantryView(state),
+      more: views.moreView(state, { ready: true }),
+      plans: views.plansView('monthly'),
+      yearly: views.plansView('yearly'),
+      privacy: views.privacyView(),
+      recipe: views.recipeSheet(r, state, { index: state.plan.length ? 0 : null }),
+      preview: views.recipeSheet(r, state, { preview: true }),
+      cook: views.cookView(r, 0, null, 3),
+      reminder: views.reminderSheet(),
+      grocery: views.grocerySheet(state, 'tomato'),
+      extra: views.extraForm(state),
+      diary: diary.diaryView(state, today, today),
+      picker: diary.foodPicker(state, today, 'Обяд'),
+      food: diary.foodForm(today, 'Обяд'),
+      weight: diary.weightForm(today, 70),
+      target: diary.targetSheet(state),
+      macros: diary.macroTargetsSheet(state),
+      scanner: diary.scannerSheet(),
+    };
+    if (state.plan.length) {
+      screens.actions = views.mealActionsSheet(state, 0);
+      screens.swap = views.swapSheet(state, 0);
+      screens.move = views.destinationSheet(state, 0, 'move');
+      screens.options = views.menuOptionsSheet(state, true);
+      screens.newMenu = views.newMenuSheet(state);
     }
+    for (const [name, html] of Object.entries(screens)) safeMarkup(views.shell('menu', html, {}), name);
   }
 });
-test('local edition offers working features without checkout or account prompts', () => {
- const d = safeMarkup(views.pricingView('yearly'));
- assert.equal(d.querySelectorAll('[data-action="plan-info"]').length, 0);
- assert.equal(d.querySelectorAll('.plan-price').length, 0);
- assert.ok(d.querySelector('a[href="#diary"]'));
- assert.ok(d.querySelector('a[href="#shopping"]'));
- assert.equal(safeMarkup(views.settingsView(defaults())).querySelector('[data-action="account"]'), null);
-});
-test('recipe notes and food names remain text after HTML rendering', () => {
-  const state = defaults();
-  state.notes[RECIPES[0].id] = '</textarea><img src=x onerror=alert(1)>';
-  const detail = safeMarkup(views.recipeDetail(RECIPES[0], state));
-  assert.equal(detail.querySelectorAll('img').length, 0);
-  const food = safeMarkup(
-    views.foodForm('2026-10-25', 'Обяд', {
-      id: 'test',
-      name: '"><script>alert(1)</script>',
-      date: '2026-10-25',
-      meal: 'Обяд',
-      amount: 100,
-      unit: 'г',
-      basis: 100,
-      kcal: 120,
-      protein: null,
-      source: 'manual',
-    }),
-  );
-  assert.equal(food.querySelector('[name=name]').value, '"><script>alert(1)</script>');
-  assert.equal(food.querySelector('[name=protein]').value, '');
+
+test('the week groups meals by day and every meal can be opened, cooked, swapped and moved', () => {
+  const state = planned();
+  const d = dom(views.menuView(state, {}));
+  assert.equal(d.querySelectorAll('.day').length, state.settings.days);
+  assert.equal(d.querySelectorAll('.meal').length, state.plan.length);
+  for (const meal of d.querySelectorAll('.meal')) {
+    for (const action of ['recipe', 'cooked', 'swap', 'meal-actions'])
+      assert.ok(meal.querySelector(`[data-action="${action}"]`), action);
+    assert.ok(meal.querySelector('.meal-why').textContent.trim());
+  }
+  const actions = dom(views.mealActionsSheet(state, 0));
+  for (const action of ['recipe', 'swap', 'move-meal', 'repeat-meal', 'place-meal'])
+    assert.ok(actions.querySelector(`[data-action="${action}"]`), action);
+  const keep = dom(views.menuView(state, { keep: new Set([1]) }));
+  assert.equal(keep.querySelectorAll('[data-action="keep-toggle"]').length, state.plan.length);
+  assert.equal(keep.querySelector('[data-action="keep-toggle"][data-index="1"]').getAttribute('aria-pressed'), 'true');
+  assert.ok(keep.querySelector('[data-action="keep-apply"]'));
 });
 
-test('weekly menu groups every slot by day and exposes move/repeat actions', () => {
-  const state = defaults();
-  state.settings.slots = ['Обяд', 'Вечеря'];
-  state.plan = generatePlan(state).plan;
-  const d = safeMarkup(views.planView(state, null));
-  assert.equal(d.querySelectorAll('.plan-day').length, state.settings.days);
-  assert.equal(d.querySelectorAll('.planned-meal').length, state.plan.length);
-  assert.equal(d.querySelectorAll('[data-action="move-meal"]').length, state.plan.length);
-  assert.equal(d.querySelectorAll('[data-action="repeat-meal"]').length, state.plan.length);
+test('a locked menu cannot be changed from the screen', () => {
+  const state = planned();
   state.locked = true;
-  const locked = dom(views.planView(state, null));
-  for (const el of locked.querySelectorAll('[data-action="move-meal"],[data-action="repeat-meal"]'))
-    assert.ok(el.hasAttribute('disabled'));
+  const d = dom(views.menuView(state, {}));
+  assert.ok([...d.querySelectorAll('[data-action="swap"]')].every((b) => b.hasAttribute('disabled')));
+  assert.ok(d.querySelector('[data-action="new-menu"]').hasAttribute('disabled'));
+  const r = dom(views.recipeSheet(RECIPES[0], state, { index: 0 }));
+  assert.ok([...r.querySelectorAll('[data-action="servings"]')].every((b) => b.hasAttribute('disabled')));
+  assert.equal(dom(views.recipeSheet(RECIPES[0], state, {})).querySelector('[data-action="servings"]'), null);
 });
 
-test('custom shopping names remain escaped and missing prices are explicitly disclosed', () => {
-  const state = defaults();
-  state.extras = [
-    {
-      id: 'row1',
-      name: '<img src=x onerror=alert(1)>',
-      amount: 1,
-      unit: 'бр.',
-      price: null,
-      store: 'Lidl',
-      checked: false,
-    },
-  ];
-  const d = safeMarkup(views.shoppingView(state));
-  assert.equal(d.querySelectorAll('img:not([src^="assets/"])').length, 0);
-  assert.match(d.body.textContent, /1 продукта без цена/);
-  assert.equal(d.querySelectorAll('[data-change="extra-checked"]').length, 1);
-  safeMarkup(views.extraGroceryForm(state, state.extras[0]));
+test('notes, food names and extra products stay text', () => {
+  const state = planned();
+  const id = RECIPES[0].id;
+  state.notes[id] = '<img src=x onerror=alert(1)>';
+  state.extras = [extraGrocery({ name: '<script>x</script>', amount: 1, unit: 'бр.', price: null, store: 'Lidl' })];
+  state.diary = [diaryEntry({ name: '<b>торта</b>', date: '2026-11-10', meal: 'Обяд', unit: 'г', amount: 100, basis: 100, kcal: 300 })];
+  for (const html of [
+    views.recipeSheet(RECIPES[0], state, {}),
+    views.shoppingView(state),
+    diary.diaryView(state, '2026-11-10', '2026-11-10'),
+  ]) {
+    const d = safeMarkup(html);
+    assert.equal(d.querySelectorAll('img[src="x"], script').length, 0);
+    assert.ok(![...d.querySelectorAll('b')].some((b) => b.textContent === 'торта'));
+  }
+  assert.match(views.shoppingView(state), /без цена/);
 });
-test('portion forms appear only for planned meals and cannot edit a locked menu', () => {
-  const state = defaults();
-  state.plan = generatePlan(state).plan;
-  const r = RECIPES.find((r) => r.id === state.plan[0].id);
-  assert.equal(
-    dom(views.recipeDetail(r, state)).querySelectorAll('[data-form="servings"]').length,
-    0,
-  );
-  const d = dom(views.recipeDetail(r, state, 0));
-  assert.equal(d.querySelectorAll('[data-form="servings"]').length, 1);
-  assert.equal(d.querySelector('[data-form="servings"]').querySelectorAll('option').length, 12);
-  state.locked = true;
-  assert.ok(
-    dom(views.recipeDetail(r, state, 0))
-      .querySelector('[data-form="servings"] select')
-      .hasAttribute('disabled'),
-  );
+
+test('the local edition shows plan prices honestly and never a checkout', () => {
+  const monthly = views.plansView('monthly');
+  const yearly = views.plansView('yearly');
+  assert.match(monthly, new RegExp(`${PLANS.menu.monthly} €`));
+  assert.match(monthly, new RegExp(`${PLANS.plus.monthly} €`));
+  assert.match(yearly, new RegExp(`${PLANS.menu.yearly} €`));
+  assert.match(yearly, new RegExp(`${PLANS.plus.yearly} €`));
+  for (const html of [monthly, yearly, views.moreView(defaults())]) {
+    assert.match(html, /не са включени|Демо|демо/);
+    assert.doesNotMatch(html, /data-action="(checkout|buy|subscribe|login)"/);
+  }
+});
+
+test('the weekly reminder is a real calendar event on the chosen day', () => {
+  const now = new Date(2026, 10, 10, 9, 0); // Tuesday
+  const ics = views.reminderICS(6, '18:30', now);
+  assert.match(ics, /BEGIN:VCALENDAR/);
+  assert.match(ics, /RRULE:FREQ=WEEKLY;BYDAY=SU/);
+  assert.match(ics, /DTSTART:20261115T183000/);
+  assert.match(views.reminderICS(1, '08:00', now), /DTSTART:20261117T080000/, 'same weekday later moves a week on');
+  assert.match(views.reminderICS(1, '10:00', now), /DTSTART:20261110T100000/, 'today later still counts');
+});
+
+test('cooking reads timers from the step and scales water for the household', () => {
+  assert.equal(views.stepMinutes('Печи 25–30 минути.'), 30);
+  assert.equal(views.scaleStep('Налей 600 мл вода за 2 порции.', 4), 'Налей 1200 мл вода.');
+  const html = views.cookView(RECIPES.find((r) => r.steps.some((s) => /мин/.test(s))), 0, null, 2);
+  assert.match(html, /Стъпка 1 от/);
 });

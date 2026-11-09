@@ -145,7 +145,7 @@ test('the shopping list follows the store from produce to spices', () => {
   state.settings = settings();
   state.plan = generatePlan(state, seeded(5)).plan;
   const doc = parseHTML('<html><body>' + shoppingView(state) + '</body></html>').document;
-  const order = [...doc.querySelectorAll('.aisle-heading')].map((h) =>
+  const order = [...doc.querySelectorAll('.aisle')].map((h) =>
     Object.values(AISLES).indexOf(h.textContent),
   );
   assert.ok(order.length >= 3);
@@ -153,5 +153,5 @@ test('the shopping list follows the store from produce to spices', () => {
     order,
     [...order].sort((a, b) => a - b),
   );
-  assert.ok(doc.querySelector('.cart-progress'));
+  assert.ok(doc.querySelector('.cart-card [role="progressbar"]'));
 });
