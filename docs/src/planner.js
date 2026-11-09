@@ -161,7 +161,11 @@ function shuffled(list, random) {
   return copy;
 }
 
-export function generatePlan(state, random = Math.random) {
+/**
+ * Build a week. `keep` lists indexes of the current menu to leave in place ("keep these, change
+ * the rest"); a kept dish that no longer passes the hard rules is replaced like any other.
+ */
+export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
   const pool = candidates(state.settings);
   if (!pool.length)
     return {
@@ -175,6 +179,24 @@ export function generatePlan(state, random = Math.random) {
   const slots = [];
   for (let day = 0; day < s.days; day++)
     for (const slot of s.slots) slots.push({ day, slot, people: s.people });
+  const allowed = new Set(pool.map((r) => r.id));
+  const fixed = new Map();
+  for (const i of keep) {
+    const e = state.plan[i];
+    if (e && allowed.has(e.id)) fixed.set(`${e.day}:${e.slot}`, e);
+  }
+  const locked = new Set();
+  const before = new Map(state.plan.map((e) => [`${e.day}:${e.slot}`, e.id]));
+  slots.forEach((place, i) => {
+    const e = fixed.get(`${place.day}:${place.slot}`);
+    if (e) {
+      place.people = e.people;
+      place.keep = e.id;
+      locked.add(i);
+    } else if (keep.length) place.old = before.get(`${place.day}:${place.slot}`);
+  });
+  const banned = new Map(slots.map((place, i) => [i, place.old]).filter(([, id]) => id));
+  const keptIds = new Set([...fixed.values()].map((e) => e.id));
   // Best-first shortlist keeps the search fast without losing good dishes.
   const ranked = pool.slice().sort((a, b) => ctx.dish.get(a.id) - ctx.dish.get(b.id));
   const width = Math.min(pool.length, 36);
@@ -183,10 +205,15 @@ export function generatePlan(state, random = Math.random) {
   const starts = pool.length > 1 ? 8 : 1;
   for (let attempt = 0; attempt < starts; attempt++) {
     const plan = [];
-    for (const place of slots) {
+    for (const { keep: kept, old, ...place } of slots) {
+      if (kept) {
+        plan.push({ id: kept, ...place });
+        continue;
+      }
       // No dish twice in one week while the allowed set is large enough.
-      const used = new Set(plan.map((e) => e.id));
-      const fresh = ranked.filter((r) => !used.has(r.id));
+      const used = new Set([...plan.map((e) => e.id), ...keptIds]);
+      // "Change the rest" means change: the dish that was here is not offered again.
+      const fresh = ranked.filter((r) => !used.has(r.id) && r.id !== old);
       const source = fresh.length ? fresh : ranked;
       const options = new Set([
         ...source.slice(0, Math.ceil(width / 2)),
@@ -210,7 +237,7 @@ export function generatePlan(state, random = Math.random) {
       bestScore = score;
     }
   }
-  improve(state, best, pool, ctx);
+  improve(state, best, pool, ctx, locked, banned);
   const cost = total(state, best);
   return {
     plan: best,
@@ -221,15 +248,16 @@ export function generatePlan(state, random = Math.random) {
 }
 
 // Local search: replace one meal at a time while that lowers the score.
-function improve(state, plan, pool, ctx) {
+function improve(state, plan, pool, ctx, locked = new Set(), banned = new Map()) {
   let current = planScore(state, plan, ctx);
   const unique = pool.length >= plan.length;
   for (let pass = 0; pass < 3; pass++) {
     let changed = false;
     for (let i = 0; i < plan.length; i++)
-      for (const r of pool) {
+      for (const r of locked.has(i) ? [] : pool) {
         const keep = plan[i];
-        if (r.id === keep.id || (unique && plan.some((e) => e.id === r.id))) continue;
+        if (r.id === keep.id || r.id === banned.get(i) || (unique && plan.some((e) => e.id === r.id)))
+          continue;
         plan[i] = { ...keep, id: r.id };
         const score = planScore(state, plan, ctx);
         if (score < current - 1e-9) {

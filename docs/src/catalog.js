@@ -72,7 +72,7 @@ export const RECIPES = [
   },
   {
     id: 'lentil',
-    name: 'Леща по домашному',
+    name: 'Домашна леща',
     emoji: '🥣',
     type: 'Българска класика',
     time: 40,
@@ -529,3 +529,41 @@ ALLERGENS.shellfish = 'Ракообразни';
 ALLERGENS.sesame = 'Сусам';
 Object.assign(PRODUCTS, MORE_PRODUCTS);
 RECIPES.push(...MORE_RECIPES);
+
+// Kitchens for browsing. The first recipes were written before the field existed.
+export const CUISINES = Object.freeze({
+  bg: 'Българска',
+  it: 'Италианска',
+  med: 'Средиземноморска',
+  eu: 'Европейска',
+  me: 'Близкоизточна',
+  asian: 'Азиатска',
+  in: 'Индийска',
+  mex: 'Мексиканска',
+});
+const FIRST_CUISINES = {
+  shopska: 'bg',
+  lentil: 'bg',
+  mishmash: 'bg',
+  chickenrice: 'bg',
+  potatoes: 'bg',
+  riceveg: 'eu',
+  beans: 'bg',
+  pasta: 'it',
+  chickpea: 'med',
+  zucchini: 'bg',
+  moussaka: 'bg',
+  fish: 'bg',
+  spinach: 'bg',
+  cabbage: 'bg',
+  banitsa: 'bg',
+  omelette: 'eu',
+  potatostew: 'bg',
+  mushroomrice: 'bg',
+  airchicken: 'eu',
+  airchickpea: 'med',
+  micropotato: 'eu',
+  tofurice: 'asian',
+  lentilchickpea: 'med',
+};
+for (const r of RECIPES) if (!r.cuisine && FIRST_CUISINES[r.id]) r.cuisine = FIRST_CUISINES[r.id];
