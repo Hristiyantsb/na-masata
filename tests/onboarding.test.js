@@ -12,6 +12,8 @@ import {
   showBuilding,
   pick,
   liveCount,
+  usable,
+  budgetNote,
   sceneFor,
   relaxHints,
   isSelected,
@@ -61,9 +63,14 @@ test('each question uses the control that fits it', () => {
   const household = page(6);
   assert.equal(household.querySelectorAll('[data-key="people"]').length, 2);
   assert.equal(household.querySelectorAll('[data-key="days"]').length, 3);
-  assert.equal(household.querySelectorAll('[data-key="slots"]').length, 2);
+  assert.equal(household.querySelectorAll('[data-key="slots"]').length, 3);
+  assert.deepEqual(
+    [...household.querySelectorAll('[data-key="slots"]')].map((b) => b.dataset.value),
+    ['Закуска', 'Обяд', 'Вечеря'],
+  );
   assert.ok(household.querySelector('input[type="range"][data-input="budget-range"]'));
   assert.ok(household.querySelector('input[name="budget"][type="number"]'));
+  assert.match(household.querySelector('[data-budget-note]').textContent, /на порция/);
   const result = page(7);
   assert.equal(result.querySelectorAll('[data-action="wizard-recipe"]').length, 5);
 });
@@ -92,7 +99,7 @@ test('a choice updates the screen in place, so the table and focus stay', () => 
   syncStep(root, next);
   assert.equal(root.querySelector('[data-key="equipment"][data-value="oven"]'), oven);
   assert.equal(oven.getAttribute('aria-pressed'), 'false');
-  assert.equal(root.querySelector('[data-live-count]').textContent, String(candidates(next).length));
+  assert.equal(root.querySelector('[data-live-count]').textContent, String(usable(next).length));
   showStep(root, next, 5);
   assert.equal(root.querySelector('.ob-stage svg'), table, 'the table survives a step change');
   assert.equal(root.querySelector('.ob').getAttribute('data-step'), 'exclude');
@@ -103,12 +110,22 @@ test('a choice updates the screen in place, so the table and focus stay', () => 
 
 test('the live count follows the hard filters and says why it is zero', () => {
   const d = draft();
-  assert.equal(liveCount(d).count, candidates(d).length);
+  assert.equal(liveCount(d).count, usable(d).length);
+  // Breakfasts only count once breakfast is one of the meals.
+  assert.ok(usable(d).every((r) => r.meal !== 'breakfast'));
+  const morning = pick(d, 'slots', 'Закуска');
+  assert.deepEqual(morning.slots.slice(0, 1), ['Закуска'], 'meals stay in the order of the day');
+  assert.ok(liveCount(morning).count > liveCount(d).count);
+  assert.ok(usable(morning).some((r) => r.meal === 'breakfast'));
   const vegan = pick(d, 'diet', 'vegan');
   assert.ok(liveCount(vegan).count < liveCount(d).count);
   assert.equal(liveCount({ ...d, stores: [] }).count, 0);
   assert.match(liveCount({ ...d, stores: [] }).label, /магазин/);
   assert.match(liveCount({ ...d, slots: [] }).label, /хранене/);
+  // The budget hint only divides the person's own numbers.
+  const flat = (text) => text.replace(/\s/g, ' ');
+  assert.equal(flat(budgetNote({ ...d, days: 7, slots: ['Закуска', 'Вечеря'], people: 2, budget: 50 })), '≈ 1,79 € на порция · 28 порции');
+  assert.equal(flat(budgetNote({ ...d, days: 3, slots: ['Вечеря'], people: 1, budget: 12 })), '≈ 4,00 € на порция · 3 порции');
 });
 
 test('the table acts out every answer', () => {

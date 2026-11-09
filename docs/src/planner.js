@@ -9,7 +9,7 @@
 //   - favourites and dishes that were not in last week's menu.
 // Search: several randomised greedy builds, then local improvement until no single swap helps.
 import { PRODUCTS } from './catalog.js';
-import { candidates, recipe, packPrice, packSize, recipeCost, total } from './domain.js';
+import { candidates, recipe, packPrice, packSize, recipeCost, total, isBreakfast, fitsSlot } from './domain.js';
 import { nutrition } from './nutrition.js';
 import { AISLE } from './products-more.js';
 import { dayName, money } from './ui.js';
@@ -92,9 +92,11 @@ function bill(state, plan) {
   return { cost, waste };
 }
 
-function mealTarget(state) {
+function mealTarget(state, breakfast = false) {
   if (!(state.dailyTarget > 0)) return 0;
-  return state.dailyTarget * (state.settings.slots.length > 1 ? 0.35 : 0.4);
+  if (breakfast) return state.dailyTarget * 0.25;
+  const mains = state.settings.slots.filter((slot) => slot !== 'Закуска').length;
+  return state.dailyTarget * (mains > 1 ? 0.35 : 0.4);
 }
 
 function dishScore(state, r, ctx) {
@@ -106,7 +108,8 @@ function dishScore(state, r, ctx) {
   if (s.goal === 'quick') score += 0.08 * Math.max(0, r.time - 20);
   if (s.goal === 'balanced')
     score += 0.006 * Math.abs(n.kcal - 560) + 0.08 * Math.max(0, 18 - n.protein);
-  if (ctx.target) score += Math.abs(n.kcal - ctx.target) / 120;
+  const target = isBreakfast(r) ? ctx.breakfastTarget : ctx.target;
+  if (target) score += Math.abs(n.kcal - target) / 120;
   if (state.favorites.includes(r.id)) score -= 1.5;
   if (ctx.previous.has(r.id)) score += 1.5;
   if ((s.needs || []).includes('kids') && r.tags?.includes('kids')) score -= 1;
@@ -125,11 +128,14 @@ export function planScore(state, plan, ctx = context(state)) {
   const seen = new Map(),
     families = new Map();
   let prev = null;
+  let mains = 0;
   for (const e of plan) {
-    const r = recipe(e.id),
-      family = mainProtein(r);
+    const r = recipe(e.id);
     score += ctx.dish.get(e.id) ?? dishScore(state, r, ctx);
     seen.set(e.id, (seen.get(e.id) || 0) + 1);
+    if (isBreakfast(r)) continue;
+    mains++;
+    const family = mainProtein(r);
     families.set(family, (families.get(family) || 0) + 1);
     if (prev) {
       if (prev.family === family && family !== 'veg') score += 8;
@@ -137,9 +143,11 @@ export function planScore(state, plan, ctx = context(state)) {
     }
     prev = { r, family };
   }
-  for (const count of seen.values()) score += (count - 1) * 30;
-  const cap = Math.ceil(plan.length / 3);
-  for (const count of families.values()) score += Math.max(0, count - cap) * 8;
+  // A repeat costs more each time: twice in a week is acceptable, five times is not.
+  for (const count of seen.values()) score += (count - 1) ** 2 * 30;
+  const cap = Math.ceil(mains / 3);
+  // Same idea for the main protein: one family over the cap is a nudge, a week of it is not.
+  for (const count of families.values()) score += Math.max(0, count - cap) ** 2 * 8;
   score -= families.size * 0.8;
   return score;
 }
@@ -147,6 +155,7 @@ export function planScore(state, plan, ctx = context(state)) {
 function context(state) {
   return {
     target: mealTarget(state),
+    breakfastTarget: mealTarget(state, true),
     previous: new Set(state.plan.map((e) => e.id)),
     dish: new Map(),
   };
@@ -166,12 +175,22 @@ function shuffled(list, random) {
  * the rest"); a kept dish that no longer passes the hard rules is replaced like any other.
  */
 export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
-  const pool = candidates(state.settings);
-  if (!pool.length)
+  const all = candidates(state.settings);
+  const breakfasts = all.filter(isBreakfast),
+    mainsPool = all.filter((r) => !isBreakfast(r));
+  const wantsBreakfast = state.settings.slots.includes('Закуска'),
+    wantsMains = state.settings.slots.some((slot) => slot !== 'Закуска');
+  if (wantsMains && !mainsPool.length)
     return {
       plan: null,
       reason: 'Няма рецепти за тези ограничения. Промени избора си; няма да го пренебрегнем.',
     };
+  if (wantsBreakfast && !breakfasts.length)
+    return {
+      plan: null,
+      reason: 'Няма закуска, която пасва на тези правила. Махни закуската от храненията или промени избора.',
+    };
+  const pool = [...(wantsMains ? mainsPool : []), ...(wantsBreakfast ? breakfasts : [])];
   const s = state.settings,
     ctx = context(state);
   // A small per-run bias: every new menu explores a different good week, never a worse rule.
@@ -198,8 +217,9 @@ export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
   const banned = new Map(slots.map((place, i) => [i, place.old]).filter(([, id]) => id));
   const keptIds = new Set([...fixed.values()].map((e) => e.id));
   // Best-first shortlist keeps the search fast without losing good dishes.
-  const ranked = pool.slice().sort((a, b) => ctx.dish.get(a.id) - ctx.dish.get(b.id));
-  const width = Math.min(pool.length, 36);
+  const rankedAll = pool.slice().sort((a, b) => ctx.dish.get(a.id) - ctx.dish.get(b.id));
+  const rankedFor = { breakfast: rankedAll.filter(isBreakfast), main: rankedAll.filter((r) => !isBreakfast(r)) };
+  const kind = (slot) => (slot === 'Закуска' ? 'breakfast' : 'main');
   let best = null,
     bestScore = Infinity;
   const starts = pool.length > 1 ? 8 : 1;
@@ -211,6 +231,8 @@ export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
         continue;
       }
       // No dish twice in one week while the allowed set is large enough.
+      const ranked = rankedFor[kind(place.slot)];
+      const width = Math.min(ranked.length, 36);
       const used = new Set([...plan.map((e) => e.id), ...keptIds]);
       // "Change the rest" means change: the dish that was here is not offered again.
       const fresh = ranked.filter((r) => !used.has(r.id) && r.id !== old);
@@ -250,13 +272,19 @@ export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
 // Local search: replace one meal at a time while that lowers the score.
 function improve(state, plan, pool, ctx, locked = new Set(), banned = new Map()) {
   let current = planScore(state, plan, ctx);
-  const unique = pool.length >= plan.length;
+  // Breakfasts swap with breakfasts, main dishes with main dishes.
+  const byKind = { breakfast: pool.filter(isBreakfast), main: pool.filter((r) => !isBreakfast(r)) };
+  const kindOf = (e) => (e.slot === 'Закуска' ? 'breakfast' : 'main');
+  const unique = {
+    breakfast: byKind.breakfast.length >= plan.filter((e) => kindOf(e) === 'breakfast').length,
+    main: byKind.main.length >= plan.filter((e) => kindOf(e) === 'main').length,
+  };
   for (let pass = 0; pass < 3; pass++) {
     let changed = false;
     for (let i = 0; i < plan.length; i++)
-      for (const r of locked.has(i) ? [] : pool) {
+      for (const r of locked.has(i) ? [] : byKind[kindOf(plan[i])]) {
         const keep = plan[i];
-        if (r.id === keep.id || r.id === banned.get(i) || (unique && plan.some((e) => e.id === r.id)))
+        if (r.id === keep.id || r.id === banned.get(i) || (unique[kindOf(keep)] && plan.some((e) => e.id === r.id)))
           continue;
         plan[i] = { ...keep, id: r.id };
         const score = planScore(state, plan, ctx);

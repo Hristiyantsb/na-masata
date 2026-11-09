@@ -29,6 +29,8 @@ import {
   diaryEntry,
   localDate,
   isValidBarcode,
+  isBreakfast,
+  fitsSlot,
 } from './domain.js';
 import { loadState, saveState, parseBackup, STORAGE_KEY } from './storage.js';
 import {
@@ -84,6 +86,7 @@ import {
   sceneFor,
   pick,
   liveCount,
+  budgetNote,
   dislikesSheet,
   dislikeGroups,
   STORY,
@@ -751,7 +754,7 @@ const actions = {
     if (state.locked) return;
     const id = el.dataset.id,
       i = Number(el.dataset.index);
-    if (!state.plan[i] || !candidates(state.settings).some((r) => r.id === id)) return;
+    if (!state.plan[i] || !candidates(state.settings).some((r) => r.id === id && fitsSlot(r, state.plan[i].slot))) return;
     const next = planSnapshot(state);
     next.plan[i].id = id;
     delete next.cooked[i];
@@ -1006,11 +1009,12 @@ const actions = {
     const r = recipe(el.dataset.id);
     if (!r) return;
     const n = nutrition(r);
+    const meal = isBreakfast(r) ? 'Закуска' : 'Вечеря';
     openSheet(
-      foodForm(ui.date, 'Вечеря', {
+      foodForm(ui.date, meal, {
         name: r.name,
         date: ui.date,
-        meal: 'Вечеря',
+        meal,
         amount: 1,
         unit: 'порции',
         basis: 1,
@@ -1470,11 +1474,15 @@ document.addEventListener('input', (event) => {
     w.draft = pick(w.draft, 'budget', el.value);
     const input = root.querySelector('[data-input="budget"]');
     if (input) input.value = el.value;
+    const note = root.querySelector('[data-budget-note]');
+    if (note) note.textContent = budgetNote(w.draft);
     el.style.setProperty('--p', `${Math.round(((Number(el.value) - 10) / 290) * 100)}%`);
     return;
   }
   if (w && el.dataset.input === 'budget') {
     w.draft = pick(w.draft, 'budget', el.value);
+    const note = root.querySelector('[data-budget-note]');
+    if (note) note.textContent = budgetNote(w.draft);
     const slider = root.querySelector('[data-input="budget-range"]');
     if (slider) {
       slider.value = String(Math.min(300, Math.max(10, w.draft.budget)));

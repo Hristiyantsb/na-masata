@@ -1,5 +1,6 @@
 import { MORE_PRODUCTS } from './products-more.js';
 import { MORE_RECIPES } from './recipes-more.js';
+import { BREAKFASTS, MAINS_2026_11 } from './recipes-2026-11.js';
 ('use strict');
 // Original Bulgarian recipe catalogue; prices are editable examples, not retailer quotations.
 export const STORES = ['Lidl', 'Kaufland', 'BILLA', 'METRO', 'Фантастико', 'T MARKET'];
@@ -528,7 +529,7 @@ RECIPES.push(
 ALLERGENS.shellfish = 'Ракообразни';
 ALLERGENS.sesame = 'Сусам';
 Object.assign(PRODUCTS, MORE_PRODUCTS);
-RECIPES.push(...MORE_RECIPES);
+RECIPES.push(...MORE_RECIPES, ...MAINS_2026_11, ...BREAKFASTS);
 
 // Kitchens for browsing. The first recipes were written before the field existed.
 export const CUISINES = Object.freeze({

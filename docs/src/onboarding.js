@@ -2,11 +2,11 @@
 // what the menu should be, what the kitchen can do, what never goes on the table and how many
 // sit down. The wooden table on top acts every answer out, so the screen explains itself.
 import { STORES, PRODUCTS, EQUIPMENT, ALLERGENS } from './catalog.js';
-import { candidates } from './domain.js';
+import { candidates, forSlots, isBreakfast, SLOTS } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
 import { nutrition } from './nutrition.js';
 import { tableSVG, pictogram, goalFlag } from './table.js';
-import { esc, icon, num, foodArt, plural } from './ui.js';
+import { esc, icon, num, foodArt, plural, money } from './ui.js';
 import { wordmark } from './brand.js';
 import { storeBadge } from './stores.js';
 
@@ -87,9 +87,11 @@ export function isSelected(d, key, value) {
 export function pick(d, key, value) {
   const next = structuredClone(d);
   if (key === 'clear' && ['allergens', 'dislikes', 'needs'].includes(value)) next[value] = [];
-  else if (LIST_KEYS.includes(key))
+  else if (LIST_KEYS.includes(key)) {
     next[key] = next[key].includes(value) ? next[key].filter((v) => v !== value) : [...next[key], value];
-  else if (NUMBER_KEYS.includes(key)) next[key] = Number(value);
+    // Meals always read in the order of the day, whatever order they were tapped in.
+    if (key === 'slots') next.slots = SLOTS.filter((slot) => next.slots.includes(slot));
+  } else if (NUMBER_KEYS.includes(key)) next[key] = Number(value);
   else if (key === 'people') next.people = Math.max(1, Math.min(12, Number(value) || 1));
   else if (key === 'budget') {
     const n = Math.round(Number(value));
@@ -101,7 +103,13 @@ export function pick(d, key, value) {
 export function liveCount(d) {
   if (!d.stores.length) return { count: 0, label: 'Избери поне един магазин', blocked: true };
   if (!d.slots.length) return { count: 0, label: 'Избери поне едно хранене', blocked: true };
-  const count = candidates(d).length;
+  const list = usable(d);
+  // A week needs something for every chosen meal: no breakfast that fits means no week, not a gap.
+  if (d.slots.includes('Закуска') && !list.some(isBreakfast))
+    return { count: 0, blocked: false, label: 'Нито една закуска не пасва' };
+  if (d.slots.some((slot) => slot !== 'Закуска') && list.every(isBreakfast))
+    return { count: 0, blocked: false, label: 'Нито едно основно ястие не пасва' };
+  const count = list.length;
   return {
     count,
     blocked: false,
@@ -109,9 +117,12 @@ export function liveCount(d) {
   };
 }
 
+/** Recipes that pass every hard rule and fit the chosen meals (breakfast or lunch and dinner). */
+export const usable = (d) => forSlots(candidates(d), d.slots || []);
+
 /** Five real recipes that pass every hard rule, ordered by what the person asked for. */
 export function previewRecipes(d) {
-  const ranked = candidates(d).map((r) => ({ r, n: nutrition(r) }));
+  const ranked = usable(d).map((r) => ({ r, n: nutrition(r) }));
   ranked.sort((a, b) => {
     if (d.goal === 'protein') return b.n.protein - a.n.protein || a.r.time - b.r.time;
     if (d.goal === 'light') return a.n.kcal - b.n.kcal || a.r.time - b.r.time;
@@ -136,16 +147,24 @@ export function relaxHints(d) {
   ];
   for (const need of d.needs || [])
     tries.push(['needs', d.needs.filter((n) => n !== need), `Без „${NEED_COPY[need][0]}“`, 'eating']);
-  const base = candidates(d).length;
+  if (d.slots.includes('Закуска') && d.slots.length > 1)
+    tries.push(['slots', d.slots.filter((slot) => slot !== 'Закуска'), 'Махни закуската от храненията', 'household']);
+  const base = liveCount(d).count;
   return tries
     .map(([key, value, label, step]) => ({
       label,
       step,
-      gain: candidates({ ...d, [key]: value }).length - base,
+      gain: liveCount({ ...d, [key]: value }).count - base,
     }))
     .filter((h) => h.gain > 0)
     .sort((a, b) => b.gain - a.gain)
     .slice(0, 3);
+}
+
+/** What the budget means per plate, worked out from the person's own numbers only. */
+export function budgetNote(d) {
+  const portions = d.days * Math.max(1, d.slots.length) * d.people;
+  return `≈ ${money(d.budget / portions)} на порция · ${portions} ${plural(portions, 'порция', 'порции', true)}`;
 }
 
 const coinsFor = (budget) => Math.max(1, Math.min(8, Math.round((Math.min(budget, 300) / 300) * 8)));
@@ -300,14 +319,13 @@ function household(d) {
   const value = Math.min(BUDGET.max, Math.max(BUDGET.min, d.budget));
   const people = `<div class="ob-stepper"><button type="button" class="ob-round" data-action="wizard-pick" data-key="people" data-value="${d.people - 1}" data-delta="-1" aria-label="Един човек по-малко" ${d.people <= 1 ? 'disabled' : ''}>${icon('minus', 20)}</button><output class="ob-count" aria-live="polite"><b data-people>${d.people}</b> <span data-people-word>${d.people === 1 ? 'човек' : 'души'}</span></output><button type="button" class="ob-round" data-action="wizard-pick" data-key="people" data-value="${d.people + 1}" data-delta="1" aria-label="Един човек повече" ${d.people >= 12 ? 'disabled' : ''}>${icon('plus', 20)}</button></div>`;
   const days = segmented('days', DAY_OPTIONS, d, 'Колко дни', (v) => [String(v), 'дни']);
-  const slots = ['Обяд', 'Вечеря']
-    .map((v) => {
-      const on = d.slots.includes(v);
-      return `<button type="button" class="ob-chip ob-chip-lg" ${pressed('slots', v, on)}>${icon(v === 'Обяд' ? 'sun' : 'moon', 18)}${esc(v)}</button>`;
-    })
-    .join('');
+  const slotIcons = { Закуска: 'cup', Обяд: 'sun', Вечеря: 'moon' };
+  const slots = SLOTS.map((v) => {
+    const on = d.slots.includes(v);
+    return `<button type="button" class="ob-chip ob-chip-lg" ${pressed('slots', v, on)}>${icon(slotIcons[v], 18)}${esc(v)}</button>`;
+  }).join('');
   const pct = Math.round(((value - BUDGET.min) / (BUDGET.max - BUDGET.min)) * 100);
-  const budget = `<div class="ob-budget"><div class="ob-budget-top"><label for="ob-budget" data-budget-label>За ${d.days} дни</label><span class="ob-budget-value"><input id="ob-budget" name="budget" type="number" inputmode="numeric" min="1" max="10000" step="1" value="${d.budget}" data-input="budget"><span>€</span></span></div><input type="range" min="${BUDGET.min}" max="${BUDGET.max}" step="${BUDGET.step}" value="${value}" data-input="budget-range" aria-label="Бюджет в евро" style="--p:${pct}%"></div>`;
+  const budget = `<div class="ob-budget"><div class="ob-budget-top"><label for="ob-budget" data-budget-label>За ${d.days} дни</label><span class="ob-budget-value"><input id="ob-budget" name="budget" type="number" inputmode="numeric" min="1" max="10000" step="1" value="${d.budget}" data-input="budget"><span>€</span></span></div><input type="range" min="${BUDGET.min}" max="${BUDGET.max}" step="${BUDGET.step}" value="${value}" data-input="budget-range" aria-label="Бюджет в евро" style="--p:${pct}%"><p class="ob-budget-note" data-budget-note>${esc(budgetNote(d))}</p></div>`;
   return `${section('Хора на масата', people)}${section('Колко дни', days)}${section('Кои хранения', `<div class="ob-chips">${slots}</div>`)}${section('Бюджет', budget, 'по примерни цени')}`;
 }
 
@@ -365,14 +383,14 @@ const PANELS = { welcome, stores, eating, menu, kitchen, exclude, household, res
 export function stepTitle(d, step) {
   const name = STEPS[step];
   if (name === 'result') {
-    const { count } = liveCount(d);
+    const { count, label } = liveCount(d);
     const shown = Math.min(5, count);
     return count
       ? {
           title: COPY.result.title,
           sub: `${count} ${plural(count, 'рецепта пасва', 'рецепти пасват', true)} на всичко, което избра. ${shown === 1 ? 'Ето я.' : `Ето ${['', '', 'две', 'три', 'четири', 'пет'][shown]} от тях.`}`,
         }
-      : { title: 'Нито една рецепта не пасва', sub: '' };
+      : { title: label, sub: '' };
   }
   return COPY[name];
 }
@@ -472,6 +490,8 @@ export function syncStep(root, d) {
   }
   const budgetLabel = root.querySelector('[data-budget-label]');
   if (budgetLabel) budgetLabel.textContent = `За ${d.days} дни`;
+  const budgetHint = root.querySelector('[data-budget-note]');
+  if (budgetHint) budgetHint.textContent = budgetNote(d);
   const dislikes = root.querySelector('[data-dislikes]');
   if (dislikes) dislikes.textContent = dislikeSummary(d);
   const live = root.querySelector('[data-live]');

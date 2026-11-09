@@ -13,6 +13,8 @@ import {
   SHOPPING_UNITS,
   shoppingSummary,
   explainEntry,
+  isBreakfast,
+  fitsSlot,
 } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
 import { mascot, wordmark } from './brand.js';
@@ -84,9 +86,11 @@ export function menuView(state, ui = {}) {
   const rows = groceries(state).filter((r) => r.packs);
   const done = rows.filter((r) => state.checked[r.k]).length;
   const keep = ui.keep;
-  const meals = s.slots.length > 1 ? 'хранения' : s.slots[0] === 'Обяд' ? 'обеда' : 'вечери';
+  const one = { Закуска: 'закуска', Обяд: 'обяд', Вечеря: 'вечеря' }[s.slots[0]];
+  const many = { Закуска: 'закуски', Обяд: 'обеда', Вечеря: 'вечери' }[s.slots[0]];
+  const meals = s.slots.length > 1 ? (state.plan.length === 1 ? 'хранене' : 'хранения') : state.plan.length === 1 ? one : many;
   const over = cost > s.budget;
-  const meta = `${s.people} ${s.people === 1 ? 'човек' : 'души'} · ${state.plan.length} ${state.plan.length === 1 ? (s.slots[0] === 'Обяд' ? 'обяд' : 'вечеря') : meals} · ${esc(listJoin(s.stores))}`;
+  const meta = `${s.people} ${s.people === 1 ? 'човек' : 'души'} · ${state.plan.length} ${meals} · ${esc(listJoin(s.stores))}`;
   const options = `<button type="button" class="icon-btn" data-action="menu-options" aria-label="Настройки на менюто">${icon('sliders', 22)}</button>`;
   const summary = `<div class="summary">
 <div class="sum-card"><span class="sum-label">${icon('receipt', 18)}Сметка</span><b class="sum-value">${money(cost)}</b><span class="sum-sub ${over ? 'is-over' : ''}">${over ? `с ${money(cost - s.budget)} над бюджета` : `от ${money(s.budget)} бюджет`}</span><span class="bar ${over ? 'is-over' : ''}"><i style="width:${Math.min(100, Math.round((cost / s.budget) * 100))}%"></i></span></div>
@@ -161,9 +165,11 @@ ${row('copy', 'Повтори в друг ден', 'Същото ястие на
 
 export function destinationSheet(state, from, mode) {
   const current = recipe(state.plan[from].id);
+  const fits = (entry) =>
+    fitsSlot(current, entry.slot) && (mode !== 'move' || fitsSlot(recipe(entry.id), state.plan[from].slot));
   return `<p class="eyebrow">${mode === 'move' ? 'Премести' : 'Повтори'}</p><h2 class="sheet-title">${esc(current.name)}</h2><p class="sheet-sub">${mode === 'move' ? 'Избери ястие, с което да си разменят местата.' : 'Избери кое хранене да стане същото ястие. Покупките ще се преизчислят.'}</p><div class="list">${state.plan
     .map((entry, to) =>
-      to === from
+      to === from || !fits(entry)
         ? ''
         : `<button type="button" class="list-row" data-action="place-meal" data-from="${from}" data-to="${to}" data-mode="${mode}"><span class="list-text"><small>${dayName(entry.day)} · ${esc(entry.slot)}</small><b>${esc(recipe(entry.id).name)}</b></span>${icon('chevron', 18)}</button>`,
     )
@@ -174,7 +180,7 @@ export function swapSheet(state, i) {
   const current = recipe(state.plan[i].id);
   const used = new Set(state.plan.map((e) => e.id));
   const options = candidates(state.settings)
-    .filter((r) => r.id !== current.id)
+    .filter((r) => r.id !== current.id && fitsSlot(r, state.plan[i].slot))
     .sort((a, b) => Number(used.has(a.id)) - Number(used.has(b.id)) || a.name.localeCompare(b.name, 'bg'));
   return `<p class="eyebrow">Вместо „${esc(current.name)}“</p><h2 class="sheet-title">Какво ти се яде?</h2><p class="sheet-sub">${plural(options.length, 'ястие пасва', 'ястия пасват')} на правилата ти. Останалото меню остава.</p><div class="recipe-grid recipe-grid-sheet">${options
     .map((r) => recipeCard(r, state, { swap: i, inMenu: used.has(r.id) }))
@@ -186,11 +192,12 @@ export function swapSheet(state, i) {
 export function recipeCard(r, state, { swap = null, inMenu = false } = {}) {
   const n = nutrition(r);
   const fav = state.favorites.includes(r.id);
+  const kindLabel = isBreakfast(r) ? r.type : r.cuisine && CUISINES[r.cuisine];
   const open =
     swap === null
       ? `data-action="recipe" data-id="${esc(r.id)}"`
       : `data-action="choose-swap" data-id="${esc(r.id)}" data-index="${swap}"`;
-  return `<article class="rcard"><button type="button" class="rcard-open" ${open}><span class="rcard-art">${foodArt(r, 112)}</span><span class="rcard-text">${r.cuisine ? `<span class="rcard-kind">${esc(CUISINES[r.cuisine])}${inMenu ? ' · в менюто' : ''}</span>` : ''}<b>${esc(r.name)}</b><span class="rcard-meta">${r.time} мин · ${num(n.kcal)} ккал · ${num(n.protein)} г протеин</span></span></button>${
+  return `<article class="rcard"><button type="button" class="rcard-open" ${open}><span class="rcard-art">${foodArt(r, 112)}</span><span class="rcard-text">${kindLabel ? `<span class="rcard-kind">${esc(kindLabel)}${inMenu ? ' · в менюто' : ''}</span>` : ''}<b>${esc(r.name)}</b><span class="rcard-meta">${r.time} мин · ${num(n.kcal)} ккал · ${num(n.protein)} г протеин</span></span></button>${
     swap === null
       ? `<button type="button" class="fav ${fav ? 'is-on' : ''}" data-action="favorite" data-id="${esc(r.id)}" aria-pressed="${fav}" aria-label="Любима рецепта: ${esc(r.name)}">${icon('heart', 20, fav)}</button>`
       : ''
@@ -200,6 +207,7 @@ export function recipeCard(r, state, { swap = null, inMenu = false } = {}) {
 export const RECIPE_FILTERS = [
   ['all', 'Всички'],
   ['fav', 'Любими'],
+  ['breakfast', 'Закуски'],
   ['quick', 'До 30 мин'],
 ];
 export function filterRecipes(state, query = '', filter = 'all') {
@@ -210,6 +218,7 @@ export function filterRecipes(state, query = '', filter = 'all') {
       (filter === 'all' ||
         (filter === 'fav' && state.favorites.includes(r.id)) ||
         (filter === 'quick' && r.time <= 30) ||
+        (filter === 'breakfast' && isBreakfast(r)) ||
         r.cuisine === filter),
   );
 }
@@ -249,7 +258,10 @@ export function recipeSheet(r, state, { index = null, done = [], preview = false
   const macros = nutrition(r);
   const allergens = [...new Set(Object.keys(r.ing).flatMap((k) => PRODUCTS[k][4]))];
   const fav = state.favorites.includes(r.id);
-  const kind = [r.cuisine && CUISINES[r.cuisine], r.type].filter(Boolean).join(' · ');
+  // A breakfast is first of all a breakfast (plain, keto or plant-based); the cuisine comes second.
+  const kind = (isBreakfast(r) ? [r.type, r.cuisine && CUISINES[r.cuisine]] : [r.cuisine && CUISINES[r.cuisine], r.type])
+    .filter(Boolean)
+    .join(' · ');
   const servings =
     index !== null && !preview
       ? `<div class="servings"><span>Порции</span><div class="stepper"><button type="button" class="icon-btn" data-action="servings" data-index="${index}" data-delta="-1" aria-label="Една порция по-малко" ${state.locked || n <= 1 ? 'disabled' : ''}>${icon('minus', 20)}</button><b>${n}</b><button type="button" class="icon-btn" data-action="servings" data-index="${index}" data-delta="1" aria-label="Една порция повече" ${state.locked || n >= 12 ? 'disabled' : ''}>${icon('plus', 20)}</button></div></div>`

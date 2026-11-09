@@ -30,6 +30,12 @@ export const PLANS = Object.freeze({
   plus: { name: 'Меню Плюс', monthly: 29, yearly: 290 },
 });
 export const MEALS = ['Закуска', 'Обяд', 'Вечеря', 'Междинно'];
+// Meals the weekly menu can plan, in the order of the day. Breakfast uses breakfast recipes only.
+export const SLOTS = Object.freeze(['Закуска', 'Обяд', 'Вечеря']);
+export const isBreakfast = (r) => r?.meal === 'breakfast';
+export const fitsSlot = (r, slot) => isBreakfast(r) === (slot === 'Закуска');
+/** Recipes that can appear in a menu with these meals. */
+export const forSlots = (list, slots) => list.filter((r) => slots.some((slot) => fitsSlot(r, slot)));
 export const localDate = (date = new Date()) =>
   `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 export const daysBefore = (iso, delta) => {
@@ -157,7 +163,7 @@ export function settingsErrors(s) {
     errors.push('Избери валидно време за готвене.');
   for (const [key, values, required] of [
     ['stores', STORES, true],
-    ['slots', ['Обяд', 'Вечеря'], true],
+    ['slots', SLOTS, true],
     ['equipment', Object.keys(EQUIPMENT), false],
     ['allergens', Object.keys(ALLERGENS), false],
     ['dislikes', Object.keys(PRODUCTS), false],
@@ -390,10 +396,12 @@ export function normalizeState(raw) {
   d.settings = Object.fromEntries(Object.keys(defaults().settings).map((k) => [k, d.settings[k]]));
   for (const k of ['stores', 'slots', 'allergens', 'dislikes', 'equipment', 'needs'])
     d.settings[k] = [...new Set(d.settings[k])];
-  if (!Array.isArray(raw.plan) || raw.plan.length > 14) throw Error('Невалидно меню.');
+  d.settings.slots = SLOTS.filter((slot) => d.settings.slots.includes(slot));
+  if (!Array.isArray(raw.plan) || raw.plan.length > 21) throw Error('Невалидно меню.');
   d.plan = raw.plan.map((e) => {
     if (
       !recipe(e.id) ||
+      !fitsSlot(recipe(e.id), e.slot) ||
       !Number.isInteger(e.day) ||
       e.day < 0 ||
       e.day >= d.settings.days ||
@@ -508,6 +516,9 @@ export function rearrangePlan(state, from, to, mode = 'move') {
     from === to
   )
     throw Error('Избери друго хранене.');
+  // A breakfast stays a breakfast: it moves or repeats only into a breakfast place, and back.
+  if (!fitsSlot(recipe(state.plan[from].id), state.plan[to].slot) || (mode === 'move' && !fitsSlot(recipe(state.plan[to].id), state.plan[from].slot)))
+    throw Error('Закуските се местят само между закуски, а основните ястия между обеди и вечери.');
   const result = planSnapshot(state);
   result.plan[to].id = state.plan[from].id;
   if (mode === 'move') result.plan[from].id = state.plan[to].id;

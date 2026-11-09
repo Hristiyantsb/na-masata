@@ -3102,6 +3102,12 @@ body.is-onboarding {
 .ob-budget-top label {
   color: var(--ink-2);
 }
+.ob-budget-note {
+  margin: 4px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
 .ob-budget-value {
   display: flex;
   align-items: baseline;

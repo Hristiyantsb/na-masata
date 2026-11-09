@@ -57,6 +57,10 @@ export const MORE_PRODUCTS = {
   curry: ['Къри', 20, 'г', 0.9, [], false],
   chili: ['Лют червен пипер', 20, 'г', 0.7, [], false],
   mint: ['Джоджен, сушен', 10, 'г', 0.6, [], false],
+  // Added with the breakfasts (November 2026).
+  cinnamon: ['Канела', 20, 'г', 0.9, [], false],
+  berries: ['Горски плодове, замразени', 300, 'г', 2.9, [], false],
+  oatmilk: ['Овесена напитка', 1000, 'мл', 2.3, ['gluten'], false],
 };
 
 // Per 100 g or 100 ml: kcal, protein, carbohydrate, fat, fibre. Generic reference values for
@@ -116,6 +120,9 @@ export const MORE_NUTRIENTS = {
   curry: [325, 14, 58, 14, 53],
   chili: [282, 13, 50, 14, 35],
   mint: [285, 20, 52, 6, 29],
+  cinnamon: [247, 4, 81, 1.2, 53],
+  berries: [50, 0.8, 11, 0.4, 4],
+  oatmilk: [46, 0.6, 7, 1.5, 0.8],
 };
 
 // Supermarket sections, in the order a shopper usually walks a Bulgarian store.
@@ -136,12 +143,12 @@ const AISLE_OF = {
   bakery: 'bread phyllo tortilla',
   meat: 'chicken mince chickenthigh pork beef turkey bacon',
   fish: 'fish salmon mackerel tuna',
-  dairy: 'cheese yogurt egg kashkaval milk butter cream cottage mozzarella parmesan tofu',
+  dairy: 'cheese yogurt egg kashkaval milk butter cream cottage mozzarella parmesan tofu oatmilk',
   dry: 'rice lentil bean pasta flour oats walnut honey redlentil bulgur quinoa buckwheat couscous breadcrumbs peanutbutter tahini',
   canned: 'chickpea canned corn redbean tomatopaste coconutmilk olives soysauce mustard',
-  frozen: 'greenbeans peas hake shrimp',
+  frozen: 'greenbeans peas hake shrimp berries',
   spices:
-    'oil salt paprika peppercorn savory oliveoil vinegar sesame oregano cumin curry chili mint',
+    'oil salt paprika peppercorn savory oliveoil vinegar sesame oregano cumin curry chili mint cinnamon',
 };
 export const AISLE = Object.freeze(
   Object.fromEntries(
@@ -168,4 +175,5 @@ export const LARGE_ONLY = Object.freeze([
   'peanutbutter',
   'tahini',
   'sweetpotato',
+  'oatmilk',
 ]);
