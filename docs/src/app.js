@@ -60,6 +60,8 @@ import {
 import {
   diaryView,
   foodPicker,
+  pickerRows,
+  quickKcalForm,
   foodForm,
   foodCopyForm,
   entrySheet,
@@ -86,7 +88,8 @@ import {
 import { applyScene, react, startIdle, lookAt } from './table.js';
 import { esc, icon, money, num, dayName } from './ui.js';
 import { Scanner } from './scanner.js';
-import { foodHistory, copiesForDates, parseAdiosExport, NUTRIENTS, macroEnergyShares } from './fitness.js';
+import { copiesForDates, parseAdiosExport, NUTRIENTS, macroEnergyShares } from './fitness.js';
+import { lookupBarcode, searchOnline } from './foods.js';
 import { convertQuantity } from './servings.js';
 import { initPwa, pwaState, installApp, checkAppUpdate } from './pwa.js';
 
@@ -119,7 +122,7 @@ const ui = {
   query: '',
   filter: 'all',
   date: localDate(),
-  picker: { meal: 'Обяд', tab: 'history', query: '' },
+  picker: newPicker('Обяд'),
   interval: 'monthly',
   sheetRecipe: null,
   dislikeQuery: '',
@@ -136,6 +139,11 @@ let cookTimer = null,
   diaryBackup = null,
   pending = null;
 const scanner = new Scanner();
+function newPicker(meal) {
+  return { meal, tab: 'all', query: '', online: { status: 'idle', query: '', results: [], error: '' } };
+}
+let onlineAt = 0,
+  onlineController = null;
 const reduced = () => !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));
 
@@ -490,13 +498,45 @@ function commitChange(next, message) {
 /* ---------- diary helpers ---------- */
 
 function pickedRows() {
-  const p = ui.picker;
-  const source = p.tab === 'saved' ? state.savedFoods : foodHistory(state.diary, p.query, 40);
-  const q = p.query.toLocaleLowerCase('bg');
-  return source.filter((e) => (e.name + ' ' + (e.brand || '')).toLocaleLowerCase('bg').includes(q));
+  return pickerRows(state, ui.picker).map((row) => row.e);
 }
-function showPicker() {
-  openSheet(foodPicker(state, ui.date, ui.picker.meal, ui.picker.tab, ui.picker.query), { size: 'tall' });
+function showPicker(keepScroll = false) {
+  openSheet(foodPicker(state, ui.date, ui.picker), { size: 'tall', keepScroll });
+}
+/** Re-draw only the results, so the search field keeps focus and the caret. */
+function refreshPickerResults() {
+  const box = sheet.querySelector('[data-picker-results]');
+  if (!box) return;
+  const holder = document.createElement('div');
+  holder.innerHTML = foodPicker(state, ui.date, ui.picker);
+  box.innerHTML = holder.querySelector('[data-picker-results]')?.innerHTML || '';
+}
+// Open Food Facts allows about ten searches a minute: wait if the last one was very recent.
+async function runOnlineSearch() {
+  const query = ui.picker.query.trim();
+  if (query.length < 2) return;
+  onlineController?.abort();
+  const controller = new AbortController();
+  onlineController = controller;
+  ui.picker.online = { status: 'loading', query, results: [], error: '' };
+  refreshPickerResults();
+  const wait = 6500 - (Date.now() - onlineAt);
+  if (wait > 0) await sleep(wait);
+  if (controller.signal.aborted) return;
+  onlineAt = Date.now();
+  try {
+    const results = await searchOnline(query, { signal: controller.signal });
+    if (controller.signal.aborted || ui.picker.query.trim() !== query) return;
+    ui.picker.online = { status: 'done', query, results, error: '' };
+  } catch (error) {
+    if (error.name === 'AbortError') return;
+    ui.picker.online = { status: 'error', query, results: [], error: error.message };
+  }
+  if (sheet.querySelector('[data-picker-results]')) refreshPickerResults();
+}
+function openFood(e, notice = '') {
+  const entry = { ...e, id: undefined, date: ui.date, meal: ui.picker.meal, kcal: e.kcal ?? '' };
+  openSheet(`${notice}${foodForm(ui.date, ui.picker.meal, entry)}`, { size: 'tall' });
 }
 function diaryDone(message) {
   persist();
@@ -550,15 +590,34 @@ async function processBarcode(code) {
     else toast('Баркодът не е валиден. Провери цифрите.', { error: true });
     return;
   }
+  const note = (kind, text) => `<p class="notice ${kind === 'ok' ? 'notice-accent' : ''}">${icon(kind === 'ok' ? 'check' : 'info', 18)}<span>${esc(text)}</span></p>`;
+  const manual = { name: '', barcode: code, source: 'manual', unit: 'г', basis: 100, amount: 100, kcal: '', protein: null };
   const known = knownBarcode(state, code);
-  const entry = known
-    ? { ...known, id: undefined, date: ui.date, meal: ui.picker.meal }
-    : { name: '', barcode: code, source: 'manual', unit: 'г', basis: 100, amount: 100, kcal: '', protein: null, date: ui.date, meal: ui.picker.meal };
-  openSheet(
-    `<p class="notice ${known ? 'notice-accent' : ''}">${icon(known ? 'check' : 'info', 18)}<span>${known ? 'Познахме го от твоите записи. Провери порцията.' : 'Нов продукт. Въведи стойностите от етикета веднъж и следващия път ще го познаем.'}</span></p>${foodForm(ui.date, ui.picker.meal, entry)}`,
-    { size: 'tall' },
-  );
+  if (known) return openFood(known, note('ok', 'Познахме го от твоите записи. Провери количеството.'));
+  if (navigator.onLine === false)
+    return openFood(manual, note('info', 'Няма интернет. Въведи стойностите от етикета; следващия път ще го познаем и без връзка.'));
+  openSheet(`<div class="lookup" role="status">${icon('scan', 40)}<h2 class="sheet-title">Търсим продукта</h2><p class="sheet-sub">Баркод ${esc(code)} · Open Food Facts</p></div>`);
+  const generation = ++lookupGeneration;
+  try {
+    const found = await lookupBarcode(code);
+    if (generation !== lookupGeneration || !sheet.open) return;
+    if (found && found.kcal !== null)
+      return openFood(
+        found,
+        note('ok', `Намерихме го: ${found.name}${found.brand ? ', ' + found.brand : ''}. Стойностите са за 100 ${found.unit === 'мл' ? 'мл' : 'г'} от Open Food Facts; свери ги с етикета.`),
+      );
+    if (found)
+      return openFood(
+        { ...found, source: 'manual' },
+        note('info', 'Намерихме името, но без калории. Допиши стойностите от етикета.'),
+      );
+    openFood(manual, note('info', 'Няма го в Open Food Facts. Въведи стойностите от етикета веднъж и следващия път ще го познаем.'));
+  } catch (error) {
+    if (generation !== lookupGeneration || !sheet.open) return;
+    openFood(manual, note('info', `${error.message} Можеш да въведеш стойностите от етикета.`));
+  }
 }
+let lookupGeneration = 0;
 
 /* ---------- actions ---------- */
 
@@ -847,14 +906,19 @@ const actions = {
   },
   'add-food': (el) => {
     scanner.stop();
-    ui.picker = { meal: el?.dataset?.meal || defaultMeal(), tab: 'history', query: '' };
+    ui.picker = newPicker(el?.dataset?.meal || defaultMeal());
     showPicker();
   },
   'food-tab': (el) => {
-    ui.picker.tab = el.dataset.tab === 'saved' ? 'saved' : 'history';
-    ui.picker.query = '';
-    showPicker();
+    ui.picker.tab = el.dataset.tab === 'saved' ? 'saved' : 'all';
+    showPicker(true);
   },
+  'picker-meal': (el) => {
+    ui.picker.meal = el.dataset.meal;
+    sheet.querySelectorAll('[data-action="picker-meal"]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.meal === ui.picker.meal)));
+  },
+  'food-online': () => runOnlineSearch(),
+  'quick-kcal': () => openSheet(quickKcalForm(ui.date, ui.picker.meal)),
   'manual-food': (el) => {
     scanner.stop();
     openSheet(foodForm(ui.date, el?.dataset?.meal || ui.picker.meal), { size: 'tall' });
@@ -862,13 +926,16 @@ const actions = {
   'pick-food': (el) => {
     const e = pickedRows()[Number(el.dataset.index)];
     if (!e) return;
-    openSheet(
-      foodForm(ui.date, ui.picker.meal, { ...e, id: undefined, date: ui.date, meal: ui.picker.meal, kcal: e.kcal ?? '' }),
-      { size: 'tall' },
+    openFood(
+      e,
+      e.kind === 'off'
+        ? `<p class="notice">${icon('info', 18)}<span>От Open Food Facts. Стойностите са за 100 ${e.unit === 'мл' ? 'мл' : 'г'}; свери ги с етикета.</span></p>`
+        : '',
     );
   },
   'quick-repeat-food': (el) => {
     const previous = pickedRows()[Number(el.dataset.index)];
+    if (previous && !['recent', 'saved'].includes(previous.kind)) return openFood(previous);
     if (!previous || state.diary.length >= 20000) return;
     const entry = diaryEntry({ ...previous, id: crypto.randomUUID(), date: ui.date, meal: ui.picker.meal });
     diaryBackup = structuredClone(state.diary);
@@ -878,7 +945,7 @@ const actions = {
   'remove-saved-food': (el) => {
     state.savedFoods = state.savedFoods.filter((e) => e.id !== el.dataset.id);
     persist();
-    showPicker();
+    showPicker(true);
   },
   entry: (el) => {
     const e = state.diary.find((x) => x.id === el.dataset.id);
@@ -1183,6 +1250,32 @@ const forms = {
     render();
   },
   barcode: async (f) => processBarcode(String(f.get('barcode') || '').trim()),
+  'food-search': (f) => {
+    ui.picker.query = String(f.get('query') || '').slice(0, 80);
+    return runOnlineSearch();
+  },
+  'quick-kcal': (f) => {
+    const kcal = Number(f.get('kcal'));
+    if (!Number.isFinite(kcal) || kcal < 1 || kcal > 2000) throw Error('Въведи калории от 1 до 2000.');
+    const e = diaryEntry({
+      name: String(f.get('name') || '').trim() || 'Бързо добавяне',
+      date: String(f.get('date') || ui.date),
+      meal: String(f.get('meal')),
+      amount: 1,
+      unit: 'порции',
+      basis: 1,
+      kcal,
+      protein: f.get('protein') || null,
+      carbs: f.get('carbs') || null,
+      fat: f.get('fat') || null,
+      source: 'manual',
+    });
+    if (state.diary.length >= 20000) throw Error('Дневникът е пълен.');
+    diaryBackup = structuredClone(state.diary);
+    state.diary.push(e);
+    ui.date = e.date;
+    diaryDone(`Добавено: ${num(kcal)} ккал към ${e.meal.toLocaleLowerCase('bg')}.`);
+  },
   weight: (f) => {
     state.weights = withWeight(state.weights, { date: String(f.get('date')), kg: Number(String(f.get('kg')).replace(',', '.')) });
     persist();
@@ -1371,15 +1464,9 @@ document.addEventListener('input', (event) => {
     return;
   }
   if (el.dataset.input === 'food-search') {
-    ui.picker.query = el.value.slice(0, 100);
+    ui.picker.query = el.value.slice(0, 80);
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      const caret = el.selectionStart;
-      showPicker();
-      const input = sheet.querySelector('[data-input="food-search"]');
-      input?.focus();
-      if (caret !== null) input?.setSelectionRange?.(caret, caret);
-    }, 220);
+    searchTimer = setTimeout(refreshPickerResults, 120);
   }
 });
 

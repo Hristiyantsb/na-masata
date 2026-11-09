@@ -127,6 +127,54 @@ test('the real controller runs the week, the shopping list and the diary', async
   await submit('[data-form="weight"]');
   assert.equal(saved().weights[0].kg, 72.4);
 
+  // food search, quick calories and a barcode, like a food tracker
+  await click('add-food', { meal: 'Закуска' });
+  const search = sheet.querySelector('[data-input="food-search"]');
+  search.value = 'домати';
+  search.dispatchEvent(new t.window.Event('input', { bubbles: true }));
+  await t.tick(200);
+  assert.ok([...sheet.querySelectorAll('.food-pick b')].some((b) => b.textContent === 'Домати'));
+  assert.ok(sheet.querySelector('[data-action="food-online"]'), 'online search is offered, not fired on every key');
+  await click('picker-meal', { meal: 'Междинно' });
+  await click('quick-kcal');
+  sheet.querySelector('[name="kcal"]').value = '320';
+  await submit('[data-form="quick-kcal"]');
+  assert.equal(saved().diary.at(-1).kcal, 320);
+  assert.equal(saved().diary.at(-1).meal, 'Междинно');
+  const product = {
+    code: '3800201451161',
+    product_name: 'Краве кисело мляко 3.6%',
+    brands: 'Елена',
+    serving_quantity: 200,
+    nutriments: { 'energy-kcal_100g': 63, proteins_100g: 3.3, carbohydrates_100g: 4.5, fat_100g: 3.6 },
+  };
+  const realFetch = globalThis.fetch;
+  const asked = [];
+  globalThis.fetch = async (url) => {
+    asked.push(String(url));
+    return new Response(JSON.stringify({ status: 1, product }), { status: 200 });
+  };
+  await click('scanner');
+  sheet.querySelector('[name="barcode"]').value = '3800201451161';
+  await submit('[data-form="barcode"]');
+  await t.tick(30);
+  assert.match(asked[0], /openfoodfacts\.org\/api\/v2\/product\/3800201451161\.json/);
+  const scanned = sheet.querySelector('[data-form="food"]');
+  assert.equal(scanned.querySelector('[name="name"]').value, 'Краве кисело мляко 3.6%');
+  assert.equal(scanned.querySelector('[name="amount"]').value, '200');
+  await submit('[data-form="food"]');
+  assert.equal(saved().diary.at(-1).barcode, '3800201451161');
+  assert.equal(saved().diary.at(-1).source, 'openfoodfacts');
+  globalThis.fetch = async () => {
+    throw new TypeError('offline');
+  };
+  await click('scanner');
+  sheet.querySelector('[name="barcode"]').value = '3800201451161';
+  await submit('[data-form="barcode"]');
+  assert.match(sheet.textContent, /Познахме го/, 'a product logged once is known without the network');
+  await click('close-sheet');
+  globalThis.fetch = realFetch;
+
   // more
   location.hash = '#more';
   await t.tick();

@@ -131,7 +131,7 @@ test('new-from-history forms do not accidentally edit originals; text is escaped
   assert.match(html, /name="carbs"/);
   const s = defaults();
   s.savedFoods = [e];
-  assert.doesNotMatch(foodPicker(s, e.date, e.meal, 'saved'), /<script>/);
+  assert.doesNotMatch(foodPicker(s, e.date, { meal: e.meal, tab: 'saved', query: '', online: { status: 'idle', query: '', results: [], error: '' } }), /<script>/);
 });
 
 test('macro energy shares use 4/4/9 and require complete, nonnegative data', async () => {

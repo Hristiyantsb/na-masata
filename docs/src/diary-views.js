@@ -1,5 +1,6 @@
 // Food diary (Меню Плюс). Records what was eaten; it never sets a calorie goal by itself.
-import { NUTRIENTS, nutritionTotals, weekDates, foodHistory } from './fitness.js';
+import { NUTRIENTS, nutritionTotals, weekDates } from './fitness.js';
+import { searchLocal } from './foods.js';
 import { MEALS, daysBefore, WATER_GLASS_ML } from './domain.js';
 import { measureOptions, displayQuantity, suggestedServingQuantity } from './servings.js';
 import { esc, icon, num, SHORT_DAYS, plural } from './ui.js';
@@ -22,6 +23,12 @@ function weekStrip(state, date, today) {
       return `<button type="button" class="wday ${d === date ? 'is-on' : ''} ${d === today ? 'is-today' : ''}" data-action="diary-jump" data-date="${d}" ${d === date ? 'aria-current="date"' : ''} aria-label="${esc(dateLabel(d, { weekday: 'long', day: 'numeric', month: 'long' }))}"><small>${SHORT_DAYS[i]}</small><b>${Number(d.slice(-2))}</b><i class="${has ? 'has' : ''}"></i></button>`;
     })
     .join('')}<button type="button" class="icon-btn" data-action="diary-jump" data-date="${daysBefore(date, -7)}" aria-label="Следваща седмица">${icon('chevron', 20)}</button></div>`;
+}
+
+function equation(eaten, target) {
+  if (!target) return '';
+  const left = Math.round(target - eaten);
+  return `<div class="equation" role="group" aria-label="Цел минус храна"><div><b>${num(target)}</b><small>Цел</small></div><i aria-hidden="true">−</i><div><b>${num(eaten)}</b><small>Храна</small></div><i aria-hidden="true">=</i><div class="${left < 0 ? 'is-over' : 'is-left'}"><b>${num(Math.abs(left))}</b><small>${left < 0 ? 'Над целта' : 'Остават'}</small></div></div>`;
 }
 
 function ring(eaten, target) {
@@ -66,7 +73,7 @@ export function diaryView(state, date, today) {
     (_, i) =>
       `<button type="button" class="glass ${i < water ? 'is-full' : ''}" data-action="water" data-count="${i + 1 === water ? i : i + 1}" aria-pressed="${i < water}" aria-label="${plural(i + 1, 'чаша', 'чаши')}"><span></span></button>`,
   ).join('')}${water > 8 ? `<b class="glass-more">+${water - 8}</b>` : ''}</div><p class="fine">Чаша = ${WATER_GLASS_ML} мл. Докосни, за да отбележиш.</p></section>`;
-  return `<header class="page-head"><div class="page-head-text"><p class="eyebrow">Меню Плюс · демо</p><h1>Дневник</h1><p class="page-meta">${esc(todayLabel(date, today))}</p></div><button type="button" class="btn btn-primary btn-small" data-action="add-food">${icon('plus', 18)} Добави</button></header>${weekStrip(state, date, today)}<section class="card day-card">${ring(totals.kcal, target)}<div class="day-side">${macroBars(state, totals)}<div class="day-links"><button type="button" class="btn btn-plain btn-small" data-action="daily-target">${target ? 'Смени целта' : 'Задай цел'}</button><button type="button" class="btn btn-plain btn-small" data-action="macro-targets">Цели за макроси</button></div></div>${missing ? `<p class="fine day-note">* Някои записи нямат стойност за всички макроси.</p>` : ''}</section>${meals}${waterCard}${weightCard(state, date)}${weekChart(state, date)}<section class="list-group"><h2>Данни</h2><div class="list"><button type="button" class="list-row" data-action="export-diary"><span class="list-ic">${icon('download', 20)}</span><span class="list-text"><b>Изтегли дневника</b><small>CSV за Excel и Google Sheets</small></span>${icon('chevron', 18)}</button><label class="list-row"><span class="list-ic">${icon('upload', 20)}</span><span class="list-text"><b>Внеси записи</b><small>JSON от приложението adios</small></span>${icon('chevron', 18)}<input type="file" accept="application/json,.json" data-change="import-adios" class="sr-only"></label></div></section><p class="fine">Дневникът записва, не съветва. Не задаваме калорийна цел вместо теб.</p>`;
+  return `<header class="page-head"><div class="page-head-text"><p class="eyebrow">Меню Плюс · демо</p><h1>Дневник</h1><p class="page-meta">${esc(todayLabel(date, today))}</p></div><button type="button" class="btn btn-primary btn-small" data-action="add-food">${icon('plus', 18)} Добави</button></header>${weekStrip(state, date, today)}<section class="card day-card">${ring(totals.kcal, target)}<div class="day-side">${macroBars(state, totals)}<div class="day-links"><button type="button" class="btn btn-plain btn-small" data-action="daily-target">${target ? 'Смени целта' : 'Задай цел'}</button><button type="button" class="btn btn-plain btn-small" data-action="macro-targets">Цели за макроси</button></div></div>${equation(totals.kcal, target)}${missing ? `<p class="fine day-note">* Някои записи нямат стойност за всички макроси.</p>` : ''}</section>${meals}${waterCard}${weightCard(state, date)}${weekChart(state, date)}<section class="list-group"><h2>Данни</h2><div class="list"><button type="button" class="list-row" data-action="export-diary"><span class="list-ic">${icon('download', 20)}</span><span class="list-text"><b>Изтегли дневника</b><small>CSV за Excel и Google Sheets</small></span>${icon('chevron', 18)}</button><label class="list-row"><span class="list-ic">${icon('upload', 20)}</span><span class="list-text"><b>Внеси записи</b><small>JSON от приложението adios</small></span>${icon('chevron', 18)}<input type="file" accept="application/json,.json" data-change="import-adios" class="sr-only"></label></div></section><p class="fine">Дневникът записва, не съветва. Не задаваме калорийна цел вместо теб.</p>`;
 }
 
 function weekChart(state, date) {
@@ -125,19 +132,74 @@ export function macroTargetsSheet(state) {
     .join('')}</div><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запази</button></form>`;
 }
 
-export function foodPicker(state, date, meal, tab = 'history', query = '') {
-  const source = tab === 'saved' ? state.savedFoods : foodHistory(state.diary, query, 40);
-  const q = query.toLocaleLowerCase('bg');
-  const rows = source.filter((e) => (e.name + ' ' + (e.brand || '')).toLocaleLowerCase('bg').includes(q));
-  return `<p class="eyebrow">${esc(meal)} · ${esc(dateLabel(date, { day: 'numeric', month: 'long' }))}</p><h2 class="sheet-title">Добави храна</h2><div class="quick-add"><button type="button" class="qa" data-action="manual-food" data-meal="${esc(meal)}">${icon('edit', 22)}<span>Ръчно</span></button><button type="button" class="qa" data-action="scanner" data-meal="${esc(meal)}">${icon('scan', 22)}<span>Баркод</span></button><a class="qa" href="#recipes">${icon('book', 22)}<span>От рецепта</span></a></div><div class="seg seg-2" role="group" aria-label="Източник"><button type="button" class="seg-item" data-action="food-tab" data-tab="history" aria-pressed="${tab === 'history'}">Последни</button><button type="button" class="seg-item" data-action="food-tab" data-tab="saved" aria-pressed="${tab === 'saved'}">Мои храни</button></div><label class="search">${icon('search', 18)}<input type="search" name="query" data-input="food-search" value="${esc(query)}" placeholder="Търси в списъка" aria-label="Търси храна" autocomplete="off"></label><ul class="food-results">${
-    rows
-      .map(
-        (e, i) =>
-          `<li class="food-row"><button type="button" class="food-pick" data-action="pick-food" data-index="${i}"><span class="list-text"><b>${esc(e.name)}</b><small>${esc(e.brand || '')}${e.brand ? ' · ' : ''}${e.kcal == null ? 'без ккал' : `${num(e.kcal)} ккал / ${e.basis === 1 ? 'порция' : '100 ' + esc(e.unit || 'г')}`}</small></span></button><button type="button" class="pill" data-action="quick-repeat-food" data-index="${i}" aria-label="Добави ${esc(e.name)}: ${num(e.amount, 1)} ${esc(e.unit)}">${icon('plus', 16)} ${num(e.amount, 1)} ${esc(e.unit)}</button>${tab === 'saved' ? `<button type="button" class="icon-btn icon-btn-sm" data-action="remove-saved-food" data-id="${esc(e.id)}" aria-label="Махни от моите храни">${icon('trash', 18)}</button>` : ''}</li>`,
-      )
-      .join('') ||
-    `<li class="food-empty">${tab === 'saved' ? 'Запазените храни се появяват тук. Запази храна от записа ѝ в дневника.' : 'Последно записаните храни се появяват тук.'}</li>`
-  }</ul>`;
+const per = (e) => (e.basis === 1 ? (e.servingLabel ? e.servingLabel : 'порция') : `100 ${e.unit === 'мл' ? 'мл' : 'г'}`);
+const SECTION_TITLES = {
+  mine: 'Твои храни',
+  recent: 'Последни',
+  basic: 'Основни продукти',
+  recipes: 'Рецепти от „На маса“',
+  online: 'От Open Food Facts',
+};
+
+/** Rows of the picker in display order; the controller resolves taps by the same index. */
+export function pickerRows(state, picker) {
+  const local = searchLocal(state, picker.query, { tab: picker.tab });
+  const rows = [];
+  const push = (section, list) => list.forEach((e) => rows.push({ section, e }));
+  push(picker.query.trim() ? 'mine' : 'recent', local.mine);
+  push('basic', local.basic);
+  push('recipes', local.recipes);
+  const online = picker.online || {};
+  if (picker.tab !== 'saved' && online.status === 'done' && online.query === picker.query.trim()) push('online', online.results);
+  return rows;
+}
+
+function onlineBlock(picker) {
+  const q = picker.query.trim();
+  if (picker.tab === 'saved' || q.length < 2) return '';
+  const online = picker.online || {};
+  if (online.query !== q || online.status === 'idle')
+    return `<button type="button" class="online-row" data-action="food-online">${icon('search', 20)}<span class="list-text"><b>Търси „${esc(q)}“ в Open Food Facts</b><small>Хиляди продукти от магазините, с марка и калории</small></span>${icon('chevron', 18)}</button>`;
+  if (online.status === 'loading') return `<p class="online-status" role="status">Търсим в Open Food Facts…</p>`;
+  if (online.status === 'error')
+    return `<p class="online-status is-error" role="alert">${esc(online.error)} Баркодът работи отделно: сканирай опаковката или въведи храната ръчно.</p><button type="button" class="btn btn-secondary btn-small" data-action="food-online">Опитай пак</button>`;
+  if (!online.results.length)
+    return `<p class="online-status">Open Food Facts не намери „${esc(q)}“. Въведи храната ръчно и тя ще остане в „Твои храни“.</p>`;
+  return '';
+}
+
+export function foodPicker(state, date, picker) {
+  const rows = pickerRows(state, picker);
+  let section = null,
+    list = '';
+  rows.forEach(({ section: sec, e }, i) => {
+    if (sec !== section) {
+      list += `${section ? '</ul>' : ''}<h3 class="food-section">${SECTION_TITLES[sec]}</h3><ul class="food-results">`;
+      section = sec;
+    }
+    const mine = sec === 'mine' || sec === 'recent';
+    const sub = [e.brand, e.kcal == null ? 'без ккал' : `${num(e.kcal)} ккал / ${per(e)}`].filter(Boolean).map(esc).join(' · ');
+    list += `<li class="food-row"><button type="button" class="food-pick" data-action="pick-food" data-index="${i}"><span class="list-text"><b>${esc(e.name)}</b><small>${sub}</small></span></button>${
+      mine
+        ? `<button type="button" class="pill" data-action="quick-repeat-food" data-index="${i}" aria-label="Добави ${esc(e.name)}: ${num(e.amount, 1)} ${esc(e.unit)}">${icon('plus', 16)} ${num(e.amount, 1)} ${esc(e.unit)}</button>`
+        : `<button type="button" class="icon-btn icon-btn-sm add-btn" data-action="pick-food" data-index="${i}" aria-label="Добави ${esc(e.name)}">${icon('plus', 20)}</button>`
+    }${picker.tab === 'saved' ? `<button type="button" class="icon-btn icon-btn-sm" data-action="remove-saved-food" data-id="${esc(e.id)}" aria-label="Махни от моите храни">${icon('trash', 18)}</button>` : ''}</li>`;
+  });
+  if (section) list += '</ul>';
+  const hasOnline = rows.some((r) => r.section === 'online');
+  const emptyText =
+    picker.tab === 'saved'
+      ? 'Тук стоят храните, които запазиш. Отвори запис в дневника и избери „Запази в „Мои храни“.'
+      : picker.query.trim()
+        ? 'Нищо при теб и в основните продукти.'
+        : 'Последните ти храни ще се появяват тук за бързо добавяне.';
+  return `<p class="eyebrow">${esc(dateLabel(date, { weekday: 'long', day: 'numeric', month: 'long' }))}</p><h2 class="sheet-title">Добави храна</h2><div class="seg seg-meals" role="group" aria-label="Хранене">${MEALS.map((m) => `<button type="button" class="seg-item" data-action="picker-meal" data-meal="${m}" aria-pressed="${m === picker.meal}">${m}</button>`).join('')}</div><form class="search" data-form="food-search" role="search">${icon('search', 18)}<input type="search" name="query" data-input="food-search" value="${esc(picker.query)}" placeholder="Храна, марка или рецепта" aria-label="Търси храна" autocomplete="off" enterkeyhint="search"></form><div class="quick-add"><button type="button" class="qa" data-action="scanner">${icon('scan', 22)}<span>Баркод</span></button><button type="button" class="qa" data-action="quick-kcal">${icon('flame', 22)}<span>Бързи калории</span></button><button type="button" class="qa" data-action="manual-food">${icon('edit', 22)}<span>Ръчно</span></button></div><div class="seg seg-2" role="group" aria-label="Източник"><button type="button" class="seg-item" data-action="food-tab" data-tab="all" aria-pressed="${picker.tab !== 'saved'}">Всички</button><button type="button" class="seg-item" data-action="food-tab" data-tab="saved" aria-pressed="${picker.tab === 'saved'}">Мои храни</button></div><div data-picker-results>${list || `<p class="food-empty">${emptyText}</p>`}${onlineBlock(picker)}${hasOnline ? '<p class="fine">Данни от Open Food Facts, лиценз ODbL. Въведени са от хора и може да се различават от етикета.</p>' : ''}</div>`;
+}
+
+export function quickKcalForm(date, meal) {
+  return `<p class="eyebrow">Дневник</p><h2 class="sheet-title">Бързи калории</h2><p class="sheet-sub">Когато знаеш само калориите, например от менюто в ресторант.</p><form data-form="quick-kcal"><input type="hidden" name="date" value="${esc(date)}"><div class="form-grid"><label class="field"><span>Хранене</span><select name="meal">${MEALS.map((m) => `<option ${m === meal ? 'selected' : ''}>${m}</option>`).join('')}</select></label><label class="field"><span>Ккал</span><input name="kcal" type="number" inputmode="numeric" min="1" max="2000" step="1" required></label></div><label class="field"><span>Какво беше</span><input name="name" maxlength="120" autocomplete="off" placeholder="Бързо добавяне"></label><details class="more-fields"><summary>Макроси, ако ги знаеш</summary><div class="form-grid form-grid-3">${['protein', 'carbs', 'fat']
+    .map((k) => `<label class="field"><span>${NUTRIENTS[k].label}, г</span><input name="${k}" type="number" inputmode="decimal" min="0" max="200" step="0.1"></label>`)
+    .join('')}</div></details><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запиши</button></form>`;
 }
 
 function macroFields(e) {
@@ -174,7 +236,7 @@ export function foodCopyForm(entry, date) {
 }
 
 export function scannerSheet() {
-  return `<p class="eyebrow">Баркод</p><h2 class="sheet-title">От етикета в дневника</h2><p class="sheet-sub">Насочи камерата към баркода на опаковката. Разчитаме го на телефона, нищо не се изпраща.</p><div class="scanner"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 56)}<span>Баркодът в рамката</span></div></div><div class="sheet-actions"><button type="button" class="btn btn-primary" data-action="start-camera">${icon('camera', 18)} Включи камерата</button><label class="btn btn-secondary">${icon('upload', 18)} Снимка<input type="file" accept="image/*" capture="environment" data-change="scan-image" class="sr-only"></label></div><form data-form="barcode" class="barcode-form"><label class="field"><span>Или въведи цифрите</span><input name="barcode" inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required autocomplete="off"></label><button class="btn btn-secondary" type="submit">Провери</button><p class="form-error" role="alert"></p></form><p class="fine">Познаваме продукти, които вече си записвал. За нов продукт въведи стойностите от етикета веднъж.</p>`;
+  return `<p class="eyebrow">Баркод</p><h2 class="sheet-title">От етикета в дневника</h2><p class="sheet-sub">Насочи камерата към баркода на опаковката. Разчитаме го на телефона и търсим продукта в Open Food Facts; изпращаме само цифрите.</p><div class="scanner"><video id="scan-video" autoplay muted playsinline></video><div class="scanner-guide">${icon('scan', 56)}<span>Баркодът в рамката</span></div></div><div class="sheet-actions"><button type="button" class="btn btn-primary" data-action="start-camera">${icon('camera', 18)} Включи камерата</button><label class="btn btn-secondary">${icon('upload', 18)} Снимка<input type="file" accept="image/*" capture="environment" data-change="scan-image" class="sr-only"></label></div><form data-form="barcode" class="barcode-form"><label class="field"><span>Или въведи цифрите</span><input name="barcode" inputmode="numeric" pattern="[0-9]{8}|[0-9]{12,14}" maxlength="14" required autocomplete="off"></label><button class="btn btn-secondary" type="submit">Провери</button><p class="form-error" role="alert"></p></form><p class="fine">Продукт, който си записвал веднъж, познаваме и без интернет. Ако го няма в Open Food Facts, въведи стойностите от етикета веднъж.</p>`;
 }
 
 export function emptyDiaryArt() {

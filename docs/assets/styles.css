@@ -3306,3 +3306,100 @@ body.is-onboarding {
     transform: none;
   }
 }
+
+/* ---------- diary: food search like a food tracker ---------- */
+.seg-meals {
+  margin: 4px 0 12px;
+}
+.seg-meals .seg-item {
+  font-size: 14px;
+  padding: 0 2px;
+}
+.food-section {
+  margin: 18px 2px 4px;
+  font: 600 13.5px var(--font);
+  color: var(--ink-3);
+}
+.food-results + .food-section {
+  margin-top: 20px;
+}
+.add-btn {
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+}
+.online-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  margin-top: 16px;
+  padding: 10px 12px 10px 14px;
+  border: 1.5px dashed var(--line-3);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.online-row > .icon:first-child {
+  color: var(--accent-ink);
+}
+.online-row > .icon:last-child {
+  color: var(--ink-3);
+}
+.online-status {
+  margin: 16px 2px 8px;
+  color: var(--ink-2);
+}
+.online-status.is-error {
+  color: var(--danger);
+}
+.lookup {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 36px 0 24px;
+  text-align: center;
+  color: var(--accent-ink);
+}
+.lookup .icon {
+  animation: lookup-pulse 1.2s ease-in-out infinite;
+}
+@keyframes lookup-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.94);
+  }
+}
+.equation {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 6px 4px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+.equation > div {
+  display: grid;
+}
+.equation b {
+  font: 700 19px/1.15 var(--font-display);
+  font-variant-numeric: tabular-nums;
+}
+.equation small {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.equation i {
+  font-style: normal;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.equation .is-left b {
+  color: var(--accent-ink);
+}
+.equation .is-over b {
+  color: var(--danger);
+}
