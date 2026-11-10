@@ -145,13 +145,20 @@ test('the shopping list follows the store from produce to spices', () => {
   state.settings = settings();
   state.plan = generatePlan(state, seeded(5)).plan;
   const doc = parseHTML('<html><body>' + shoppingView(state) + '</body></html>').document;
-  const order = [...doc.querySelectorAll('.aisle')].map((h) =>
-    Object.values(AISLES).indexOf(h.textContent),
-  );
-  assert.ok(order.length >= 3);
-  assert.deepEqual(
-    order,
-    [...order].sort((a, b) => a - b),
-  );
+  // Products go to the chosen chain where they cost least, so each store has its own walk.
+  const sections = [...doc.querySelectorAll('.store-sec')];
+  assert.ok(sections.length >= 1);
+  let aisles = 0;
+  for (const section of sections) {
+    const order = [...section.querySelectorAll('.aisle')].map((h) =>
+      Object.values(AISLES).indexOf(h.textContent),
+    );
+    aisles += order.length;
+    assert.deepEqual(
+      order,
+      [...order].sort((x, y) => x - y),
+    );
+  }
+  assert.ok(aisles >= 3);
   assert.ok(doc.querySelector('.cart-card [role="progressbar"]'));
 });

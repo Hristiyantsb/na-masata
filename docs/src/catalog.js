@@ -6,45 +6,45 @@ import { BREAKFASTS, MAINS_2026_11 } from './recipes-2026-11.js';
 export const STORES = ['Lidl', 'Kaufland', 'BILLA', 'METRO', 'Фантастико', 'T MARKET'];
 // name, package quantity, unit, illustrative package price EUR, allergens, animal origin
 export const PRODUCTS = {
-  tomato: ['Домати', 1000, 'г', 2.8, [], false],
-  cucumber: ['Краставици', 1000, 'г', 2.5, [], false],
-  pepper: ['Чушки', 1000, 'г', 2.7, [], false],
-  onion: ['Лук', 1000, 'г', 1.1, [], false],
-  garlic: ['Чесън', 100, 'г', 0.65, [], false],
-  potato: ['Картофи', 2000, 'г', 2.5, [], false],
-  carrot: ['Моркови', 1000, 'г', 1.2, [], false],
-  zucchini: ['Тиквички', 1000, 'г', 2.2, [], false],
+  tomato: ['Домати', 1000, 'г', 2.69, [], false],
+  cucumber: ['Краставици', 1000, 'г', 1.99, [], false],
+  pepper: ['Чушки', 1000, 'г', 2.9, [], false],
+  onion: ['Лук', 1000, 'г', 0.66, [], false],
+  garlic: ['Чесън', 100, 'г', 0.51, [], false],
+  potato: ['Картофи', 2000, 'г', 1.32, [], false],
+  carrot: ['Моркови', 1000, 'г', 0.74, [], false],
+  zucchini: ['Тиквички', 1000, 'г', 1.85, [], false],
   spinach: ['Спанак', 400, 'г', 2.1, [], false],
-  mushroom: ['Гъби', 500, 'г', 2.2, [], false],
-  cabbage: ['Зеле', 1500, 'г', 1.6, [], false],
-  lemon: ['Лимони', 500, 'г', 1.4, [], false],
+  mushroom: ['Гъби', 500, 'г', 1.67, [], false],
+  cabbage: ['Зеле', 1500, 'г', 1.34, [], false],
+  lemon: ['Лимони', 500, 'г', 0.93, [], false],
   parsley: ['Магданоз', 30, 'г', 0.5, [], false],
   dill: ['Копър', 30, 'г', 0.5, [], false],
-  rice: ['Ориз', 1000, 'г', 1.8, [], false],
-  lentil: ['Леща', 500, 'г', 1.6, [], false],
-  bean: ['Бял боб (сух)', 500, 'г', 1.9, [], false],
-  chickpea: ['Нахут, консерва (отцеден)', 240, 'г', 0.9, [], false],
-  pasta: ['Паста', 500, 'г', 1.2, ['gluten'], false],
-  bread: ['Хляб', 500, 'г', 1.2, ['gluten'], false],
-  flour: ['Брашно', 1000, 'г', 0.95, ['gluten'], false],
-  oats: ['Овесени ядки', 500, 'г', 1.3, ['gluten'], false],
-  phyllo: ['Кори за баница', 400, 'г', 1.7, ['gluten'], false],
-  cheese: ['Бяло саламурено сирене', 400, 'г', 3.4, ['dairy'], true],
-  yogurt: ['Кисело мляко', 400, 'г', 0.85, ['dairy'], true],
-  egg: ['Яйца', 10, 'бр.', 2.6, ['egg'], true],
-  chicken: ['Пилешко филе', 500, 'г', 4.3, [], true],
-  mince: ['Кайма', 500, 'г', 3.8, [], true],
-  fish: ['Пъстърва, почистена', 500, 'г', 5, ['fish'], true],
-  oil: ['Олио', 1000, 'мл', 1.9, [], false],
-  salt: ['Сол', 1000, 'г', 0.65, [], false],
+  rice: ['Ориз', 1000, 'г', 1.55, [], false],
+  lentil: ['Леща', 500, 'г', 0.95, [], false],
+  bean: ['Бял боб (сух)', 500, 'г', 1.02, [], false],
+  chickpea: ['Нахут, консерва (отцеден)', 240, 'г', 1.17, [], false],
+  pasta: ['Паста', 500, 'г', 0.82, ['gluten'], false],
+  bread: ['Хляб', 650, 'г', 0.84, ['gluten'], false],
+  flour: ['Брашно', 1000, 'г', 0.61, ['gluten'], false],
+  oats: ['Овесени ядки', 500, 'г', 0.99, ['gluten'], false],
+  phyllo: ['Кори за баница', 400, 'г', 1.19, ['gluten'], false],
+  cheese: ['Бяло саламурено сирене', 400, 'г', 2.2, ['dairy'], true],
+  yogurt: ['Кисело мляко', 400, 'г', 0.51, ['dairy'], true],
+  egg: ['Яйца', 10, 'бр.', 2.3, ['egg'], true],
+  chicken: ['Пилешко филе', 500, 'г', 3.4, [], true],
+  mince: ['Кайма', 500, 'г', 2.82, [], true],
+  fish: ['Пъстърва, почистена', 500, 'г', 4, ['fish'], true],
+  oil: ['Олио', 1000, 'мл', 1.62, [], false],
+  salt: ['Сол', 1000, 'г', 0.31, [], false],
   paprika: ['Червен пипер', 50, 'г', 0.8, [], false],
   peppercorn: ['Черен пипер', 20, 'г', 0.65, [], false],
   savory: ['Чубрица', 20, 'г', 0.6, [], false],
-  canned: ['Домати, консерва', 400, 'г', 0.95, [], false],
-  walnut: ['Орехи', 200, 'г', 2.4, ['nuts'], false],
-  apple: ['Ябълки', 1000, 'г', 1.5, [], false],
-  banana: ['Банани', 1000, 'г', 1.8, [], false],
-  honey: ['Мед', 400, 'г', 3.9, [], true],
+  canned: ['Домати, консерва', 400, 'г', 0.81, [], false],
+  walnut: ['Орехи', 200, 'г', 3.2, ['nuts'], false],
+  apple: ['Ябълки', 1000, 'г', 0.99, [], false],
+  banana: ['Банани', 1000, 'г', 1.36, [], false],
+  honey: ['Мед', 400, 'г', 3.5, [], true],
 };
 // Ingredients below are for TWO servings. Every spice is included in shopping quantities.
 export const RECIPES = [
@@ -407,14 +407,14 @@ export const ALLERGENS = {
   nuts: 'Ядки',
 };
 // Land meat and seafood are separate so pescatarian and vegetarian rules stay exact.
-export const MEAT = ['chicken', 'mince', 'chickenthigh', 'pork', 'beef', 'turkey', 'bacon'];
+export const MEAT = ['chicken', 'mince', 'chickenthigh', 'chickenleg', 'pork', 'beef', 'turkey', 'bacon'];
 export const SEAFOOD = ['fish', 'salmon', 'mackerel', 'hake', 'tuna', 'shrimp'];
 
 // Additional appliance-specific recipes. No automatic substitution of cooking equipment.
 EQUIPMENT.airfryer = 'Еърфрайър';
 EQUIPMENT.microwave = 'Микровълнова';
 ALLERGENS.soy = 'Соя';
-PRODUCTS.tofu = ['Натурално тофу', 200, 'г', 2.1, ['soy'], false];
+PRODUCTS.tofu = ['Натурално тофу', 200, 'г', 2.3, ['soy'], false];
 RECIPES.push(
   {
     id: 'airchicken',

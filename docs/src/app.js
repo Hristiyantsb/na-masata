@@ -91,6 +91,7 @@ import {
   dislikeGroups,
   STORY,
 } from './onboarding.js';
+import { PRICE_SOURCE } from './prices.js';
 import { applyScene, react, startIdle, lookAt } from './table.js';
 import { esc, icon, money, num, dayName } from './ui.js';
 import { Scanner } from './scanner.js';
@@ -471,7 +472,7 @@ function shoppingText() {
   const summary = shoppingSummary(state);
   return [
     'На маса · списък за пазаруване',
-    'Примерни цени за цели опаковки.',
+    `Цели опаковки по най-ниските цени във веригите към ${PRICE_SOURCE.shown}.`,
     '',
     ...state.settings.stores.flatMap((s) => {
       const list = rows.filter((r) => r.store === s);

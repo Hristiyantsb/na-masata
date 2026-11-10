@@ -1,5 +1,6 @@
 import { RECIPES, PRODUCTS, MEAT, SEAFOOD, STORES, EQUIPMENT, ALLERGENS } from './catalog.js';
 import { LARGE_STORES, LARGE_ONLY } from './products-more.js';
+import { STORE_PRICES } from './prices.js';
 import { nutrition, nutritionMatches } from './nutrition.js';
 export { generatePlan, explainEntry, mainProtein } from './planner.js';
 export const recipe = (id) => RECIPES.find((r) => r.id === id);
@@ -208,7 +209,29 @@ export function matches(r, s) {
 }
 export const candidates = (s) =>
   settingsErrors(s).length ? [] : RECIPES.filter((r) => matches(r, s));
-export const packPrice = (k, state) => state.prices[k] ?? PRODUCTS[k][3];
+// Where a product is bought: the person's own choice; otherwise the chosen chain with the lowest
+// known price; otherwise the first chosen chain that stocks it.
+const storeMemo = new Map();
+export function storeOf(k, state) {
+  const stores = state.settings.stores;
+  const own = state.storeFor[k];
+  if (stores.includes(own)) return own;
+  const memoKey = stores.join('|');
+  let byProduct = storeMemo.get(memoKey);
+  if (!byProduct) storeMemo.set(memoKey, (byProduct = new Map()));
+  if (!byProduct.has(k)) {
+    const carrying = stores.filter((store) => storesCarry(k, [store]));
+    const known = STORE_PRICES[k] || {};
+    let best = carrying[0] ?? stores[0];
+    for (const store of carrying)
+      if (known[store] != null && (known[best] == null || known[store] < known[best])) best = store;
+    byProduct.set(k, best);
+  }
+  return byProduct.get(k);
+}
+/** Pack price: the person's own price, else the price in the chain it is bought from, else the reference. */
+export const packPrice = (k, state) =>
+  state.prices[k] ?? STORE_PRICES[k]?.[storeOf(k, state)] ?? PRODUCTS[k][3];
 export const packSize = (k, state) => state.packSizes[k] ?? PRODUCTS[k][1];
 export function recipeCost(r, people, state) {
   return Object.entries(r.ing).reduce(
@@ -243,10 +266,7 @@ export function groceries(state, plan = state.plan) {
         packs,
         cost: packs * packPrice(k, state),
         left: have + packs * size - need,
-        store: state.settings.stores.includes(state.storeFor[k])
-          ? state.storeFor[k]
-          : state.settings.stores.find((store) => storesCarry(k, [store])) ||
-            state.settings.stores[0],
+        store: storeOf(k, state),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'bg'));

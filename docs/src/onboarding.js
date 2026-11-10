@@ -4,6 +4,7 @@
 import { STORES, PRODUCTS, EQUIPMENT, ALLERGENS } from './catalog.js';
 import { candidates, forSlots, isBreakfast, SLOTS } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
+import { PRICE_SOURCE } from './prices.js';
 import { nutrition } from './nutrition.js';
 import { tableSVG, pictogram, goalFlag } from './table.js';
 import { esc, icon, num, foodArt, plural, money } from './ui.js';
@@ -241,7 +242,7 @@ function stores(d) {
   return `<div class="ob-stores">${STORES.map((s) => {
     const on = d.stores.includes(s);
     return `<button type="button" class="ob-store" ${pressed('stores', s, on)} aria-label="${esc(s)}">${storeBadge(s)}${tick}</button>`;
-  }).join('')}</div><p class="ob-note">${icon('info', 16)}<span>Цените в приложението са примерни, не са от магазините.</span></p>`;
+  }).join('')}</div><p class="ob-note">${icon('info', 16)}<span>Цените са най-ниските за продукта във всяка верига към ${PRICE_SOURCE.shown}, по ${PRICE_SOURCE.name}. Менят се всеки ден.</span></p>`;
 }
 
 function eating(d) {
@@ -326,7 +327,7 @@ function household(d) {
   }).join('');
   const pct = Math.round(((value - BUDGET.min) / (BUDGET.max - BUDGET.min)) * 100);
   const budget = `<div class="ob-budget"><div class="ob-budget-top"><label for="ob-budget" data-budget-label>За ${d.days} дни</label><span class="ob-budget-value"><input id="ob-budget" name="budget" type="number" inputmode="numeric" min="1" max="10000" step="1" value="${d.budget}" data-input="budget"><span>€</span></span></div><input type="range" min="${BUDGET.min}" max="${BUDGET.max}" step="${BUDGET.step}" value="${value}" data-input="budget-range" aria-label="Бюджет в евро" style="--p:${pct}%"><p class="ob-budget-note" data-budget-note>${esc(budgetNote(d))}</p></div>`;
-  return `${section('Хора на масата', people)}${section('Колко дни', days)}${section('Кои хранения', `<div class="ob-chips">${slots}</div>`)}${section('Бюджет', budget, 'по примерни цени')}`;
+  return `${section('Хора на масата', people)}${section('Колко дни', days)}${section('Кои хранения', `<div class="ob-chips">${slots}</div>`)}${section('Бюджет', budget, `по цени от ${PRICE_SOURCE.shown}`)}`;
 }
 
 /** Short summary chips; each one opens the step that set it. */

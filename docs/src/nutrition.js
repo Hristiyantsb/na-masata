@@ -1,7 +1,8 @@
 'use strict';
-import { MORE_NUTRIENTS } from './products-more.js';
-// Approximate generic values per 100 g/ml (eggs: per piece):
-// kcal, protein, carbohydrate, fat, fibre. Modelling assumptions, not retailer labels.
+import { MORE_NUTRIENTS, EDIBLE } from './products-more.js';
+// Reference values per 100 g/ml of the edible part (eggs: per piece): kcal, protein, carbohydrate,
+// fat, fibre. Raw or as-sold food from standard food composition tables, checked in November 2026;
+// a brand's own label can differ a little.
 export const NUTRIENTS = {
   tomato: [18, 0.9, 3.9, 0.2, 1.2],
   cucumber: [15, 0.7, 3.6, 0.1, 0.5],
@@ -26,11 +27,11 @@ export const NUTRIENTS = {
   flour: [364, 10, 76, 1, 2.7],
   oats: [370, 13, 60, 7, 10],
   phyllo: [300, 8, 60, 2, 2],
-  cheese: [265, 15, 4, 21, 0],
-  yogurt: [61, 3.5, 4.7, 3.3, 0],
+  cheese: [270, 16.5, 1.2, 22, 0],
+  yogurt: [63, 3.3, 4.5, 3.6, 0],
   egg: [72, 6.3, 0.4, 4.8, 0],
   chicken: [120, 23, 0, 2.6, 0],
-  mince: [240, 18, 0, 19, 0],
+  mince: [250, 16.5, 0.5, 20.5, 0],
   fish: [148, 20, 0, 7, 0],
   oil: [828, 0, 0, 92, 0],
   salt: [0, 0, 0, 0, 0],
@@ -55,7 +56,8 @@ export function nutrition(r) {
   for (const [k, v] of Object.entries(r.ing)) {
     const values = NUTRIENTS[k];
     if (!values) continue;
-    const f = k === 'egg' ? v : v / 100;
+    // Only the part that is eaten counts: no peel, stone, head or bones.
+    const f = k === 'egg' ? v : (v * (EDIBLE[k] ?? 1)) / 100;
     for (let i = 0; i < 5; i++) sum[i] += values[i] * f;
   }
   const [kcal, protein, carbs, fat, fiber] = sum.map((n) => n / 2);

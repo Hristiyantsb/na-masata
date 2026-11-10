@@ -614,6 +614,12 @@ input[type='radio'] {
   font-size: 14px;
   color: var(--ink-2);
 }
+.choice-price {
+  margin-left: auto;
+  color: var(--ink-2);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
 .choice-list {
   display: grid;
   gap: 8px;
