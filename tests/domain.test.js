@@ -292,6 +292,8 @@ test('custom grocery rows preserve unknown prices, aggregate known costs and sur
   assert.deepEqual(shoppingSummary(state), {
     fromMenu: 0,
     extraCost: 4.5,
+    saving: 0,
+    savingAgainst: '',
     knownTotal: 4.5,
     unknownPrices: 1,
   });

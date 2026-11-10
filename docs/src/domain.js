@@ -34,6 +34,9 @@ export const MEALS = ['Закуска', 'Обяд', 'Вечеря', 'Межди�
 // Meals the weekly menu can plan, in the order of the day. Breakfast uses breakfast recipes only.
 export const SLOTS = Object.freeze(['Закуска', 'Обяд', 'Вечеря']);
 export const isBreakfast = (r) => r?.meal === 'breakfast';
+// Courses for browsing the recipes; the menu itself only tells breakfasts from main dishes.
+export const isSoup = (r) => !isBreakfast(r) && /супа|чорба|борш|минестроне|таратор/i.test(r?.name || '');
+export const isSalad = (r) => !isBreakfast(r) && /салата/i.test(r?.name || '');
 export const fitsSlot = (r, slot) => isBreakfast(r) === (slot === 'Закуска');
 /** Recipes that can appear in a menu with these meals. */
 export const forSlots = (list, slots) => list.filter((r) => slots.some((slot) => fitsSlot(r, slot)));
@@ -584,9 +587,25 @@ export function shoppingSummary(state) {
   const extras = state.extras || [];
   const fromMenu = total(state);
   const extraCost = extras.reduce((s, e) => s + (e.price ?? 0), 0);
+  // What splitting the list saves against doing the whole shop in one chain: the menu products
+  // priced in each chosen chain on its own (the reference price where a chain has no figure),
+  // compared with the cheapest of those single-chain totals.
+  const rows = groceries(state).filter((row) => row.packs);
+  const single = state.settings.stores.map((store) => ({
+    store,
+    cost: rows.reduce(
+      (sum, row) =>
+        sum + row.packs * (state.prices[row.k] ?? STORE_PRICES[row.k]?.[store] ?? PRODUCTS[row.k][3]),
+      0,
+    ),
+  }));
+  const best = single.reduce((a, b) => (b.cost < a.cost ? b : a), single[0] || { store: '', cost: fromMenu });
+  const saving = single.length > 1 ? Math.max(0, Math.round((best.cost - fromMenu) * 100) / 100) : 0;
   return {
     fromMenu,
     extraCost,
+    saving,
+    savingAgainst: saving ? best.store : '',
     knownTotal: fromMenu + extraCost,
     unknownPrices: extras.filter((e) => e.price === null).length,
   };

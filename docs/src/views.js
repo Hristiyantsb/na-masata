@@ -14,6 +14,8 @@ import {
   shoppingSummary,
   explainEntry,
   isBreakfast,
+  isSoup,
+  isSalad,
   fitsSlot,
 } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
@@ -209,17 +211,24 @@ export const RECIPE_FILTERS = [
   ['all', 'Всички'],
   ['fav', 'Любими'],
   ['breakfast', 'Закуски'],
+  ['soup', 'Супи'],
+  ['salad', 'Салати'],
   ['quick', 'До 30 мин'],
 ];
 export function filterRecipes(state, query = '', filter = 'all') {
   const q = query.trim().toLocaleLowerCase('bg');
+  // From three letters on the search also looks inside the products: „спанак“ finds every dish with spinach.
+  const hasProduct = (r) =>
+    q.length >= 3 && Object.keys(r.ing).some((k) => PRODUCTS[k][0].toLocaleLowerCase('bg').includes(q));
   return candidates(state.settings).filter(
     (r) =>
-      (!q || r.name.toLocaleLowerCase('bg').includes(q)) &&
+      (!q || r.name.toLocaleLowerCase('bg').includes(q) || hasProduct(r)) &&
       (filter === 'all' ||
         (filter === 'fav' && state.favorites.includes(r.id)) ||
         (filter === 'quick' && r.time <= 30) ||
         (filter === 'breakfast' && isBreakfast(r)) ||
+        (filter === 'soup' && isSoup(r)) ||
+        (filter === 'salad' && isSalad(r)) ||
         r.cuisine === filter),
   );
 }
@@ -397,6 +406,10 @@ export function shoppingView(state) {
   const progress = toBuy.length
     ? `<section class="cart-card" role="group" aria-label="Напредък"><div class="cart-top"><b>${done} от ${toBuy.length}</b><span>в количката</span><strong>${money(summary.knownTotal)}</strong></div><span class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="В количката"><i style="width:${pct}%"></i></span><p class="fine">За цели опаковки по цените от ${PRICE_SOURCE.shown}${summary.unknownPrices ? `, плюс ${plural(summary.unknownPrices, 'продукт', 'продукта')} без цена` : ''}.</p></section>`
     : '';
+  const saving =
+    summary.saving >= 0.2
+      ? `<p class="saving">${icon('check', 16)}<span>По-евтино с <b>${money(summary.saving)}</b>, отколкото ако купиш всичко само от ${esc(summary.savingAgainst)}: всеки продукт е от веригата, в която струва най-малко.</span></p>`
+      : '';
   const have = rows.filter((r) => !r.packs);
   const haveBlock = have.length
     ? `<details class="have"><summary>${icon('fridge', 18)} Имаш достатъчно вкъщи <span>${have.length}</span></summary><ul class="have-list">${have.map((r) => `<li><span>${esc(r.name)}</span><small>${num(r.need, 1)} ${r.unit}</small></li>`).join('')}</ul></details>`
@@ -411,7 +424,7 @@ export function shoppingView(state) {
           .join('')}</ul>`
       : '<p class="muted">Неща извън рецептите: кафе, препарати, плодове за децата. Остават при смяна на менюто.</p>'
   }</section>`;
-  return `${head('Покупки', esc(listJoin(state.settings.stores)), action)}${progress}<a class="row-link" href="#pantry"><span class="list-ic">${icon('fridge', 20)}</span><span class="list-text"><b>Какво имаш вкъщи?</b><small>Приспадаме го от списъка</small></span>${icon('chevron', 18)}</a>${storeSections(state, toBuy)}${haveBlock}${extras}<div class="actions-row"><button type="button" class="btn btn-secondary btn-small" data-action="copy-shopping">${icon('copy', 18)} Копирай</button><button type="button" class="btn btn-secondary btn-small" data-action="export-shopping">${icon('download', 18)} Изтегли</button>${done || state.extras.some((e) => e.checked) ? `<button type="button" class="btn btn-plain btn-small" data-action="uncheck-all">Изчисти отметките</button>` : ''}</div><p class="fine">Цените са най-ниските за продукта във веригата, от която го купуваш, по ${PRICE_SOURCE.name} (${PRICE_SOURCE.place}, ${PRICE_SOURCE.shown}). За продуктите извън кошницата на портала цената е от онлайн магазин на същата дата. Менят се всеки ден и не са оферти. Смени цена или опаковка с докосване върху сумата.</p>`;
+  return `${head('Покупки', esc(listJoin(state.settings.stores)), action)}${progress}${saving}<a class="row-link" href="#pantry"><span class="list-ic">${icon('fridge', 20)}</span><span class="list-text"><b>Какво имаш вкъщи?</b><small>Приспадаме го от списъка</small></span>${icon('chevron', 18)}</a>${storeSections(state, toBuy)}${haveBlock}${extras}<div class="actions-row"><button type="button" class="btn btn-secondary btn-small" data-action="copy-shopping">${icon('copy', 18)} Копирай</button><button type="button" class="btn btn-secondary btn-small" data-action="export-shopping">${icon('download', 18)} Изтегли</button>${done || state.extras.some((e) => e.checked) ? `<button type="button" class="btn btn-plain btn-small" data-action="uncheck-all">Изчисти отметките</button>` : ''}</div><p class="fine">Цените са най-ниските за продукта във веригата, от която го купуваш, по ${PRICE_SOURCE.name} (${PRICE_SOURCE.place}, ${PRICE_SOURCE.shown}). За продуктите извън кошницата на портала цената е от онлайн магазин на същата дата. Менят се всеки ден и не са оферти. Смени цена или опаковка с докосване върху сумата.</p>`;
 }
 
 export function shopModeView(state) {

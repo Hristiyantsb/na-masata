@@ -614,6 +614,22 @@ input[type='radio'] {
   font-size: 14px;
   color: var(--ink-2);
 }
+.saving {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--accent-soft, #e6efe9);
+  color: var(--accent, #013c26);
+  font-size: 15px;
+  line-height: 1.35;
+}
+.saving .icon {
+  flex: none;
+  margin-top: 2px;
+}
 .choice-price {
   margin-left: auto;
   color: var(--ink-2);

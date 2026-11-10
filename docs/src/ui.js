@@ -90,7 +90,7 @@ export const field = (label, name, value, type = 'text', extra = '') =>
    salads become leaves and chunks, pasta gets strands, everything else a main with a side.
    Deterministic per recipe and never presented as a photo. */
 
-const SOUP = /супа|чорба|таратор|яхния|чили|къри|гювеч|леща|боб |боб$|нахут с|червена леща|минестроне/i;
+const SOUP = /супа|чорба|таратор|яхния|чили|къри|гювеч|леща|боб |боб$|нахут с|червена леща|минестроне|борш/i;
 const SALAD = /салата|шопска/i;
 const PASTA = /паста|спагети|фиде|болонезе/i;
 
@@ -161,6 +161,22 @@ function vegOf(r, limit = 3) {
 const i0 = (c) => c;
 function brothOf(r) {
   if (has(r, 'yogurt') && has(r, 'cucumber')) return '#eef0e2';
+  // Soups take the colour of what they are mostly made of.
+  const most = Object.entries(r.ing).sort((a, b) => b[1] - a[1])[0]?.[0];
+  const byMain = {
+    beet: '#a8304e',
+    pumpkin: '#ea9a32',
+    carrot: '#ee9a3c',
+    peas: '#8fbf5a',
+    spinach: '#6fa548',
+    zucchini: '#bcd08c',
+    mushroom: '#c7a583',
+    cauliflower: '#efe6cf',
+    potato: '#ecdcab',
+    onion: '#c98d4a',
+    sauerkraut: '#dcc98a',
+  };
+  if (byMain[most]) return byMain[most];
   if (has(r, 'broccoli') && /крем/i.test(r.name)) return '#94bd5f';
   if (has(r, 'redlentil')) return '#e08a3c';
   if (has(r, 'lentil')) return '#b06d38';
@@ -318,6 +334,7 @@ const TOPPING = {
   tomato: (x, y) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="3.3" fill="#e04a32"/><circle cx="${f1(x)}" cy="${f1(y)}" r="1.9" fill="#f07a5e"/>`,
   cheese: (x, y, i, a) => `<rect x="${f1(x - 2.2)}" y="${f1(y - 2.2)}" width="4.4" height="4.4" rx=".9" fill="#fdf9ec" stroke="#e5d9bd" stroke-width=".7" transform="rotate(${Math.round(a)} ${f1(x)} ${f1(y)})"/>`,
   cottage: (x, y) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="2.6" fill="#fffdf6" stroke="#e9e1cc" stroke-width=".6"/>`,
+  orange: (x, y, i, a) => `<path transform="translate(${f1(x)} ${f1(y)}) rotate(${Math.round(a)})" d="M-4.2 1.6A4.4 4.4 0 0 1 4.2 1.6Z" fill="#f6a23a" stroke="#e2861f" stroke-width=".6"/>`,
 };
 function scatter(kinds, rand, cx, cy, spread, n) {
   let out = '';
@@ -332,6 +349,7 @@ const fruitOf = (r) => [
   ...(has(r, 'berries') ? ['berry', 'berry'] : []),
   ...(has(r, 'banana') ? ['banana'] : []),
   ...(has(r, 'apple') ? ['apple'] : []),
+  ...(has(r, 'orange') ? ['orange'] : []),
   ...(has(r, 'walnut') ? ['walnut'] : []),
 ];
 const honeyLine = (y = 27) =>
@@ -352,6 +370,11 @@ function spread(r, rand) {
   if (has(r, 'avocado')) return blob(0, 1.5, 6.8, rand, '#9cc35c') + '<circle cx="-2.5" cy="0" r=".9" fill="#6f9a3a"/><circle cx="2.4" cy="3" r=".8" fill="#6f9a3a"/>';
   if (has(r, 'tofu')) return blob(0, 1.5, 6.8, rand, '#f1e3b5') + '<path d="M-4 -1l3 1.4M1 3l3 -1" stroke="#b08a68" stroke-width="2" stroke-linecap="round"/>';
   if (has(r, 'chickpea')) return blob(0, 1.5, 6.8, rand, '#e3c48d') + '<path d="M-3 1.5a3 2.4 0 1 0 6 0" fill="none" stroke="#c9a165" stroke-width=".9"/><circle cx="0" cy="1.5" r=".9" fill="#d6a83d"/>';
+  if (has(r, 'lutenitsa')) return blob(0, 1.5, 6.8, rand, '#c8442b');
+  if (has(r, 'peanutbutter')) return blob(0, 1.5, 6.8, rand, '#b9813f');
+  if (has(r, 'tahini')) return blob(0, 1.5, 6.8, rand, '#dcbd86');
+  if (has(r, 'mince'))
+    return blob(0, 1.5, 7, rand, '#9a5a3c') + '<circle cx="-2" cy="0" r="1.2" fill="#b97a56"/><circle cx="2.4" cy="3" r="1.1" fill="#b97a56"/>';
   if (has(r, 'cottage')) return blob(0, 1.5, 6.8, rand, '#fffaf0');
   if (has(r, 'egg')) return blob(0, 1.5, 6.8, rand, '#f5d35a') + '<circle cx="-2" cy="0" r="1.6" fill="#fbe7a0"/><circle cx="2.4" cy="3" r="1.4" fill="#fbe7a0"/>';
   return '';
@@ -360,8 +383,9 @@ function spread(r, rand) {
 function breakfastArt(r, rand) {
   const name = r.name;
   // Porridge, popara and yogurt bowls
-  if (/каша|попара|^кисело мляко/i.test(name)) {
-    const yogurt = /^кисело мляко/i.test(name);
+  if (/каша|попара|^кисело мляко|плодова салата|мляко с ориз|^извара с/i.test(name)) {
+    const pudding = /мляко с ориз/i.test(name);
+    const yogurt = pudding || /^кисело мляко|плодова салата|^извара с/i.test(name);
     const popara = /попара/i.test(name);
     let food = `<circle cx="32" cy="32" r="21" fill="${yogurt ? '#faf7f0' : popara ? '#f2e8d2' : has(r, 'yogurt') ? '#efdfbb' : '#e6cf9f'}"/><circle cx="28" cy="27" r="11" fill="#fff" opacity=".18"/>`;
     if (!yogurt && !popara)
@@ -377,6 +401,9 @@ function breakfastArt(r, rand) {
       }
       food += scatter(['cheese'], rand, 32, 31, 13, 9) + blob(36, 28, 3.4, rand, '#f6d872');
     }
+    if (pudding)
+      for (let i = 0; i < 22; i++)
+        food += `<ellipse cx="${f1(17 + rand() * 30)}" cy="${f1(17 + rand() * 30)}" rx="1.5" ry=".7" fill="#fff" stroke="#eadfc4" stroke-width=".3" transform="rotate(${Math.round(rand() * 180)} 32 32)"/>`;
     if (has(r, 'cottage')) food += scatter(['cottage'], rand, 26, 34, 5, 4);
     if (has(r, 'peanutbutter')) food += '<path d="M26 37c2 -4 9 -3 8 1s-6 3 -6 0" fill="none" stroke="#b07a3c" stroke-width="2.4" stroke-linecap="round"/>';
     food += scatter(fruitOf(r), rand, has(r, 'cottage', 'peanutbutter') ? 37 : 33, 30, yogurt ? 12 : 9, yogurt ? 13 : 9);
@@ -409,10 +436,12 @@ function breakfastArt(r, rand) {
     // Two halves, the cut sides facing each other so the filling shows.
     const half = (x, y, a) =>
       `<g transform="translate(${x} ${y}) rotate(${a})"><path d="M11 -8.6Q9.6 -6 8.4 -5.2T5.6 -2.4T2.8 .4T0 3.2T-2.8 6T-5.6 8.8T-9 11.4L-10.6 10.4L10 -10Z" fill="#7fb85a"/><path d="M10 -9.4L-10 10.6" stroke="#e2bc94" stroke-width="1.8" stroke-linecap="round"/><path d="M-10 -9H9.5L-10 10.5Z" fill="#c98b45"/><path d="M-8.6 -7.6H6.2L-8.6 7.2Z" fill="#efcf94"/></g>`;
-    return { food: half(24, 26, -4) + half(40, 40, 176) + '<g transform="translate(45 21)"><ellipse rx="4.6" ry="3.6" fill="#fffdf6" stroke="#e9e1cc" stroke-width=".5"/><circle r="2" fill="#f4b31a"/></g>' };
+    const egg = has(r, 'egg') ? '<g transform="translate(45 21)"><ellipse rx="4.6" ry="3.6" fill="#fffdf6" stroke="#e9e1cc" stroke-width=".5"/><circle r="2" fill="#f4b31a"/></g>' : '';
+    const side = has(r, 'tomato') ? TOPPING.tomato(egg ? 20 : 45, egg ? 44 : 22) : '';
+    return { food: half(24, 26, -4) + half(40, 40, 176) + egg + side };
   }
   // Toast with a spread and something on top
-  if (/хляб|филии/i.test(name) && has(r, 'bread') && !has(r, 'apple')) {
+  if (/хляб|филии|принцес/i.test(name) && has(r, 'bread') && !has(r, 'apple')) {
     const top = spread(r, rand);
     let food = slice(24, 30, -8, top) + slice(41, 34, 7, top);
     if (has(r, 'egg') && /очи/i.test(name)) food += friedEgg(24, 29, 0.85) + friedEgg(41, 33, 0.85);
@@ -420,6 +449,9 @@ function breakfastArt(r, rand) {
     if (has(r, 'cucumber')) food += scatter(['cucumber'], rand, 31, 18, 4, 3);
     if (has(r, 'spinach')) for (let i = 0; i < 4; i++) food += leafShape(35 + rand() * 8, 41 + rand() * 6, rand() * 180, 1.1, '#3f7a35');
     if (has(r, 'cheese')) food += scatter(['cheese'], rand, 32, 32, 9, 4);
+    if (has(r, 'banana')) food += scatter(['banana'], rand, 24, 30, 4, 3) + scatter(['banana'], rand, 41, 34, 4, 3);
+    if (has(r, 'walnut')) food += scatter(['walnut'], rand, 32, 32, 10, 4);
+    if (has(r, 'honey')) food += honeyLine(31);
     return { food };
   }
   // Omelette folded in half
@@ -437,6 +469,31 @@ function breakfastArt(r, rand) {
     }
     return { food };
   }
+  // Eggs on a bed of spinach
+  if (/спанак/i.test(name) && has(r, 'egg')) {
+    let food = blob(32, 33, 18, rand, '#4f8a3a');
+    for (let i = 0; i < 9; i++) food += leafShape(20 + rand() * 24, 22 + rand() * 22, rand() * 180, 1.5, i % 2 ? '#3f7a35' : '#62a047');
+    return { food: food + friedEgg(26, 29, 1) + friedEgg(39, 36, 1) + scatter(['cheese'], rand, 32, 32, 12, 3) };
+  }
+  // Rolled tortillas
+  if (/тортила/i.test(name)) {
+    const wrap = (x, y, a) =>
+      `<g transform="translate(${x} ${y}) rotate(${a})"><rect x="-14" y="-5.5" width="28" height="11" rx="5.5" fill="#ecd9ab" stroke="#d2b77c" stroke-width=".8"/><ellipse cx="12.5" cy="0" rx="2.6" ry="4.3" fill="#f5d35a"/><circle cx="12.6" cy="-1.4" r="1" fill="#e0662f"/><circle cx="12.2" cy="1.6" r=".9" fill="#5f9d3f"/><path d="M-9 -2.5h13M-7 2h10" stroke="#dcc48d" stroke-width=".8" stroke-linecap="round"/></g>`;
+    return { food: wrap(30, 26, -18) + wrap(34, 39, -18) };
+  }
+  // Avocado halves with an egg in the middle
+  if (has(r, 'avocado') && has(r, 'egg') && !has(r, 'bread', 'bacon')) {
+    const halfAvocado = (x, y, a) =>
+      `<g transform="translate(${x} ${y}) rotate(${a})"><ellipse rx="9" ry="12" fill="#5d8a35"/><ellipse rx="7.4" ry="10.4" fill="#b5d46f"/><ellipse cy="2" rx="4.8" ry="5.2" fill="#fffdf6"/><circle cy="2.4" r="2.6" fill="#f4b31a"/></g>`;
+    return { food: halfAvocado(23, 32, -14) + halfAvocado(42, 32, 12) + dust(rand, 6, '#c0392b') };
+  }
+  // Soft scrambled eggs
+  if (/бъркани/i.test(name)) {
+    let food = blob(32, 33, 17, rand, '#f5d35a');
+    for (let i = 0; i < 7; i++) food += `<circle cx="${f1(22 + rand() * 20)}" cy="${f1(23 + rand() * 20)}" r="${f1(2 + rand() * 1.6)}" fill="#fbe7a0"/>`;
+    for (let i = 0; i < 8; i++) food += `<rect x="${f1(20 + rand() * 24)}" y="${f1(21 + rand() * 24)}" width="3.4" height="1.1" rx=".55" fill="#8fb85a" transform="rotate(${Math.round(rand() * 180)} 32 32)"/>`;
+    return { food: food + scatter(['cheese'], rand, 32, 32, 10, 4) };
+  }
   // A plate where everything sits apart
   if (has(r, 'bacon') && has(r, 'egg')) {
     let food = friedEgg(25, 27, 1.15) + friedEgg(39, 23, 1.05);
@@ -444,7 +501,7 @@ function breakfastArt(r, rand) {
     for (let i = 0; i < 4; i++) food += `<path transform="translate(${44 + i * 1.6} ${35 + i * 2.2}) rotate(${-30 + i * 12})" d="M-5 0C-4 -2.6 4 -2.6 5 0C4 2 -4 2 -5 0Z" fill="#a9cd63" stroke="#4f7a2c" stroke-width=".8"/>`;
     return { food: food + scatter(['tomato'], rand, 46, 25, 2, 1) };
   }
-  if (has(r, 'egg', 'bread')) {
+  if (has(r, 'apple') && has(r, 'egg') && has(r, 'bread')) {
     let food = `<g transform="translate(24 25)"><ellipse rx="6" ry="4.6" fill="#fffdf6" stroke="#e9e1cc" stroke-width=".6"/><circle r="2.5" fill="#f4b31a"/></g>`;
     food += `<g transform="translate(41 23) rotate(8)"><rect x="-6" y="-4.5" width="12" height="9" rx="1.6" fill="#fdf9ec" stroke="#e5d9bd" stroke-width=".7"/></g>`;
     food += slice(24, 41, -6, '', 0.62);
@@ -466,7 +523,7 @@ export function foodArt(r, size = 56) {
   if (morning) {
     food = morning.food;
     bowl = !!morning.bowl;
-  } else if (SOUP.test(r.name) && !SALAD.test(r.name)) {
+  } else if (SOUP.test(r.name) && !SALAD.test(r.name) && !/кюфте/i.test(r.name)) {
     bowl = true;
     const broth = brothOf(r);
     food += `<circle cx="32" cy="32" r="21" fill="${broth}"/><circle cx="29" cy="28" r="12" fill="#fff" opacity=".13"/>`;
