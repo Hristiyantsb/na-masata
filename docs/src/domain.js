@@ -84,6 +84,12 @@ export function defaults() {
     weights: [],
     water: {},
     profile: null,
+    // Taste and habit: dishes the household turned down, dishes we already asked about,
+    // the day the current menu was laid out and a short record of finished weeks.
+    blocked: [],
+    asked: [],
+    weekStart: '',
+    history: [],
   };
 }
 
@@ -212,6 +218,31 @@ export function matches(r, s) {
 }
 export const candidates = (s) =>
   settingsErrors(s).length ? [] : RECIPES.filter((r) => matches(r, s));
+/** What the menu may offer: every dish that passes the rules, minus the ones the household turned down. */
+export function offered(state) {
+  const blocked = new Set(state.blocked || []);
+  return candidates(state.settings).filter((r) => !blocked.has(r.id));
+}
+
+// A theme for one week. It only narrows the choice further: no rule of the household is relaxed.
+export const THEMES = Object.freeze({
+  usual: ['Обичайното', 'По твоите правила'],
+  cheap: ['По-евтино', 'Целим се под бюджета'],
+  quick: ['По-бързо', 'Всичко до 30 минути'],
+  fasting: ['Постно', 'Само растителни продукти'],
+  protein: ['Повече протеин', 'Поне 25 г на порция'],
+  light: ['По-леко', 'До 500 ккал на порция'],
+});
+const plantOnly = (r) => Object.keys(r.ing).every((k) => !PRODUCTS[k][5]);
+export function fitsTheme(r, theme) {
+  const n = nutrition(r);
+  const breakfast = isBreakfast(r);
+  if (theme === 'quick') return r.time <= 30;
+  if (theme === 'fasting') return plantOnly(r);
+  if (theme === 'protein') return n.protein >= (breakfast ? 15 : 25);
+  if (theme === 'light') return n.kcal <= (breakfast ? 400 : 500);
+  return true;
+}
 // Where a product is bought: the person's own choice; otherwise the chosen chain with the lowest
 // known price; otherwise the first chosen chain that stocks it.
 const storeMemo = new Map();
@@ -283,8 +314,59 @@ export function planSnapshot(state) {
     locked: state.locked,
     cooked: state.cooked,
     checked: state.checked,
+    weekStart: state.weekStart || '',
+    history: state.history || [],
   });
 }
+/* ---------- the weekly habit ---------- */
+
+export const daysBetween = (from, to) => Math.round((Date.parse(to) - Date.parse(from)) / 86400000);
+const cookedCount = (state) => state.plan.filter((_, i) => state.cooked[i]).length;
+
+/** True when the menu on the table has run its course: its days have passed or everything is cooked. */
+export function weekOver(state, today = localDate()) {
+  if (!state.plan.length || !state.weekStart) return false;
+  return daysBetween(state.weekStart, today) >= state.settings.days || cookedCount(state) === state.plan.length;
+}
+
+/**
+ * The state change for laying out a new week. A week that was really lived (something cooked, or
+ * at least three days old) goes into the history first; trying out several menus in one evening
+ * leaves no trace. Returns a patch for the state.
+ */
+export function startWeek(state, plan, today = localDate()) {
+  const history = (state.history || []).slice();
+  const lived = state.plan.length && state.weekStart && (cookedCount(state) > 0 || daysBetween(state.weekStart, today) >= 3);
+  if (lived) {
+    const entry = {
+      start: state.weekStart,
+      meals: state.plan.length,
+      cooked: cookedCount(state),
+      cost: Math.round(total(state) * 100) / 100,
+      saving: shoppingSummary(state).saving,
+    };
+    const at = history.findIndex((w) => w.start === entry.start);
+    if (at >= 0) history[at] = entry;
+    else history.push(entry);
+  }
+  return { plan, cooked: {}, checked: {}, weekStart: today, history: history.slice(-104) };
+}
+
+/** What the household has done so far, from the finished weeks and the current one. Real counts only. */
+export function progress(state) {
+  const past = state.history || [];
+  const current = state.plan.length > 0;
+  const starts = [...past.map((w) => w.start), ...(current && state.weekStart ? [state.weekStart] : [])].sort();
+  let streak = starts.length ? 1 : 0;
+  for (let i = starts.length - 1; i > 0 && daysBetween(starts[i - 1], starts[i]) <= 10; i--) streak++;
+  return {
+    weeks: past.length + (current ? 1 : 0),
+    streak,
+    cooked: past.reduce((sum, w) => sum + w.cooked, 0) + cookedCount(state),
+    saved: Math.round((past.reduce((sum, w) => sum + w.saving, 0) + (current ? shoppingSummary(state).saving : 0)) * 100) / 100,
+  };
+}
+
 export function isValidBarcode(value) {
   if (!/^\d{8}$|^\d{12}$|^\d{13}$|^\d{14}$/.test(value)) return false;
   const digits = [...value].map(Number);
@@ -507,6 +589,30 @@ export function normalizeState(raw) {
     } catch {
       throw Error('Невалидни данни за дневната цел.');
     }
+  }
+  for (const key of ['blocked', 'asked']) {
+    if (raw[key] === undefined) continue;
+    if (!Array.isArray(raw[key]) || raw[key].length > 2000) throw Error('Невалиден списък с ястия.');
+    d[key] = [...new Set(raw[key].filter((id) => recipe(id)))];
+  }
+  const isDate = (v) => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
+  if (raw.weekStart !== undefined && raw.weekStart !== '') {
+    if (!isDate(raw.weekStart)) throw Error('Невалидна дата на менюто.');
+    d.weekStart = raw.weekStart;
+  }
+  if (raw.history !== undefined) {
+    if (!Array.isArray(raw.history) || raw.history.length > 520) throw Error('Невалидна история.');
+    d.history = raw.history.map((w) => {
+      const ok =
+        w &&
+        isDate(w.start) &&
+        Number.isInteger(w.meals) && w.meals >= 0 && w.meals <= 21 &&
+        Number.isInteger(w.cooked) && w.cooked >= 0 && w.cooked <= w.meals &&
+        Number.isFinite(w.cost) && w.cost >= 0 && w.cost <= 100000 &&
+        Number.isFinite(w.saving) && w.saving >= 0 && w.saving <= 100000;
+      if (!ok) throw Error('Невалидна история.');
+      return { start: w.start, meals: w.meals, cooked: w.cooked, cost: w.cost, saving: w.saving };
+    });
   }
   return d;
 }

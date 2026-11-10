@@ -9,7 +9,7 @@
 //   - favourites and dishes that were not in last week's menu.
 // Search: several randomised greedy builds, then local improvement until no single swap helps.
 import { PRODUCTS } from './catalog.js';
-import { candidates, recipe, packPrice, packSize, recipeCost, total, isBreakfast, fitsSlot } from './domain.js';
+import { offered, fitsTheme, THEMES, recipe, packPrice, packSize, recipeCost, total, isBreakfast, fitsSlot } from './domain.js';
 import { nutrition } from './nutrition.js';
 import { AISLE } from './products-more.js';
 import { dayName, money } from './ui.js';
@@ -174,8 +174,14 @@ function shuffled(list, random) {
  * Build a week. `keep` lists indexes of the current menu to leave in place ("keep these, change
  * the rest"); a kept dish that no longer passes the hard rules is replaced like any other.
  */
-export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
-  const all = candidates(state.settings);
+export function generatePlan(state, random = Math.random, { keep = [], theme = 'usual' } = {}) {
+  const budget = state.settings.budget;
+  const everyOffer = new Set(offered(state).map((r) => r.id));
+  // A cheaper week aims a fifth under the budget; the other themes narrow the choice of dishes.
+  if (theme === 'cheap')
+    state = { ...state, settings: { ...state.settings, budget: Math.max(1, Math.round(state.settings.budget * 0.8)) } };
+  const themed = theme !== 'usual' && theme !== 'cheap';
+  const all = offered(state).filter((r) => fitsTheme(r, theme));
   const breakfasts = all.filter(isBreakfast),
     mainsPool = all.filter((r) => !isBreakfast(r));
   const wantsBreakfast = state.settings.slots.includes('Закуска'),
@@ -183,12 +189,16 @@ export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
   if (wantsMains && !mainsPool.length)
     return {
       plan: null,
-      reason: 'Няма рецепти за тези ограничения. Промени избора си; няма да го пренебрегнем.',
+      reason: themed
+        ? `Няма ястия за „${THEMES[theme][0]}“ с твоите правила. Избери друга тема.`
+        : 'Няма рецепти за тези ограничения. Промени избора си; няма да го пренебрегнем.',
     };
   if (wantsBreakfast && !breakfasts.length)
     return {
       plan: null,
-      reason: 'Няма закуска, която пасва на тези правила. Махни закуската от храненията или промени избора.',
+      reason: themed
+        ? `Няма закуска за „${THEMES[theme][0]}“ с твоите правила. Избери друга тема.`
+        : 'Няма закуска, която пасва на тези правила. Махни закуската от храненията или промени избора.',
     };
   const pool = [...(wantsMains ? mainsPool : []), ...(wantsBreakfast ? breakfasts : [])];
   const s = state.settings,
@@ -198,7 +208,7 @@ export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
   const slots = [];
   for (let day = 0; day < s.days; day++)
     for (const slot of s.slots) slots.push({ day, slot, people: s.people });
-  const allowed = new Set(pool.map((r) => r.id));
+  const allowed = everyOffer;
   const fixed = new Map();
   for (const i of keep) {
     const e = state.plan[i];
@@ -264,7 +274,7 @@ export function generatePlan(state, random = Math.random, { keep = [] } = {}) {
   return {
     plan: best,
     cost,
-    withinBudget: cost <= s.budget,
+    withinBudget: cost <= budget,
     available: pool.length,
   };
 }

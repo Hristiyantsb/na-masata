@@ -69,7 +69,7 @@ test('every product can be bought, placed in an aisle and counted', () => {
 test('recipes can be browsed by course and found by a product', () => {
   const state = stateWith({});
   const keys = RECIPE_FILTERS.map(([key]) => key);
-  assert.deepEqual(keys, ['all', 'fav', 'breakfast', 'soup', 'salad', 'quick']);
+  assert.deepEqual(keys, ['all', 'fav', 'have', 'breakfast', 'soup', 'salad', 'quick']);
   const soups = filterRecipes(state, '', 'soup');
   assert.ok(soups.length >= 25 && soups.every(isSoup));
   const salads = filterRecipes(state, '', 'salad');

@@ -21,6 +21,10 @@ import {
   withWeight,
   calorieGoal,
   planSnapshot,
+  startWeek,
+  weekOver,
+  offered,
+  THEMES,
   rearrangePlan,
   changeServings,
   extraGrocery,
@@ -39,6 +43,9 @@ import {
   menuView,
   menuOptionsSheet,
   newMenuSheet,
+  feedbackSheet,
+  progressSheet,
+  blockedSheet,
   mealActionsSheet,
   destinationSheet,
   swapSheet,
@@ -119,12 +126,15 @@ try {
 migrateLocalKeys(storage);
 const loaded = loadState(storage);
 let state = loaded.state;
+// A menu laid out before weeks were counted starts counting from today.
+if (state.plan.length && !state.weekStart) state.weekStart = localDate();
 
 const ui = {
   wizard: null,
   building: false,
   keep: null,
   undo: null,
+  theme: 'usual',
   shopMode: false,
   query: '',
   filter: 'all',
@@ -449,10 +459,9 @@ async function buildWeek() {
     return;
   }
   ui.undo = state.plan.length ? planSnapshot(state) : null;
+  const week = startWeek(state, result.plan);
   state.settings = next.settings;
-  state.plan = result.plan;
-  state.cooked = {};
-  state.checked = {};
+  Object.assign(state, week);
   state.onboarded = true;
   clearDraft(storage);
   persist();
@@ -491,6 +500,25 @@ function shoppingText() {
       : []),
     `Общо: ${money(summary.knownTotal)}${summary.unknownPrices ? ` и ${summary.unknownPrices} без цена` : ''}`,
   ].join('\n');
+}
+
+/** Hand a text to the phone's share sheet (Viber, WhatsApp, mail); copy it where there is none. */
+async function share(title, text) {
+  try {
+    if (navigator.share) {
+      await navigator.share({ title, text });
+      return;
+    }
+  } catch (error) {
+    if (error?.name === 'AbortError') return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Копирано. Постави го в съобщение.');
+  } catch {
+    exportFile('na-masa.txt', text);
+    toast('Изтеглено като файл.');
+  }
 }
 
 function commitChange(next, message) {
@@ -703,12 +731,24 @@ const actions = {
     render();
     toast('Върнахме предишното меню.');
   },
-  'new-menu': () => !state.locked && openSheet(newMenuSheet(state)),
+  'new-menu': () => {
+    if (state.locked) return;
+    ui.theme = 'usual';
+    openSheet(newMenuSheet(state, ui.theme));
+  },
+  theme: (el) => {
+    if (!THEMES[el.dataset.value]) return;
+    ui.theme = el.dataset.value;
+    openSheet(newMenuSheet(state, ui.theme));
+  },
   regenerate: () => {
     if (state.locked) return;
-    const result = generatePlan(state);
+    const result = generatePlan(state, Math.random, { theme: ui.theme });
     if (!result.plan) return toast(result.reason, { error: true });
-    commitChange({ plan: result.plan, cooked: {}, checked: {} }, 'Новото меню е готово.');
+    commitChange(
+      startWeek(state, result.plan),
+      ui.theme === 'usual' ? 'Новото меню е готово.' : `Готово: „${THEMES[ui.theme][0]}“ за тази седмица.`,
+    );
   },
   'keep-start': () => {
     closeSheet();
@@ -728,7 +768,7 @@ const actions = {
   },
   'keep-apply': () => {
     const keep = [...(ui.keep || [])];
-    const result = generatePlan(state, Math.random, { keep });
+    const result = generatePlan(state, Math.random, { keep, theme: ui.theme });
     if (!result.plan) return toast(result.reason, { error: true });
     const cooked = Object.fromEntries(keep.filter((i) => state.cooked[i]).map((i) => [i, true]));
     ui.keep = null;
@@ -744,8 +784,57 @@ const actions = {
     if (!state.plan[i]) return;
     state.cooked[i] = !state.cooked[i];
     persist();
-    refresh();
+    // The card for a new week appears as soon as the last dish is cooked.
+    if (weekOver(state)) render();
+    else refresh();
+    const id = state.plan[i].id;
+    if (state.cooked[i] && ![...state.favorites, ...state.blocked, ...state.asked].includes(id))
+      openSheet(feedbackSheet(recipe(id)));
   },
+  feedback: (el) => {
+    const id = el.dataset.id;
+    if (!recipe(id)) return;
+    if (!state.asked.includes(id)) state.asked.push(id);
+    if (el.dataset.value === 'like' && !state.favorites.includes(id)) state.favorites.push(id);
+    if (el.dataset.value === 'block' && !state.blocked.includes(id)) state.blocked.push(id);
+    persist();
+    closeSheet();
+    refresh();
+    toast(
+      el.dataset.value === 'like'
+        ? 'Записахме. Ще го предлагаме по-често.'
+        : el.dataset.value === 'block'
+          ? 'Няма да го предлагаме повече.'
+          : 'Записахме.',
+    );
+  },
+  'block-recipe': (el) => {
+    const id = el.dataset.id;
+    if (!recipe(id)) return;
+    if (!state.blocked.includes(id)) state.blocked.push(id);
+    state.favorites = state.favorites.filter((x) => x !== id);
+    persist();
+    const i = el.dataset.index === undefined ? -1 : Number(el.dataset.index);
+    // From the menu: straight to choosing what comes instead.
+    if (state.plan[i]?.id === id && !state.locked) {
+      openSheet(swapSheet(state, i), { size: 'tall' });
+      toast('Няма да го предлагаме повече. Избери какво да е вместо него.');
+    } else {
+      closeSheet();
+      render();
+      toast('Няма да го предлагаме в менюто.');
+    }
+  },
+  'unblock-recipe': (el) => {
+    state.blocked = state.blocked.filter((x) => x !== el.dataset.id);
+    persist();
+    if (state.blocked.length && sheet.querySelector('.hidden-list')) openSheet(blockedSheet(state));
+    else closeSheet();
+    render();
+    toast('Ястието пак може да влезе в менюто.');
+  },
+  progress: () => openSheet(progressSheet(state)),
+  'blocked-list': () => openSheet(blockedSheet(state), { size: 'tall' }),
   'meal-actions': (el) => openSheet(mealActionsSheet(state, Number(el.dataset.index))),
   swap: (el) => {
     if (state.locked) return;
@@ -755,7 +844,7 @@ const actions = {
     if (state.locked) return;
     const id = el.dataset.id,
       i = Number(el.dataset.index);
-    if (!state.plan[i] || !candidates(state.settings).some((r) => r.id === id && fitsSlot(r, state.plan[i].slot))) return;
+    if (!state.plan[i] || !offered(state).some((r) => r.id === id && fitsSlot(r, state.plan[i].slot))) return;
     const next = planSnapshot(state);
     next.plan[i].id = id;
     delete next.cooked[i];
@@ -904,6 +993,39 @@ const actions = {
     }
   },
   'export-shopping': () => exportFile('na-masa-pokupki.txt', shoppingText()),
+  'share-shopping': () => share('Списък за пазаруване', shoppingText()),
+  'share-recipe': (el) => {
+    const r = recipe(el.dataset.id);
+    if (!r) return;
+    const people = Math.max(1, Math.min(12, Number(el.dataset.people) || state.settings.people));
+    const amount = (k, v) => {
+      const q = (v * people) / 2;
+      return `${num(q, q < 10 ? 1 : 0)} ${PRODUCTS[k][2]}`;
+    };
+    share(
+      r.name,
+      [
+        r.name,
+        `${r.time} мин · ${people} ${people === 1 ? 'порция' : 'порции'}`,
+        '',
+        'Съставки',
+        ...Object.entries(r.ing).map(([k, v]) => `• ${PRODUCTS[k][0]}: ${amount(k, v)}`),
+        '',
+        'Приготвяне',
+        ...r.steps.map((text, i) => `${i + 1}. ${text}`),
+        '',
+        'От „На маса“: https://hristiyantsb.github.io/na-masata/',
+      ].join('\n'),
+    );
+  },
+  'pantry-have': (el) => {
+    const input = root.querySelector(`[data-form="pantry"] input[name="${el.dataset.id}"]`);
+    if (!input) return;
+    const on = el.getAttribute('aria-pressed') !== 'true';
+    input.value = on ? el.dataset.amount : '';
+    el.setAttribute('aria-pressed', String(on));
+    el.classList.toggle('is-on', on);
+  },
 
   // diary
   'diary-jump': (el) => {
@@ -1505,7 +1627,7 @@ document.addEventListener('input', (event) => {
       if (!grid) return;
       const list = filterRecipes(state, ui.query, ui.filter);
       if (list.length) {
-        grid.innerHTML = list.map((r) => recipeCard(r, state)).join('');
+        grid.innerHTML = list.map((r) => recipeCard(r, state, { have: ui.filter === 'have' })).join('');
         root.querySelector('.empty')?.remove();
       } else {
         const caret = el.selectionStart;

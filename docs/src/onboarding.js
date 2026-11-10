@@ -2,7 +2,7 @@
 // what the menu should be, what the kitchen can do, what never goes on the table and how many
 // sit down. The wooden table on top acts every answer out, so the screen explains itself.
 import { STORES, PRODUCTS, EQUIPMENT, ALLERGENS } from './catalog.js';
-import { candidates, forSlots, isBreakfast, SLOTS } from './domain.js';
+import { candidates, forSlots, isBreakfast, isSoup, isSalad, mainProtein, SLOTS } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
 import { PRICE_SOURCE } from './prices.js';
 import { nutrition } from './nutrition.js';
@@ -124,13 +124,38 @@ export const usable = (d) => forSlots(candidates(d), d.slots || []);
 /** Five real recipes that pass every hard rule, ordered by what the person asked for. */
 export function previewRecipes(d) {
   const ranked = usable(d).map((r) => ({ r, n: nutrition(r) }));
-  ranked.sort((a, b) => {
-    if (d.goal === 'protein') return b.n.protein - a.n.protein || a.r.time - b.r.time;
-    if (d.goal === 'light') return a.n.kcal - b.n.kcal || a.r.time - b.r.time;
-    if (d.goal === 'quick') return a.r.time - b.r.time || a.n.kcal - b.n.kcal;
-    return a.r.time - b.r.time || a.r.name.localeCompare(b.r.name, 'bg');
-  });
-  return ranked.slice(0, 5).map(({ r }) => r);
+  const score = ({ r, n }) =>
+    d.goal === 'protein'
+      ? -n.protein
+      : d.goal === 'light'
+        ? n.kcal
+        : d.goal === 'quick'
+          ? r.time
+          : Math.abs(n.kcal - 560) / 40 + r.time / 20;
+  ranked.sort((a, b) => score(a) - score(b) || a.r.name.localeCompare(b.r.name, 'bg'));
+  // The first look at the week should show its range: at most one breakfast, then main dishes
+  // that differ in their main product and in their course, not five bowls of the same thing.
+  const picked = [];
+  const take = (pool, count, kindOf) => {
+    const seen = new Set();
+    for (const { r } of pool) {
+      if (count <= 0) break;
+      const kind = kindOf(r);
+      if (seen.has(kind)) continue;
+      seen.add(kind);
+      picked.push(r);
+      count--;
+    }
+  };
+  const breakfasts = ranked.filter(({ r }) => isBreakfast(r));
+  const mains = ranked.filter(({ r }) => !isBreakfast(r));
+  take(breakfasts, mains.length ? 1 : 5, (r) => r.name.split(' ')[0]);
+  take(mains, 5 - picked.length, (r) => mainProtein(r) + (isSoup(r) ? ' soup' : isSalad(r) ? ' salad' : ''));
+  for (const { r } of ranked) {
+    if (picked.length >= 5) break;
+    if (!picked.includes(r)) picked.push(r);
+  }
+  return picked;
 }
 
 /**

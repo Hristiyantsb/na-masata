@@ -56,7 +56,11 @@ test('a product costs what it costs in the chain it is bought from', () => {
 
 test('the shopping list sends each product to the cheapest chosen chain', () => {
   const state = stateWith(['Lidl', 'Kaufland', 'BILLA']);
-  state.plan = [{ id: 'lentils', day: 0, slot: 'Вечеря', people: 2 }];
+  state.plan = [
+    { id: 'lentil', day: 0, slot: 'Вечеря', people: 2 },
+    { id: 'moussaka', day: 1, slot: 'Вечеря', people: 2 },
+  ];
+  let checked = 0;
   for (const row of groceries(state)) {
     const known = STORE_PRICES[row.k];
     if (!known) continue;
@@ -65,7 +69,9 @@ test('the shopping list sends each product to the cheapest chosen chain', () => 
     const cheapest = Math.min(...chosen.map((store) => known[store]));
     assert.equal(known[row.store], cheapest, `${row.k} is bought in ${row.store}`);
     if (row.packs) assert.equal(row.cost, row.packs * cheapest);
+    checked++;
   }
+  assert.ok(checked >= 5, 'the menu really has products with prices per chain');
 });
 
 test('calories and macros count only the part that is eaten', () => {

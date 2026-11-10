@@ -17,9 +17,14 @@ import {
   isSoup,
   isSalad,
   fitsSlot,
+  offered,
+  THEMES,
+  weekOver,
+  progress,
 } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
 import { PRICE_SOURCE, STORE_PRICES } from './prices.js';
+import { CONFIG } from './config.js';
 import { mascot, wordmark } from './brand.js';
 import { storeBadge } from './stores.js';
 import { DIET_COPY, GOAL_COPY } from './onboarding.js';
@@ -104,6 +109,16 @@ export function menuView(state, ui = {}) {
     : keep
       ? `<p class="notice notice-accent">${icon('pin', 18)}<span>Докосни „Запази“ на ястията, които остават. Останалите ще сменим.</span></p>`
       : '';
+  const allCooked = state.plan.every((_, i) => state.cooked[i]);
+  const nextWeek =
+    !keep && !state.locked && weekOver(state)
+      ? `<section class="next-week"><div class="next-week-text"><b>${allCooked ? 'Всичко е сготвено' : 'Седмицата мина'}</b><span>Да подредим следващата по същите правила?</span></div><button type="button" class="btn btn-primary" data-action="new-menu">Нова седмица</button></section>`
+      : '';
+  const made = progress(state);
+  const progressLine =
+    !keep && (made.cooked > 0 || made.weeks > 1)
+      ? `<button type="button" class="progress-line" data-action="progress">${icon('sparkle', 18)}<span>${esc(progressText(made))}</span>${icon('chevron', 16)}</button>`
+      : '';
   const days = [...new Set(state.plan.map((e) => e.day))].sort((a, b) => a - b);
   const body = days
     .map((day) => {
@@ -116,7 +131,18 @@ export function menuView(state, ui = {}) {
   const foot = keep
     ? `<div class="keep-bar"><button type="button" class="btn btn-secondary" data-action="keep-cancel">Отказ</button><button type="button" class="btn btn-primary" data-action="keep-apply">${keep.size ? `Смени останалите ${state.plan.length - keep.size}` : 'Смени всички'}</button></div>`
     : `<div class="menu-foot"><button type="button" class="btn btn-secondary" data-action="new-menu" ${state.locked ? 'disabled' : ''}>${icon('refresh', 18)} Ново меню</button>${ui.undo ? `<button type="button" class="btn btn-plain" data-action="undo">${icon('back', 18)} Върни предишното</button>` : ''}</div>`;
-  return `${head('Твоята седмица', meta, options, greeting())}${summary}${notice}<div class="week">${body}</div>${foot}<p class="fine center">${RECIPES.length} рецепти в каталога. Цените са най-ниските във веригите към ${PRICE_SOURCE.shown}. Калориите са за ядливата част на продуктите.</p>`;
+  return `${head('Твоята седмица', meta, options, greeting())}${nextWeek}${summary}${progressLine}${notice}<div class="week">${body}</div>${foot}<p class="fine center">${RECIPES.length} рецепти в каталога. Цените са най-ниските във веригите към ${PRICE_SOURCE.shown}. Калориите са за ядливата част на продуктите.</p>`;
+}
+
+/** "3 седмици подред · 14 сготвени ястия · 12,40 € спестени": only what really happened. */
+export function progressText(p) {
+  return [
+    p.streak > 1 ? `${p.streak} седмици подред` : '',
+    p.cooked ? plural(p.cooked, 'сготвено ястие', 'сготвени ястия') : '',
+    p.saved >= 0.5 ? `${money(p.saved)} спестени` : '',
+  ]
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export function mealCard(state, i, keep = null) {
@@ -145,8 +171,14 @@ function row(ic, title, sub, action, attrs = '', danger = false) {
   return `<button type="button" class="list-row ${danger ? 'is-danger' : ''}" data-action="${action}" ${attrs}><span class="list-ic">${icon(ic, 20)}</span><span class="list-text"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span>${icon('chevron', 18)}</button>`;
 }
 
-export function newMenuSheet(state) {
-  return `<h2 class="sheet-title">Ново меню</h2><p class="sheet-sub">Правилата ти остават същите. Старото меню може да се върне.</p><div class="list">
+export function newMenuSheet(state, theme = 'usual') {
+  const themes = Object.entries(THEMES)
+    .map(
+      ([key, [name, sub]]) =>
+        `<button type="button" class="theme-chip" data-action="theme" data-value="${key}" aria-pressed="${key === theme}"><b>${esc(name)}</b><small>${esc(sub)}</small></button>`,
+    )
+    .join('');
+  return `<h2 class="sheet-title">${weekOver(state) ? 'Нова седмица' : 'Ново меню'}</h2><p class="sheet-sub">Правилата ти остават същите. Старото меню може да се върне.</p><fieldset class="themes"><legend>Тази седмица искам</legend><div class="theme-grid">${themes}</div></fieldset><div class="list">
 ${row('refresh', 'Смени всичко', `Нови ${plural(state.plan.length, 'ястие', 'ястия')} за седмицата`, 'regenerate')}
 ${row('pin', 'Запази някои, смени останалите', 'Избираш кои ястия остават', 'keep-start')}
 </div>`;
@@ -163,7 +195,39 @@ ${row('swap', 'Смени с друго ястие', 'Само от подход
 ${row('calendar', 'Премести на друг ден', 'Разменя мястото с друго ястие', 'move-meal', `data-index="${i}" ${locked}`)}
 ${next >= 0 ? row('copy', 'Сготви двойно за утре', `${dayName(e.day + 1)}: същото ястие, покупките се обновяват`, 'place-meal', `data-from="${i}" data-to="${next}" data-mode="repeat" ${locked}`) : ''}
 ${row('copy', 'Повтори в друг ден', 'Същото ястие на още едно място', 'repeat-meal', `data-index="${i}" ${locked}`)}
+${row('close', 'Не предлагай повече', 'Махаме го от менюто и избираш друго', 'block-recipe', `data-id="${esc(r.id)}" data-index="${i}" ${locked}`)}
 </div>`;
+}
+
+/** Asked once after a dish is cooked: the answer shapes the next weeks. */
+export function feedbackSheet(r) {
+  return `<p class="eyebrow">Сготвено</p><h2 class="sheet-title">Как беше „${esc(r.name)}“?</h2><p class="sheet-sub">Питаме веднъж за всяко ястие. Така менюто става все по-твое.</p><div class="list">
+${row('heart', 'Харесва ни', 'Ще го предлагаме по-често', 'feedback', `data-id="${esc(r.id)}" data-value="like"`)}
+${row('check', 'Става', 'Остава в менюто както досега', 'feedback', `data-id="${esc(r.id)}" data-value="fine"`)}
+${row('close', 'Не го предлагай повече', 'Махаме го от бъдещите менюта', 'feedback', `data-id="${esc(r.id)}" data-value="block"`)}
+</div>`;
+}
+
+export function progressSheet(state) {
+  const p = progress(state);
+  const weeks = (state.history || [])
+    .slice()
+    .reverse()
+    .map((w) => {
+      const [y, m, d] = w.start.split('-');
+      return `<li><span>Седмица от ${d}.${m}.${y}</span><b>${w.cooked} от ${w.meals} сготвени · ${money(w.cost)}</b></li>`;
+    })
+    .join('');
+  return `<h2 class="sheet-title">Твоят напредък</h2><p class="sheet-sub">Смятаме само това, което наистина се е случило на това устройство.</p><div class="macros progress-tiles"><div><b>${num(p.weeks)}</b><small>${p.weeks === 1 ? 'седмица с меню' : 'седмици с меню'}</small></div><div><b>${num(p.cooked)}</b><small>${p.cooked === 1 ? 'сготвено ястие' : 'сготвени ястия'}</small></div><div><b>${money(p.saved)}</b><small>спестени от разделяне по вериги</small></div></div>${p.streak > 1 ? `<p class="notice notice-accent">${icon('sparkle', 18)}<span>${p.streak} седмици подред с подредено меню.</span></p>` : ''}${weeks ? `<section class="recipe-sec"><h3>Минали седмици</h3><ul class="ingredients">${weeks}</ul></section>` : '<p class="muted">Тук ще се появяват седмиците, след като минат.</p>'}`;
+}
+
+export function blockedSheet(state) {
+  const list = (state.blocked || []).map(recipe).filter(Boolean);
+  return `<h2 class="sheet-title">Скрити ястия</h2><p class="sheet-sub">Тези ястия не влизат в менюто и не се предлагат при смяна. Върни ги по всяко време.</p>${
+    list.length
+      ? `<ul class="hidden-list">${list.map((r) => `<li><span>${foodArt(r, 44)}<b>${esc(r.name)}</b></span><button type="button" class="btn btn-secondary btn-small" data-action="unblock-recipe" data-id="${esc(r.id)}">Върни</button></li>`).join('')}</ul>`
+      : '<p class="muted">Няма скрити ястия.</p>'
+  }`;
 }
 
 export function destinationSheet(state, from, mode) {
@@ -182,7 +246,7 @@ export function destinationSheet(state, from, mode) {
 export function swapSheet(state, i) {
   const current = recipe(state.plan[i].id);
   const used = new Set(state.plan.map((e) => e.id));
-  const options = candidates(state.settings)
+  const options = offered(state)
     .filter((r) => r.id !== current.id && fitsSlot(r, state.plan[i].slot))
     .sort((a, b) => Number(used.has(a.id)) - Number(used.has(b.id)) || a.name.localeCompare(b.name, 'bg'));
   return `<p class="eyebrow">Вместо „${esc(current.name)}“</p><h2 class="sheet-title">Какво ти се яде?</h2><p class="sheet-sub">${plural(options.length, 'ястие пасва', 'ястия пасват')} на правилата ти. Останалото меню остава.</p><div class="recipe-grid recipe-grid-sheet">${options
@@ -192,15 +256,16 @@ export function swapSheet(state, i) {
 
 /* ---------- recipes ---------- */
 
-export function recipeCard(r, state, { swap = null, inMenu = false } = {}) {
+export function recipeCard(r, state, { swap = null, inMenu = false, have = false } = {}) {
   const n = nutrition(r);
+  const at = have ? coverage(r, state) : null;
   const fav = state.favorites.includes(r.id);
   const kindLabel = isBreakfast(r) ? r.type : r.cuisine && CUISINES[r.cuisine];
   const open =
     swap === null
       ? `data-action="recipe" data-id="${esc(r.id)}"`
       : `data-action="choose-swap" data-id="${esc(r.id)}" data-index="${swap}"`;
-  return `<article class="rcard"><button type="button" class="rcard-open" ${open}><span class="rcard-art">${foodArt(r, 112)}</span><span class="rcard-text">${kindLabel ? `<span class="rcard-kind">${esc(kindLabel)}${inMenu ? ' · в менюто' : ''}</span>` : ''}<b>${esc(r.name)}</b><span class="rcard-meta">${r.time} мин · ${num(n.kcal)} ккал · ${num(n.protein)} г протеин</span></span></button>${
+  return `<article class="rcard"><button type="button" class="rcard-open" ${open}><span class="rcard-art">${foodArt(r, 112)}</span><span class="rcard-text">${kindLabel ? `<span class="rcard-kind">${esc(kindLabel)}${inMenu ? ' · в менюто' : ''}</span>` : ''}<b>${esc(r.name)}</b><span class="rcard-meta">${r.time} мин · ${num(n.kcal)} ккал · ${num(n.protein)} г протеин</span>${at ? `<span class="rcard-have">${at.have === at.of ? 'Имаш всичко' : `Имаш ${at.have} от ${at.of} продукта`}</span>` : ''}</span></button>${
     swap === null
       ? `<button type="button" class="fav ${fav ? 'is-on' : ''}" data-action="favorite" data-id="${esc(r.id)}" aria-pressed="${fav}" aria-label="Любима рецепта: ${esc(r.name)}">${icon('heart', 20, fav)}</button>`
       : ''
@@ -210,12 +275,28 @@ export function recipeCard(r, state, { swap = null, inMenu = false } = {}) {
 export const RECIPE_FILTERS = [
   ['all', 'Всички'],
   ['fav', 'Любими'],
+  ['have', 'С каквото имам'],
   ['breakfast', 'Закуски'],
   ['soup', 'Супи'],
   ['salad', 'Салати'],
   ['quick', 'До 30 мин'],
 ];
+// Salt, oil and spices are in every kitchen: they do not count when we match a dish to the pantry.
+const countable = (r) => Object.keys(r.ing).filter((k) => AISLE[k] !== 'spices');
+/** How much of a dish is already at home: products in the pantry out of the ones that count. */
+export function coverage(r, state) {
+  const keys = countable(r);
+  const have = keys.filter((k) => (state.pantry[k] || 0) > 0).length;
+  return { have, of: keys.length, share: keys.length ? have / keys.length : 0 };
+}
+
 export function filterRecipes(state, query = '', filter = 'all') {
+  if (filter === 'have')
+    return filterRecipes(state, query, 'all')
+      .map((r) => ({ r, c: coverage(r, state) }))
+      .filter(({ c }) => c.have > 0 && c.share >= 0.5)
+      .sort((a, b) => b.c.share - a.c.share || a.c.of - a.c.have - (b.c.of - b.c.have) || a.r.name.localeCompare(b.r.name, 'bg'))
+      .map(({ r }) => r);
   const q = query.trim().toLocaleLowerCase('bg');
   // From three letters on the search also looks inside the products: „спанак“ finds every dish with spinach.
   const hasProduct = (r) =>
@@ -244,10 +325,12 @@ export function recipesView(state, query = '', filter = 'all') {
     )
     .join('');
   const emptyState =
-    filter === 'fav' && !query
+    filter === 'have' && !query
+      ? empty('curious', Object.keys(state.pantry).length ? 'Още малко продукти' : 'Кажи какво имаш вкъщи', Object.keys(state.pantry).length ? 'Няма ястие, за което да имаш поне половината продукти. Отбележи още някой продукт.' : 'Отбележи продуктите в хладилника и шкафа и ще покажем какво става от тях.', `<a class="btn btn-primary" href="#pantry">Какво имам вкъщи</a>`)
+      : filter === 'fav' && !query
       ? empty('curious', 'Още нямаш любими', 'Докосни сърцето на рецепта и тя ще се появява тук. Любимите влизат по-често в менюто.')
       : empty('sleepy', 'Няма такава рецепта', 'Опитай с друга дума или махни филтъра.');
-  return `${head('Рецепти', `${plural(allowed.length, 'рецепта пасва', 'рецепти пасват')} на правилата ти`)}<label class="search">${icon('search', 18)}<input type="search" data-input="recipe-search" value="${esc(query)}" placeholder="Търси ястие или продукт" aria-label="Търси рецепта" autocomplete="off"></label><div class="chips-scroll" role="group" aria-label="Филтър">${chips}</div><div class="recipe-grid" data-recipe-grid>${list.map((r) => recipeCard(r, state)).join('')}</div>${list.length ? '' : emptyState}`;
+  return `${head('Рецепти', `${plural(allowed.length, 'рецепта пасва', 'рецепти пасват')} на правилата ти`)}<label class="search">${icon('search', 18)}<input type="search" data-input="recipe-search" value="${esc(query)}" placeholder="Търси ястие или продукт" aria-label="Търси рецепта" autocomplete="off"></label><div class="chips-scroll" role="group" aria-label="Филтър">${chips}</div>${filter === 'have' && list.length ? `<p class="fine have-note">Подредени по това колко от продуктите вече имаш. Солта, олиото и подправките не се броят. <a href="#pantry">Промени какво имам</a></p>` : ''}<div class="recipe-grid" data-recipe-grid>${list.map((r) => recipeCard(r, state, { have: filter === 'have' })).join('')}</div>${list.length ? '' : emptyState}`;
 }
 
 /* ---------- recipe detail ---------- */
@@ -290,10 +373,11 @@ export function recipeSheet(r, state, { index = null, done = [], preview = false
     .join('');
   const actions = preview
     ? ''
-    : `<div class="recipe-actions"><button type="button" class="btn btn-secondary ${fav ? 'is-on' : ''}" data-action="favorite" data-id="${esc(r.id)}" aria-pressed="${fav}">${icon('heart', 18, fav)} ${fav ? 'В любими' : 'Любима'}</button><button type="button" class="btn btn-secondary" data-action="diary-recipe" data-id="${esc(r.id)}">${icon('plus', 18)} В дневника</button>${index !== null ? `<button type="button" class="btn btn-secondary" data-action="swap" data-index="${index}" ${state.locked ? 'disabled' : ''}>${icon('swap', 18)} Смени</button>` : ''}</div>`;
+    : `<div class="recipe-actions"><button type="button" class="btn btn-secondary ${fav ? 'is-on' : ''}" data-action="favorite" data-id="${esc(r.id)}" aria-pressed="${fav}">${icon('heart', 18, fav)} ${fav ? 'В любими' : 'Любима'}</button><button type="button" class="btn btn-secondary" data-action="diary-recipe" data-id="${esc(r.id)}">${icon('plus', 18)} В дневника</button><button type="button" class="btn btn-secondary" data-action="share-recipe" data-id="${esc(r.id)}" data-people="${n}">${icon('share', 18)} Изпрати</button>${index !== null ? `<button type="button" class="btn btn-secondary" data-action="swap" data-index="${index}" ${state.locked ? 'disabled' : ''}>${icon('swap', 18)} Смени</button>` : ''}</div>`;
+  const hidden = (state.blocked || []).includes(r.id);
   const note = preview
     ? ''
-    : `<form class="note" data-form="note" data-id="${esc(r.id)}"><label class="field"><span>Моя бележка</span><textarea name="note" maxlength="4000" rows="3" placeholder="Например: следващия път повече чесън">${esc(state.notes[r.id] || '')}</textarea></label><button class="btn btn-secondary btn-small" type="submit">Запази бележката</button></form>`;
+    : `<form class="note" data-form="note" data-id="${esc(r.id)}"><label class="field"><span>Моя бележка</span><textarea name="note" maxlength="4000" rows="3" placeholder="Например: следващия път повече чесън">${esc(state.notes[r.id] || '')}</textarea></label><button class="btn btn-secondary btn-small" type="submit">Запази бележката</button></form><button type="button" class="btn btn-plain btn-small recipe-hide" data-action="${hidden ? 'unblock-recipe' : 'block-recipe'}" data-id="${esc(r.id)}">${hidden ? 'Предлагай го отново в менюто' : 'Не го предлагай в менюто'}</button>`;
   return `<article class="recipe"><div class="recipe-hero">${foodArt(r, 168)}</div>${kind ? `<p class="eyebrow">${esc(kind)}</p>` : ''}<h2 class="sheet-title">${esc(r.name)}</h2><ul class="facts"><li>${icon('clock', 18)}${r.time} мин${r.prepNote ? ' + накисване' : ''}</li><li>${icon('people', 18)}${n} ${n === 1 ? 'порция' : 'порции'}</li><li>${icon('utensils', 18)}${esc(r.equipment.map((k) => EQUIPMENT[k]).join(', ') || 'Без готвене')}</li></ul>${servings}<div class="macros" aria-label="На порция"><div><b>${num(macros.kcal)}</b><small>ккал</small></div><div><b>${num(macros.protein)} г</b><small>протеин</small></div><div><b>${num(macros.carbs)} г</b><small>въглехидрати</small></div><div><b>${num(macros.fat)} г</b><small>мазнини</small></div></div><p class="fine">На порция. Съставките за ${n} ${n === 1 ? 'порция' : 'порции'} са около ${money(recipeCost(r, n, state))} по цените от ${PRICE_SOURCE.shown}.</p>${r.prepNote ? `<p class="notice">${icon('clock', 18)}<span>${esc(r.prepNote)}</span></p>` : ''}${preview ? '' : `<button type="button" class="btn btn-primary btn-block" data-action="cook" data-id="${esc(r.id)}" data-step="0">${icon('play', 18, true)} Готви стъпка по стъпка</button>`}<section class="recipe-sec"><h3>Съставки <span>за ${n} ${n === 1 ? 'порция' : 'порции'}</span></h3><ul class="ingredients">${ingredients}</ul><p class="fine">${allergens.length ? `Алергени: ${esc(allergens.map((k) => ALLERGENS[k]).join(', ').toLocaleLowerCase('bg'))}.` : 'Без отбелязаните алергени.'} Проверявай етикетите.</p></section><section class="recipe-sec"><h3>Приготвяне ${preview ? '' : `<span data-cook-progress>${done.length} от ${r.steps.length}</span>`}</h3><ol class="steps">${steps}</ol></section>${actions}${note}</article>`;
 }
 
@@ -309,7 +393,14 @@ export function cookView(r, step, timer, people = 2) {
           : `<button type="button" class="btn btn-secondary" data-action="cook-timer" data-minutes="${minutes}" data-id="${esc(r.id)}" data-step="${step}">${icon('timer', 20)} Таймер ${minutes} мин</button>`
       }</div>`
     : '';
-  return `<div class="cook"><p class="eyebrow">${esc(r.name)}</p><div class="cook-dots" aria-hidden="true">${r.steps.map((_, i) => `<i class="${i < step ? 'is-done' : i === step ? 'is-now' : ''}"></i>`).join('')}</div><p class="cook-count">Стъпка ${step + 1} от ${count}</p><p class="cook-text">${esc(text)}</p>${timerBlock}<div class="cook-nav">${
+  const amounts = Object.entries(r.ing)
+    .map(([k, v]) => {
+      const q = (v * people) / 2;
+      return `<li><span>${esc(PRODUCTS[k][0])}</span><b>${num(q, q < 10 ? 1 : 0)} ${PRODUCTS[k][2]}</b></li>`;
+    })
+    .join('');
+  const ingredients = `<details class="cook-ing"><summary>${icon('utensils', 18)} Съставки за ${people} ${people === 1 ? 'порция' : 'порции'}</summary><ul class="ingredients">${amounts}</ul></details>`;
+  return `<div class="cook"><p class="eyebrow">${esc(r.name)}</p><div class="cook-dots" aria-hidden="true">${r.steps.map((_, i) => `<i class="${i < step ? 'is-done' : i === step ? 'is-now' : ''}"></i>`).join('')}</div><p class="cook-count">Стъпка ${step + 1} от ${count}</p><p class="cook-text">${esc(text)}</p>${timerBlock}${ingredients}<div class="cook-nav">${
     step > 0
       ? `<button type="button" class="btn btn-secondary" data-action="cook" data-id="${esc(r.id)}" data-step="${step - 1}">${icon('back', 20)} Назад</button>`
       : '<span></span>'
@@ -424,7 +515,7 @@ export function shoppingView(state) {
           .join('')}</ul>`
       : '<p class="muted">Неща извън рецептите: кафе, препарати, плодове за децата. Остават при смяна на менюто.</p>'
   }</section>`;
-  return `${head('Покупки', esc(listJoin(state.settings.stores)), action)}${progress}${saving}<a class="row-link" href="#pantry"><span class="list-ic">${icon('fridge', 20)}</span><span class="list-text"><b>Какво имаш вкъщи?</b><small>Приспадаме го от списъка</small></span>${icon('chevron', 18)}</a>${storeSections(state, toBuy)}${haveBlock}${extras}<div class="actions-row"><button type="button" class="btn btn-secondary btn-small" data-action="copy-shopping">${icon('copy', 18)} Копирай</button><button type="button" class="btn btn-secondary btn-small" data-action="export-shopping">${icon('download', 18)} Изтегли</button>${done || state.extras.some((e) => e.checked) ? `<button type="button" class="btn btn-plain btn-small" data-action="uncheck-all">Изчисти отметките</button>` : ''}</div><p class="fine">Цените са най-ниските за продукта във веригата, от която го купуваш, по ${PRICE_SOURCE.name} (${PRICE_SOURCE.place}, ${PRICE_SOURCE.shown}). За продуктите извън кошницата на портала цената е от онлайн магазин на същата дата. Менят се всеки ден и не са оферти. Смени цена или опаковка с докосване върху сумата.</p>`;
+  return `${head('Покупки', esc(listJoin(state.settings.stores)), action)}${progress}${saving}<a class="row-link" href="#pantry"><span class="list-ic">${icon('fridge', 20)}</span><span class="list-text"><b>Какво имаш вкъщи?</b><small>Приспадаме го от списъка</small></span>${icon('chevron', 18)}</a>${storeSections(state, toBuy)}${haveBlock}${extras}<div class="actions-row"><button type="button" class="btn btn-secondary btn-small" data-action="share-shopping">${icon('share', 18)} Изпрати</button><button type="button" class="btn btn-secondary btn-small" data-action="copy-shopping">${icon('copy', 18)} Копирай</button><button type="button" class="btn btn-secondary btn-small" data-action="export-shopping">${icon('download', 18)} Изтегли</button>${done || state.extras.some((e) => e.checked) ? `<button type="button" class="btn btn-plain btn-small" data-action="uncheck-all">Изчисти отметките</button>` : ''}</div><p class="fine">Цените са най-ниските за продукта във веригата, от която го купуваш, по ${PRICE_SOURCE.name} (${PRICE_SOURCE.place}, ${PRICE_SOURCE.shown}). За продуктите извън кошницата на портала цената е от онлайн магазин на същата дата. Менят се всеки ден и не са оферти. Смени цена или опаковка с докосване върху сумата.</p>`;
 }
 
 export function shopModeView(state) {
@@ -461,16 +552,20 @@ export function extraForm(state, entry = null) {
 }
 
 export function pantryView(state) {
-  const used = new Set(groceries(state).map((r) => r.k));
+  const rows = groceries(state);
+  const used = new Set(rows.map((r) => r.k));
+  const need = Object.fromEntries(rows.map((r) => [r.k, r.need]));
   const input = (k) => {
     const p = PRODUCTS[k];
-    return `<label class="prow"><span>${esc(p[0])}</span><span class="prow-in"><input name="${k}" type="number" inputmode="decimal" min="0" max="100000" step="${p[2] === 'бр.' ? 1 : 0.1}" value="${state.pantry[k] || ''}" placeholder="0"><small>${p[2]}</small></span></label>`;
+    const enough = Math.max(Math.ceil(need[k] || 0), p[2] === 'бр.' ? 1 : p[1]);
+    const on = (state.pantry[k] || 0) > 0;
+    return `<div class="prow"><label for="pantry-${k}">${esc(p[0])}</label><span class="prow-in"><button type="button" class="pill pill-sm ${on ? 'is-on' : ''}" data-action="pantry-have" data-id="${k}" data-amount="${enough}" aria-pressed="${on}">${icon('check', 16)} Имам</button><input id="pantry-${k}" name="${k}" type="number" inputmode="decimal" min="0" max="100000" step="${p[2] === 'бр.' ? 1 : 0.1}" value="${state.pantry[k] || ''}" placeholder="0"><small>${p[2]}</small></span></div>`;
   };
   const inMenu = [...used].sort((a, b) => aisleIndex(a) - aisleIndex(b));
   const rest = Object.keys(PRODUCTS)
     .filter((k) => !used.has(k))
     .sort((a, b) => aisleIndex(a) - aisleIndex(b) || PRODUCTS[a][0].localeCompare(PRODUCTS[b][0], 'bg'));
-  return `${head('Какво имаш вкъщи?', 'Количества, не опаковки. Приспадаме ги от списъка за покупки.', '', '', backLink('#shopping', 'Покупки'))}<form data-form="pantry" class="pantry">${inMenu.length ? `<section class="pgroup"><h2>За менюто тази седмица</h2>${inMenu.map(input).join('')}</section>` : ''}<details class="pgroup" ${inMenu.length ? '' : 'open'}><summary><h2>Всички продукти</h2></summary>${rest.map(input).join('')}</details><div class="sticky-actions"><button class="btn btn-primary btn-block" type="submit">Запази и обнови списъка</button></div></form>`;
+  return `${head('Какво имаш вкъщи?', 'Докосни „Имам“ или впиши количество. Приспадаме го от списъка, а в „Рецепти“ показваме какво става от него.', '', '', backLink('#shopping', 'Покупки'))}<form data-form="pantry" class="pantry">${inMenu.length ? `<section class="pgroup"><h2>За менюто тази седмица</h2>${inMenu.map(input).join('')}</section>` : ''}<details class="pgroup" ${inMenu.length ? '' : 'open'}><summary><h2>Всички продукти</h2></summary>${rest.map(input).join('')}</details><div class="sticky-actions"><button class="btn btn-primary btn-block" type="submit">Запази и обнови списъка</button></div></form>`;
 }
 
 /* ---------- more ---------- */
@@ -482,10 +577,10 @@ export function moreView(state, pwa = {}) {
       ? 'Не успяхме да подготвим работа без интернет. Приложението работи онлайн.'
       : 'Подготвя се за работа без интернет при първото зареждане.';
   return `${head('Още')}<a class="plus-card" href="#plans"><span class="plus-art">${mascot('hello')}</span><span class="plus-text"><b>Меню Плюс · демо</b><small>Дневник, баркод, макроси, тегло и вода. Всичко е отключено, плащанията още не са включени.</small></span>${icon('chevron', 18)}</a>
-<section class="list-group"><h2>Седмицата</h2><div class="list">${row('sliders', 'Предпочитания', 'Магазини, режим, уреди, порции', 'wizard')}${row('bell', 'Напомняне в календара', 'Всяка седмица да подредиш менюто', 'reminder')}${state.plan.length ? row('download', 'Изтегли менюто', 'Текстов файл с ястията и покупките', 'export-plan') : ''}</div></section>
+<section class="list-group"><h2>Седмицата</h2><div class="list">${row('sliders', 'Предпочитания', 'Магазини, режим, уреди, порции', 'wizard')}${row('bell', 'Напомняне в календара', 'Всяка седмица да подредиш менюто', 'reminder')}${state.plan.length ? row('download', 'Изтегли менюто', 'Текстов файл с ястията и покупките', 'export-plan') : ''}${progress(state).weeks ? row('sparkle', 'Твоят напредък', progressText(progress(state)) || 'Седмици, сготвени ястия и спестено', 'progress') : ''}${(state.blocked || []).length ? row('close', 'Скрити ястия', `${plural(state.blocked.length, 'ястие не се предлага', 'ястия не се предлагат')} в менюто`, 'blocked-list') : ''}</div></section>
 <section class="list-group"><h2>Данни на това устройство</h2><div class="list">${row('download', 'Изтегли резервно копие', 'Меню, покупки, дневник и настройки', 'backup')}<label class="list-row"><span class="list-ic">${icon('upload', 20)}</span><span class="list-text"><b>Възстанови от копие</b><small>Файл .json от „На маса“</small></span>${icon('chevron', 18)}<input type="file" accept="application/json,.json" data-change="restore" class="sr-only"></label>${row('trash', 'Изтрий всички данни', 'Започваш отначало на това устройство', 'reset', '', true)}</div></section>
 <section class="list-group"><h2>Приложението</h2><div class="list">${row('phone', 'Добави на началния екран', 'Отваря се като приложение', 'install-app')}${row('refresh', 'Провери за нова версия', '', 'check-update')}</div><p class="list-note" id="offline-readiness" role="status">${readiness}</p></section>
-<section class="list-group"><h2>За „На маса“</h2><div class="list"><a class="list-row" href="#privacy"><span class="list-ic">${icon('shield', 20)}</span><span class="list-text"><b>Поверителност</b><small>Какво пазим и къде</small></span>${icon('chevron', 18)}</a><a class="list-row" href="https://github.com/Hristiyantsb/na-masata" target="_blank" rel="noopener"><span class="list-ic">${icon('external', 20)}</span><span class="list-text"><b>Изходен код</b><small>GitHub</small></span>${icon('chevron', 18)}</a></div><p class="list-note">Версия 1.0 · ${RECIPES.length} рецепти · ${Object.keys(PRODUCTS).length} продукта</p></section>`;
+<section class="list-group"><h2>За „На маса“</h2><div class="list"><a class="list-row" href="#privacy"><span class="list-ic">${icon('shield', 20)}</span><span class="list-text"><b>Поверителност</b><small>Какво пазим и къде</small></span>${icon('chevron', 18)}</a><a class="list-row" href="https://github.com/Hristiyantsb/na-masata" target="_blank" rel="noopener"><span class="list-ic">${icon('external', 20)}</span><span class="list-text"><b>Изходен код</b><small>GitHub</small></span>${icon('chevron', 18)}</a></div><p class="list-note">Версия ${CONFIG.version} · ${RECIPES.length} рецепти · ${Object.keys(PRODUCTS).length} продукта</p></section>`;
 }
 
 export function plansView(interval = 'monthly') {
