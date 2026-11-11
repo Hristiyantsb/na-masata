@@ -9,8 +9,8 @@
 // Nothing is written when the day's data is unusable (a chain missing, too few products):
 // the app then keeps showing yesterday's prices with yesterday's date.
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
+import { newestArchive } from './lib/archive.mjs';
 import { chainFiles, eachProductRow } from './lib/kzp.mjs';
 import { RULES, unitPrice, packOf } from './lib/price-rules.mjs';
 import {
@@ -28,37 +28,6 @@ const option = (name) => {
   return at >= 0 ? args[at + 1] : undefined;
 };
 const OUT = option('out') || 'docs/data/prices';
-const ARCHIVE = (date) => `https://kolkostruva.bg/opendata_files/${date}.zip`;
-
-/** The calendar date in Sofia, `back` days ago. */
-function sofiaDate(back = 0) {
-  const day = new Date(Date.now() - back * 86400000);
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Sofia' }).format(day);
-}
-
-async function download() {
-  // The archive of a day appears late that evening, so the newest one is usually yesterday's.
-  for (let back = 0; back <= 3; back++) {
-    const date = sofiaDate(back);
-    const response = await fetch(ARCHIVE(date), {
-      headers: { 'user-agent': 'Mozilla/5.0 (compatible; price-reader/1.0)' },
-    });
-    if (!response.ok) {
-      console.log(`${date}: no archive (HTTP ${response.status})`);
-      continue;
-    }
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (buffer.length < 1_000_000 || buffer.readUInt32LE(0) !== 0x04034b50) {
-      console.log(`${date}: the answer is not an archive (${buffer.length} bytes)`);
-      continue;
-    }
-    const file = path.join(os.tmpdir(), `kzp-${date}.zip`);
-    fs.writeFileSync(file, buffer);
-    console.log(`${date}: downloaded ${(buffer.length / 1e6).toFixed(1)} MB`);
-    return { buffer, date };
-  }
-  throw Error('No archive could be downloaded for the last four days');
-}
 
 function explain(buffer, key, city) {
   if (!RULES[key]) throw Error(`No rule for "${key}". Known: ${Object.keys(RULES).join(', ')}`);
@@ -92,7 +61,7 @@ if (zipPath) {
   date ||= path.basename(zipPath).match(/\d{4}-\d{2}-\d{2}/)?.[0];
   if (!date) throw Error('Give the date of the archive: --date YYYY-MM-DD');
 } else {
-  ({ buffer, date } = await download());
+  ({ buffer, date } = await newestArchive());
 }
 
 if (option('explain')) {

@@ -61,7 +61,7 @@ export const RULES = Object.freeze({
   banana: R([52], 'kg', [0.7, 3.5], /банан/, /сушен|чипс/),
   apple: R([53], 'kg', [0.5, 4], /ябълк/, /мрежа|сушен|сок|чипс/),
   tomato: R([54], 'kg', [0.9, 7], /домат/, /зелени|чери|сушен/),
-  onion: R([55], 'kg', [0.25, 2.5], /лук/, /червен|пресен|зелен|праз|арпаджик|шалот/),
+  onion: R([55], 'kg', [0.25, 2.5], /лук/, /червен|пресен|зелен|праз|арпаджик|шалот|воден/),
   carrot: R([56], 'kg', [0.3, 2.5], /морков/, /мрежа|бейби|сок/),
   cabbage: R([57], 'kg', [0.3, 2.5], /зеле/, /червено|китайско|кисело|брюкселско|савойско/),
   cucumber: R([58], 'kg', [0.8, 6], /краставиц/, /корнишон|кисел|туршия/),
@@ -149,13 +149,18 @@ export function countIn(lowerName) {
 
 const within = (value, [low, high]) => value >= low && value <= high;
 
+// Organic lines ("БИО мляко", "K-Bio Банани") are a dearer product of their own: they never
+// stand for the ordinary one, even in a store that lists nothing else that day.
+const ORGANIC = /(^|[^а-яa-z])(био|bio)([^а-яa-z]|$)/;
+
 /** True when the row is our product by its set and its name, whether or not a price can be read. */
 export function isProduct(key, row, name = matchName(row.name)) {
   const rule = RULES[key];
   return (
     rule.sets.includes(row.set) &&
     rule.include.test(name) &&
-    !(rule.exclude && rule.exclude.test(name))
+    !(rule.exclude && rule.exclude.test(name)) &&
+    !ORGANIC.test(name)
   );
 }
 

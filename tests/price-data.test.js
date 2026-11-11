@@ -322,3 +322,50 @@ test('the files for the app list only named towns and refuse a thin day', () => 
   assert.equal(PLACES.get(68134).name, 'София');
   assert.ok(PLACES.size >= 250);
 });
+
+test('the newest archive is the first day that really has one', async () => {
+  const { newestArchive, sofiaDate, ARCHIVE_URL } = await import('../scripts/lib/archive.mjs');
+  // 02:00 in Sofia on 12 November 2026 is still 11 November in UTC.
+  const now = Date.UTC(2026, 10, 12, 0, 0);
+  assert.equal(sofiaDate(0, now), '2026-11-12');
+  assert.equal(sofiaDate(1, now), '2026-11-11');
+  assert.equal(sofiaDate(0, Date.UTC(2026, 10, 11, 21, 30)), '2026-11-11');
+  assert.equal(sofiaDate(0, Date.UTC(2026, 10, 11, 22, 30)), '2026-11-12');
+  assert.equal(ARCHIVE_URL('2026-11-10'), 'https://kolkostruva.bg/opendata_files/2026-11-10.zip');
+
+  const zip = zipStore({ 'a.csv': 'x'.repeat(64) });
+  const asked = [];
+  const lines = [];
+  const page = (body, ok = true, status = 200) => ({ ok, status, arrayBuffer: async () => body });
+  const fetcher = async (url, options) => {
+    asked.push(url.slice(-14, -4));
+    assert.match(options.headers['user-agent'], /price-reader/);
+    if (url.includes('2026-11-12')) return page(Buffer.alloc(0), false, 404); // not published yet
+    if (url.includes('2026-11-11')) return page(Buffer.from('<html>checking your browser</html>')); // not a zip
+    if (url.includes('2026-11-10')) throw Error('socket hang up');
+    return page(zip);
+  };
+  const found = await newestArchive({ fetcher, now, minBytes: 32, log: (line) => lines.push(line) });
+  assert.equal(found.date, '2026-11-09');
+  assert.deepEqual(zipEntries(found.buffer).map((e) => e.name), ['a.csv']);
+  assert.deepEqual(asked, ['2026-11-12', '2026-11-11', '2026-11-10', '2026-11-09']);
+  assert.match(lines[0], /2026-11-12: no archive \(HTTP 404\)/);
+  assert.match(lines[1], /not an archive/);
+  assert.match(lines[2], /the request failed \(socket hang up\)/);
+  // Nothing on any of the days: the run stops and yesterday's prices stay.
+  await assert.rejects(
+    newestArchive({ fetcher: async () => page(Buffer.alloc(0), false, 403), now, days: 2, log: () => {} }),
+    /No archive could be downloaded for the last 2 days/,
+  );
+});
+
+test('an organic line never stands for the ordinary product', () => {
+  const r = (set, name, price) => ({ city: 68134, store: 'S1', name, code: '1', set, price, promo: 0 });
+  assert.equal(unitPrice('banana', r(52, 'K-Bio Банани кг', 2.49)), null);
+  assert.equal(unitPrice('milk', r(6, 'БИО 1Л ПР.МЛЯКО OLYMPUS 3.7%', 1.54)), null);
+  assert.equal(isProduct('banana', r(52, 'Био банани на кг', 2.04)), false);
+  // A word that only contains the letters is not organic.
+  assert.ok(unitPrice('banana', r(52, 'Банани Биография кг', 1.29)));
+  assert.equal(unitPrice('onion', r(55, 'Лук, воден', 2.48)), null);
+  assert.ok(unitPrice('onion', r(55, 'Кромид лук, България, кг.ОПС', 0.66)));
+});
