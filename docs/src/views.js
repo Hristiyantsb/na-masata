@@ -21,14 +21,15 @@ import {
   THEMES,
   weekOver,
   progress,
+  WIDELY_SOLD,
 } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
-import { PRICE_SOURCE, STORE_PRICES } from './prices.js';
+import { priceSource, chainOffer, hasChainPrices, chainInTown } from './market.js';
 import { CONFIG } from './config.js';
 import { mascot, wordmark } from './brand.js';
 import { storeBadge } from './stores.js';
 import { DIET_COPY, GOAL_COPY } from './onboarding.js';
-import { esc, icon, money, num, foodArt, dayName, plural, WEEKDAYS } from './ui.js';
+import { esc, icon, money, num, foodArt, dayName, plural, listJoin, inPlace, WEEKDAYS } from './ui.js';
 
 export const NAV = [
   ['menu', 'menu', 'Меню'],
@@ -52,7 +53,7 @@ export function shell(route, content, status = {}) {
     ).join('');
   return `<a class="skip" href="#main">Към съдържанието</a>
 <div class="app">
-<aside class="side"><a class="side-brand" href="#menu" aria-label="На маса, към менюто">${wordmark()}</a><nav class="side-nav" aria-label="Основно меню">${links('side-link')}</nav><a class="side-plus" href="#plans"><span class="side-plus-art">${mascot('hello')}</span><span><b>Меню Плюс</b><small>Демо: всичко е отключено</small></span></a></aside>
+<aside class="side"><a class="side-brand" href="#menu" aria-label="На маса, към менюто">${wordmark()}</a><nav class="side-nav" aria-label="Основно меню">${links('side-link')}</nav><a class="side-plus" href="#plans"><span class="side-plus-art">${mascot('hello')}</span><span><b>Плюс</b><small>Демо: всичко е отключено</small></span></a></aside>
 <main class="main" id="main" tabindex="-1"><div class="status" data-status ${status.offline || status.update ? '' : 'hidden'}>${statusBar(status)}</div>${content}</main>
 <nav class="tabbar" aria-label="Основно меню">${links('tab')}</nav>
 </div>`;
@@ -72,9 +73,6 @@ export function greeting(date = new Date()) {
   const h = date.getHours();
   return h < 11 ? 'Добро утро' : h < 18 ? 'Добър ден' : 'Добър вечер';
 }
-
-const listJoin = (items) =>
-  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} и ${items.at(-1)}`;
 
 /* ---------- menu ---------- */
 
@@ -131,7 +129,7 @@ export function menuView(state, ui = {}) {
   const foot = keep
     ? `<div class="keep-bar"><button type="button" class="btn btn-secondary" data-action="keep-cancel">Отказ</button><button type="button" class="btn btn-primary" data-action="keep-apply">${keep.size ? `Смени останалите ${state.plan.length - keep.size}` : 'Смени всички'}</button></div>`
     : `<div class="menu-foot"><button type="button" class="btn btn-secondary" data-action="new-menu" ${state.locked ? 'disabled' : ''}>${icon('refresh', 18)} Ново меню</button>${ui.undo ? `<button type="button" class="btn btn-plain" data-action="undo">${icon('back', 18)} Върни предишното</button>` : ''}</div>`;
-  return `${head('Твоята седмица', meta, options, greeting())}${nextWeek}${summary}${progressLine}${notice}<div class="week">${body}</div>${foot}<p class="fine center">${RECIPES.length} рецепти в каталога. Цените са най-ниските във веригите към ${PRICE_SOURCE.shown}. Калориите са за ядливата част на продуктите.</p>`;
+  return `${head('Твоята седмица', meta, options, greeting())}${nextWeek}${summary}${progressLine}${notice}<div class="week">${body}</div>${foot}<p class="fine center">${RECIPES.length} рецепти в каталога. Цените са най-ниските във веригите ${inPlace(priceSource().place)} към ${priceSource().shown}. Калориите са за ядливата част на продуктите.</p>`;
 }
 
 /** "3 седмици подред · 14 сготвени ястия · 12,40 € спестени": only what really happened. */
@@ -378,7 +376,7 @@ export function recipeSheet(r, state, { index = null, done = [], preview = false
   const note = preview
     ? ''
     : `<form class="note" data-form="note" data-id="${esc(r.id)}"><label class="field"><span>Моя бележка</span><textarea name="note" maxlength="4000" rows="3" placeholder="Например: следващия път повече чесън">${esc(state.notes[r.id] || '')}</textarea></label><button class="btn btn-secondary btn-small" type="submit">Запази бележката</button></form><button type="button" class="btn btn-plain btn-small recipe-hide" data-action="${hidden ? 'unblock-recipe' : 'block-recipe'}" data-id="${esc(r.id)}">${hidden ? 'Предлагай го отново в менюто' : 'Не го предлагай в менюто'}</button>`;
-  return `<article class="recipe"><div class="recipe-hero">${foodArt(r, 168)}</div>${kind ? `<p class="eyebrow">${esc(kind)}</p>` : ''}<h2 class="sheet-title">${esc(r.name)}</h2><ul class="facts"><li>${icon('clock', 18)}${r.time} мин${r.prepNote ? ' + накисване' : ''}</li><li>${icon('people', 18)}${n} ${n === 1 ? 'порция' : 'порции'}</li><li>${icon('utensils', 18)}${esc(r.equipment.map((k) => EQUIPMENT[k]).join(', ') || 'Без готвене')}</li></ul>${servings}<div class="macros" aria-label="На порция"><div><b>${num(macros.kcal)}</b><small>ккал</small></div><div><b>${num(macros.protein)} г</b><small>протеин</small></div><div><b>${num(macros.carbs)} г</b><small>въглехидрати</small></div><div><b>${num(macros.fat)} г</b><small>мазнини</small></div></div><p class="fine">На порция. Съставките за ${n} ${n === 1 ? 'порция' : 'порции'} са около ${money(recipeCost(r, n, state))} по цените от ${PRICE_SOURCE.shown}.</p>${r.prepNote ? `<p class="notice">${icon('clock', 18)}<span>${esc(r.prepNote)}</span></p>` : ''}${preview ? '' : `<button type="button" class="btn btn-primary btn-block" data-action="cook" data-id="${esc(r.id)}" data-step="0">${icon('play', 18, true)} Готви стъпка по стъпка</button>`}<section class="recipe-sec"><h3>Съставки <span>за ${n} ${n === 1 ? 'порция' : 'порции'}</span></h3><ul class="ingredients">${ingredients}</ul><p class="fine">${allergens.length ? `Алергени: ${esc(allergens.map((k) => ALLERGENS[k]).join(', ').toLocaleLowerCase('bg'))}.` : 'Без отбелязаните алергени.'} Проверявай етикетите.</p></section><section class="recipe-sec"><h3>Приготвяне ${preview ? '' : `<span data-cook-progress>${done.length} от ${r.steps.length}</span>`}</h3><ol class="steps">${steps}</ol></section>${actions}${note}</article>`;
+  return `<article class="recipe"><div class="recipe-hero">${foodArt(r, 168)}</div>${kind ? `<p class="eyebrow">${esc(kind)}</p>` : ''}<h2 class="sheet-title">${esc(r.name)}</h2><ul class="facts"><li>${icon('clock', 18)}${r.time} мин${r.prepNote ? ' + накисване' : ''}</li><li>${icon('people', 18)}${n} ${n === 1 ? 'порция' : 'порции'}</li><li>${icon('utensils', 18)}${esc(r.equipment.map((k) => EQUIPMENT[k]).join(', ') || 'Без готвене')}</li></ul>${servings}<div class="macros" aria-label="На порция"><div><b>${num(macros.kcal)}</b><small>ккал</small></div><div><b>${num(macros.protein)} г</b><small>протеин</small></div><div><b>${num(macros.carbs)} г</b><small>въглехидрати</small></div><div><b>${num(macros.fat)} г</b><small>мазнини</small></div></div><p class="fine">На порция. Съставките за ${n} ${n === 1 ? 'порция' : 'порции'} са около ${money(recipeCost(r, n, state))} по цените от ${priceSource().shown}.</p>${r.prepNote ? `<p class="notice">${icon('clock', 18)}<span>${esc(r.prepNote)}</span></p>` : ''}${preview ? '' : `<button type="button" class="btn btn-primary btn-block" data-action="cook" data-id="${esc(r.id)}" data-step="0">${icon('play', 18, true)} Готви стъпка по стъпка</button>`}<section class="recipe-sec"><h3>Съставки <span>за ${n} ${n === 1 ? 'порция' : 'порции'}</span></h3><ul class="ingredients">${ingredients}</ul><p class="fine">${allergens.length ? `Алергени: ${esc(allergens.map((k) => ALLERGENS[k]).join(', ').toLocaleLowerCase('bg'))}.` : 'Без отбелязаните алергени.'} Проверявай етикетите.</p></section><section class="recipe-sec"><h3>Приготвяне ${preview ? '' : `<span data-cook-progress>${done.length} от ${r.steps.length}</span>`}</h3><ol class="steps">${steps}</ol></section>${actions}${note}</article>`;
 }
 
 export function cookView(r, step, timer, people = 2) {
@@ -441,6 +439,28 @@ const leftoverMatters = (k) =>
   SHORT_LIFE.has(k) ||
   (['meat', 'fish', 'dairy'].includes(AISLE[k]) && !['egg', 'butter', 'parmesan', 'kashkaval'].includes(k));
 
+/** In how many of the chain's stores in town the product is on the price list. */
+export function soldIn(offer) {
+  if (!offer?.of) return '';
+  if (offer.stores >= offer.of) return offer.of === 1 ? 'в магазина на веригата' : `във всички ${offer.of} магазина`;
+  return `в ${offer.stores} от ${offer.of} магазина`;
+}
+
+/** The chain's offer behind a row of the list, unless the person keeps a price of their own. */
+const offerOf = (r, state) => (state.prices[r.k] == null ? chainOffer(r.k, r.store) : null);
+const onDeal = (r, state) => Boolean(offerOf(r, state)?.was);
+
+function offerTags(r, state) {
+  const offer = offerOf(r, state);
+  if (!offer) return '';
+  const deal = offer.was ? '<span class="tag tag-deal">промоция</span>' : '';
+  const few =
+    offer.of && offer.stores / offer.of < WIDELY_SOLD
+      ? `<span class="tag">${soldIn(offer)}</span>`
+      : '';
+  return deal + few;
+}
+
 function groceryRow(r, state, big = false) {
   const done = !!state.checked[r.k];
   const left =
@@ -448,7 +468,7 @@ function groceryRow(r, state, big = false) {
   const detail = big
     ? `${r.packs} × ${num(r.size, 1)} ${r.unit}`
     : `${r.packs} × ${num(r.size, 1)} ${r.unit} · за менюто ${num(r.need, 1)} ${r.unit}${left}`;
-  return `<li class="grow ${done ? 'is-done' : ''}"><label class="gcheck"><input type="checkbox" data-change="purchased" data-id="${r.k}" ${done ? 'checked' : ''}><span class="gbox" aria-hidden="true">${icon('check', 16)}</span><span class="gtext"><b>${esc(r.name)}</b><small>${detail}</small></span></label>${big ? '' : `<button type="button" class="gprice" data-action="grocery-edit" data-id="${r.k}" aria-label="Цена и магазин: ${esc(r.name)}">${money(r.cost)}</button>`}</li>`;
+  return `<li class="grow ${done ? 'is-done' : ''}"><label class="gcheck"><input type="checkbox" data-change="purchased" data-id="${r.k}" ${done ? 'checked' : ''}><span class="gbox" aria-hidden="true">${icon('check', 16)}</span><span class="gtext"><b>${esc(r.name)}${offerTags(r, state)}</b><small>${detail}</small></span></label>${big ? '' : `<button type="button" class="gprice" data-action="grocery-edit" data-id="${r.k}" aria-label="Цена и магазин: ${esc(r.name)}">${money(r.cost)}</button>`}</li>`;
 }
 
 function storeSections(state, rows, big = false) {
@@ -480,6 +500,7 @@ export function shoppingView(state) {
     toBuy = rows.filter((r) => r.packs),
     done = toBuy.filter((r) => state.checked[r.k]).length,
     summary = shoppingSummary(state),
+    source = priceSource(),
     pct = toBuy.length ? Math.round((done / toBuy.length) * 100) : 0;
   const action = toBuy.length
     ? `<button type="button" class="btn btn-primary btn-small" data-action="shop-mode">${icon('cart', 18)} Пазарувам</button>`
@@ -495,12 +516,19 @@ export function shoppingView(state) {
       )
     );
   const progress = toBuy.length
-    ? `<section class="cart-card" role="group" aria-label="Напредък"><div class="cart-top"><b>${done} от ${toBuy.length}</b><span>в количката</span><strong>${money(summary.knownTotal)}</strong></div><span class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="В количката"><i style="width:${pct}%"></i></span><p class="fine">За цели опаковки по цените от ${PRICE_SOURCE.shown}${summary.unknownPrices ? `, плюс ${plural(summary.unknownPrices, 'продукт', 'продукта')} без цена` : ''}.</p></section>`
+    ? `<section class="cart-card" role="group" aria-label="Напредък"><div class="cart-top"><b>${done} от ${toBuy.length}</b><span>в количката</span><strong>${money(summary.knownTotal)}</strong></div><span class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="В количката"><i style="width:${pct}%"></i></span><p class="fine">За цели опаковки по цените ${inPlace(source.place)} от ${source.shown}${summary.unknownPrices ? `, плюс ${plural(summary.unknownPrices, 'продукт', 'продукта')} без цена` : ''}.</p></section>`
     : '';
-  const saving =
+  // What the split and today's promotions do for this list, in one calm line.
+  const deals = toBuy.filter((r) => onDeal(r, state)).length;
+  const gains = [
     summary.saving >= 0.2
-      ? `<p class="saving">${icon('check', 16)}<span>По-евтино с <b>${money(summary.saving)}</b>, отколкото ако купиш всичко само от ${esc(summary.savingAgainst)}: всеки продукт е от веригата, в която струва най-малко.</span></p>`
-      : '';
+      ? `По-евтино с <b>${money(summary.saving)}</b>, отколкото ако купиш всичко само от ${esc(summary.savingAgainst)}: всеки продукт е от веригата, в която струва най-малко.`
+      : '',
+    deals ? `${plural(deals, 'продукт е', 'продукта са')} в промоция днес.` : '',
+  ].filter(Boolean);
+  const saving = gains.length
+    ? `<p class="saving">${icon('check', 16)}<span>${gains.join(' ')}</span></p>`
+    : '';
   const have = rows.filter((r) => !r.packs);
   const haveBlock = have.length
     ? `<details class="have"><summary>${icon('fridge', 18)} Имаш достатъчно вкъщи <span>${have.length}</span></summary><ul class="have-list">${have.map((r) => `<li><span>${esc(r.name)}</span><small>${num(r.need, 1)} ${r.unit}</small></li>`).join('')}</ul></details>`
@@ -515,7 +543,7 @@ export function shoppingView(state) {
           .join('')}</ul>`
       : '<p class="muted">Неща извън рецептите: кафе, препарати, плодове за децата. Остават при смяна на менюто.</p>'
   }</section>`;
-  return `${head('Покупки', esc(listJoin(state.settings.stores)), action)}${progress}${saving}<a class="row-link" href="#pantry"><span class="list-ic">${icon('fridge', 20)}</span><span class="list-text"><b>Какво имаш вкъщи?</b><small>Приспадаме го от списъка</small></span>${icon('chevron', 18)}</a>${storeSections(state, toBuy)}${haveBlock}${extras}<div class="actions-row"><button type="button" class="btn btn-secondary btn-small" data-action="share-shopping">${icon('share', 18)} Изпрати</button><button type="button" class="btn btn-secondary btn-small" data-action="copy-shopping">${icon('copy', 18)} Копирай</button><button type="button" class="btn btn-secondary btn-small" data-action="export-shopping">${icon('download', 18)} Изтегли</button>${done || state.extras.some((e) => e.checked) ? `<button type="button" class="btn btn-plain btn-small" data-action="uncheck-all">Изчисти отметките</button>` : ''}</div><p class="fine">Цените са най-ниските за продукта във веригата, от която го купуваш, по ${PRICE_SOURCE.name} (${PRICE_SOURCE.place}, ${PRICE_SOURCE.shown}). За продуктите извън кошницата на портала цената е от онлайн магазин на същата дата. Менят се всеки ден и не са оферти. Смени цена или опаковка с докосване върху сумата.</p>`;
+  return `${head('Покупки', esc(listJoin(state.settings.stores)), action)}${progress}${saving}<a class="row-link" href="#pantry"><span class="list-ic">${icon('fridge', 20)}</span><span class="list-text"><b>Какво имаш вкъщи?</b><small>Приспадаме го от списъка</small></span>${icon('chevron', 18)}</a>${storeSections(state, toBuy)}${haveBlock}${extras}<div class="actions-row"><button type="button" class="btn btn-secondary btn-small" data-action="share-shopping">${icon('share', 18)} Изпрати</button><button type="button" class="btn btn-secondary btn-small" data-action="copy-shopping">${icon('copy', 18)} Копирай</button><button type="button" class="btn btn-secondary btn-small" data-action="export-shopping">${icon('download', 18)} Изтегли</button>${done || state.extras.some((e) => e.checked) ? `<button type="button" class="btn btn-plain btn-small" data-action="uncheck-all">Изчисти отметките</button>` : ''}</div><p class="fine">Цените са най-ниските за продукта във веригата, от която го купуваш: по данните, които веригите подават всеки ден към ${source.name} (${esc(source.place)}, ${source.shown}). Не са оферти и не показват дали продуктът е на рафта в момента. За продуктите извън кошницата на портала цената е ориентировъчна, от онлайн магазин. Смени цена или опаковка с докосване върху сумата.</p>`;
 }
 
 export function shopModeView(state) {
@@ -539,11 +567,64 @@ export function grocerySheet(state, k) {
   const p = PRODUCTS[k];
   const stores = state.settings.stores;
   const current = groceries(state).find((r) => r.k === k)?.store || stores[0];
-  return `<p class="eyebrow">Продукт</p><h2 class="sheet-title">${esc(p[0])}</h2><form data-form="grocery" data-id="${k}">${
+  const source = priceSource();
+  // One line per chosen chain: what the product costs there today, which product that is on
+  // the chain's list and in how many of its stores in town it is sold.
+  const offerText = (s) => {
+    const offer = chainOffer(k, s);
+    if (!offer)
+      return `<small>${chainInTown(s) ? 'няма цена в данните за днес' : `няма магазин ${esc(inPlace(source.place))}`}</small>`;
+    const sold = soldIn(offer);
+    return `${offer.name ? `<small class="choice-name">${esc(offer.name)}</small>` : ''}${sold ? `<small>${sold}</small>` : ''}`;
+  };
+  const offerPrice = (s) => {
+    const offer = chainOffer(k, s);
+    if (!offer) return '';
+    return `<span class="choice-price"><b>${money(offer.price)}</b>${offer.was ? `<small>промоция, иначе ${money(offer.was)}</small>` : ''}</span>`;
+  };
+  const chains =
     stores.length > 1
-      ? `<fieldset class="field"><legend>Купувам го от</legend><div class="choice-list">${stores.map((s) => `<label class="choice"><input type="radio" name="store" value="${esc(s)}" ${s === current ? 'checked' : ''}>${storeBadge(s)}<span>${esc(s)}</span>${STORE_PRICES[k]?.[s] != null ? `<small class="choice-price">${money(STORE_PRICES[k][s])}</small>` : ''}</label>`).join('')}</div></fieldset>`
-      : ''
-  }<div class="form-grid"><label class="field"><span>Цена на опаковка, €</span><input name="price" type="number" inputmode="decimal" min="0" max="10000" step="0.01" value="${packPrice(k, state)}" required></label><label class="field"><span>Опаковка, ${p[2]}</span><input name="size" type="number" inputmode="decimal" min="0.1" max="100000" step="0.1" value="${packSize(k, state)}" required></label></div><p class="fine">${STORE_PRICES[k] ? `До всяка верига е най-ниската цена за продукта по ${PRICE_SOURCE.name} (${PRICE_SOURCE.place}, ${PRICE_SOURCE.shown}). Менят се всеки ден.` : `Цената е от онлайн магазин към ${PRICE_SOURCE.shown}.`} Ако запишеш своя цена, тя важи за всички магазини.</p><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запази</button></form>`;
+      ? `<fieldset class="field"><legend>Купувам го от</legend><div class="choice-list">${stores.map((s) => `<label class="choice"><input type="radio" name="store" value="${esc(s)}" ${s === current ? 'checked' : ''}>${storeBadge(s)}<span class="choice-text"><b>${esc(s)}</b>${offerText(s)}</span>${offerPrice(s)}</label>`).join('')}</div></fieldset>`
+      : chainOffer(k, current)
+        ? `<div class="choice-list"><div class="choice">${storeBadge(current)}<span class="choice-text"><b>${esc(current)}</b>${offerText(current)}</span>${offerPrice(current)}</div></div>`
+        : '';
+  const note = hasChainPrices(k)
+    ? `До всяка верига е цената на най-евтиния подходящ продукт в типичния ѝ магазин ${esc(inPlace(source.place))}, преизчислена за нашата опаковка, по ${source.name} от ${source.shown}.${source.live ? ' Броят магазини показва в колко от обектите на веригата продуктът е в ценоразписа, а не дали е на рафта в момента.' : ''}`
+    : `За този продукт порталът няма данни: цената е ориентировъчна, от онлайн магазин.`;
+  return `<p class="eyebrow">Продукт</p><h2 class="sheet-title">${esc(p[0])}</h2><form data-form="grocery" data-id="${k}">${chains}<div class="form-grid"><label class="field"><span>Цена на опаковка, €</span><input name="price" type="number" inputmode="decimal" min="0" max="10000" step="0.01" value="${packPrice(k, state)}" required></label><label class="field"><span>Опаковка, ${p[2]}</span><input name="size" type="number" inputmode="decimal" min="0.1" max="100000" step="0.1" value="${packSize(k, state)}" required></label></div><p class="fine">${note} Ако запишеш своя цена, тя важи за всички магазини.</p><p class="form-error" role="alert"></p><button class="btn btn-primary btn-block" type="submit">Запази</button></form>`;
+}
+
+/** The rows of the town picker: the towns whose name or region contains the query. */
+export function cityRows(places, current, query = '') {
+  const q = query.trim().toLocaleLowerCase('bg');
+  const count = new Map();
+  for (const p of places) count.set(p.name, (count.get(p.name) || 0) + 1);
+  const rows = places
+    .filter((p) => !q || p.name.toLocaleLowerCase('bg').includes(q) || p.region.toLocaleLowerCase('bg').includes(q))
+    // The chosen town leads the list, so it is seen without scrolling; the rest stay by name.
+    .sort((a, b) => (b.code === current) - (a.code === current))
+    .map((p) => {
+      // Two places can share a name (Добрич, Габрово): the municipality tells them apart.
+      const where = count.get(p.name) > 1 ? `община ${p.municipality}, област ${p.region}` : `област ${p.region}`;
+      const on = p.code === current;
+      return `<button type="button" class="city-row ${on ? 'is-on' : ''}" data-action="choose-city" data-code="${p.code}" aria-pressed="${on}"><span class="city-text"><b>${esc(p.name)}</b><small>${esc(where)}</small><small class="city-chains">${esc(Object.keys(p.stores).join(' · '))}</small></span>${on ? icon('check', 18) : ''}</button>`;
+    })
+    .join('');
+  return (
+    rows ||
+    '<p class="muted">Няма такова място в данните. В списъка са населените места с магазин на поне една от шестте вериги.</p>'
+  );
+}
+
+/**
+ * The town picker in „Още“ and in the setup. `places` is null while the list is on its way;
+ * `offline` says that it cannot come now.
+ */
+export function citySheet(places, current, query = '', offline = false) {
+  const body = places
+    ? `<label class="search">${icon('search', 18)}<input type="search" data-input="city-search" value="${esc(query)}" placeholder="Търси град или село" aria-label="Търси населено място" autocomplete="off" enterkeyhint="search"></label><div class="city-list" data-city-list>${cityRows(places, current, query)}</div>`
+    : `<p class="muted" role="status">${offline ? `Списъкът с населени места се зарежда при връзка с интернет. Дотогава цените остават за ${esc(priceSource().place)}.` : 'Зареждаме списъка с населени места…'}</p>`;
+  return `<div data-city-sheet><p class="eyebrow">Цени и магазини</p><h2 class="sheet-title">Къде пазаруваш?</h2><p class="sheet-sub">Показваме цените на веригите в твоето населено място и в колко от магазините им се продава всеки продукт.</p>${body}</div>`;
 }
 
 export function extraForm(state, entry = null) {
@@ -576,8 +657,8 @@ export function moreView(state, pwa = {}) {
     : pwa.error
       ? 'Не успяхме да подготвим работа без интернет. Приложението работи онлайн.'
       : 'Подготвя се за работа без интернет при първото зареждане.';
-  return `${head('Още')}<a class="plus-card" href="#plans"><span class="plus-art">${mascot('hello')}</span><span class="plus-text"><b>Меню Плюс · демо</b><small>Дневник, баркод, макроси, тегло и вода. Всичко е отключено, плащанията още не са включени.</small></span>${icon('chevron', 18)}</a>
-<section class="list-group"><h2>Седмицата</h2><div class="list">${row('sliders', 'Предпочитания', 'Магазини, режим, уреди, порции', 'wizard')}${row('bell', 'Напомняне в календара', 'Всяка седмица да подредиш менюто', 'reminder')}${state.plan.length ? row('download', 'Изтегли менюто', 'Текстов файл с ястията и покупките', 'export-plan') : ''}${progress(state).weeks ? row('sparkle', 'Твоят напредък', progressText(progress(state)) || 'Седмици, сготвени ястия и спестено', 'progress') : ''}${(state.blocked || []).length ? row('close', 'Скрити ястия', `${plural(state.blocked.length, 'ястие не се предлага', 'ястия не се предлагат')} в менюто`, 'blocked-list') : ''}</div></section>
+  return `${head('Още')}<a class="plus-card" href="#plans"><span class="plus-art">${mascot('hello')}</span><span class="plus-text"><b>Плюс · демо</b><small>Дневник, баркод, макроси, тегло и вода. Всичко е отключено, плащанията още не са включени.</small></span>${icon('chevron', 18)}</a>
+<section class="list-group"><h2>Седмицата</h2><div class="list">${row('sliders', 'Предпочитания', 'Магазини, режим, уреди, порции', 'wizard')}${row('pin', 'Населено място', `${priceSource().place} · цени от ${priceSource().shown}`, 'city')}${row('bell', 'Напомняне в календара', 'Всяка седмица да подредиш менюто', 'reminder')}${state.plan.length ? row('download', 'Изтегли менюто', 'Текстов файл с ястията и покупките', 'export-plan') : ''}${progress(state).weeks ? row('sparkle', 'Твоят напредък', progressText(progress(state)) || 'Седмици, сготвени ястия и спестено', 'progress') : ''}${(state.blocked || []).length ? row('close', 'Скрити ястия', `${plural(state.blocked.length, 'ястие не се предлага', 'ястия не се предлагат')} в менюто`, 'blocked-list') : ''}</div></section>
 <section class="list-group"><h2>Данни на това устройство</h2><div class="list">${row('download', 'Изтегли резервно копие', 'Меню, покупки, дневник и настройки', 'backup')}<label class="list-row"><span class="list-ic">${icon('upload', 20)}</span><span class="list-text"><b>Възстанови от копие</b><small>Файл .json от „На маса“</small></span>${icon('chevron', 18)}<input type="file" accept="application/json,.json" data-change="restore" class="sr-only"></label>${row('trash', 'Изтрий всички данни', 'Започваш отначало на това устройство', 'reset', '', true)}</div></section>
 <section class="list-group"><h2>Приложението</h2><div class="list">${row('phone', 'Добави на началния екран', 'Отваря се като приложение', 'install-app')}${row('refresh', 'Провери за нова версия', '', 'check-update')}</div><p class="list-note" id="offline-readiness" role="status">${readiness}</p></section>
 <section class="list-group"><h2>За „На маса“</h2><div class="list"><a class="list-row" href="#privacy"><span class="list-ic">${icon('shield', 20)}</span><span class="list-text"><b>Поверителност</b><small>Какво пазим и къде</small></span>${icon('chevron', 18)}</a><a class="list-row" href="https://github.com/Hristiyantsb/na-masata" target="_blank" rel="noopener"><span class="list-ic">${icon('external', 20)}</span><span class="list-text"><b>Изходен код</b><small>GitHub</small></span>${icon('chevron', 18)}</a></div><p class="list-note">Версия ${CONFIG.version} · ${RECIPES.length} рецепти · ${Object.keys(PRODUCTS).length} продукта</p></section>`;
@@ -585,21 +666,28 @@ export function moreView(state, pwa = {}) {
 
 export function plansView(interval = 'monthly') {
   const yearly = interval === 'yearly';
-  const card = (id, items) => {
-    const p = PLANS[id];
-    const price = yearly ? p.yearly : p.monthly;
-    return `<article class="plan-card ${id === 'plus' ? 'is-plus' : ''}"><h2>${esc(p.name)}</h2><p class="plan-price"><b>${num(price)} €</b><span>/ ${yearly ? 'година' : 'месец'}</span></p>${yearly ? `<p class="fine">${money(p.yearly / 12)} на месец, платени наведнъж</p>` : '<p class="fine">Плащане всеки месец</p>'}<ul class="plan-list">${items.map((t) => `<li>${icon('check', 18)}<span>${esc(t)}</span></li>`).join('')}</ul></article>`;
-  };
-  return `${head('Планове', 'Плащанията още не са включени. Докато сме в демо, всичко е отключено и нищо не се таксува.', '', '', backLink('#more', 'Още'))}<div class="seg seg-2" role="group" aria-label="Период"><button type="button" class="seg-item" data-action="billing" data-value="monthly" aria-pressed="${!yearly}">Месечно</button><button type="button" class="seg-item" data-action="billing" data-value="yearly" aria-pressed="${yearly}">Годишно</button></div><div class="plan-cards">${card('menu', [
+  const list = (items) =>
+    `<ul class="plan-list">${items.map((t) => `<li>${icon('check', 18)}<span>${esc(t)}</span></li>`).join('')}</ul>`;
+  const plus = PLANS.plus;
+  // What a year costs less than twelve single months, worked out from the two prices.
+  const saved = Math.round((1 - plus.yearly / (plus.monthly * 12)) * 100);
+  const free = `<article class="plan-card"><h2>${esc(PLANS.free.name)}</h2><p class="plan-price"><b>0 €</b><span>завинаги</span></p><p class="fine">Без карта и без регистрация</p>${list([
     'Седмично меню по твоите правила',
-    'Списък по магазини и щандове',
+    'Списък по магазини с цените за деня в твоя град',
     'Готвене стъпка по стъпка с таймер',
     `Всички ${RECIPES.length} рецепти`,
-  ])}${card('plus', ['Всичко от „Меню“', 'Хранителен дневник с макроси', 'Баркод от етикета', 'Тегло и вода'])}</div><p class="fine">Цените са за бъдещото пускане. Преди плащане ще видиш точната сума, периода и условията.</p>`;
+  ])}</article>`;
+  const paid = `<article class="plan-card is-plus"><h2>${esc(plus.name)}</h2><p class="plan-price"><b>${money(yearly ? plus.yearly : plus.monthly)}</b><span>/ ${yearly ? 'година' : 'месец'}</span></p><p class="fine">${yearly ? `${money(plus.yearly / 12)} на месец, платени наведнъж. С ${saved}% по-малко от дванайсет отделни месеца.` : 'Плащане всеки месец'}</p>${list([
+    'Всичко от безплатното',
+    'Хранителен дневник с калории и макроси',
+    'Баркод от етикета',
+    'Цел за калории, тегло и вода',
+  ])}</article>`;
+  return `${head('Планове', 'Плащанията още не са включени. Докато сме в демо, всичко е отключено и нищо не се таксува.', '', '', backLink('#more', 'Още'))}<div class="seg seg-2" role="group" aria-label="Период"><button type="button" class="seg-item" data-action="billing" data-value="monthly" aria-pressed="${!yearly}">Месечно</button><button type="button" class="seg-item" data-action="billing" data-value="yearly" aria-pressed="${yearly}">Годишно</button></div><div class="plan-cards">${free}${paid}</div><p class="fine">Менюто, покупките и рецептите остават безплатни. Цената на „${esc(plus.name)}“ е за бъдещото пускане: преди плащане ще видиш точната сума, периода и условията.</p>`;
 }
 
 export function privacyView() {
-  return `${head('Поверителност', 'Как работи „На маса“ на това устройство.', '', '', backLink('#more', 'Още'))}<div class="prose"><h2>Всичко остава тук</h2><p>Менюто, покупките, дневникът и настройките се пазят само в този браузър. Нямаш акаунт. Към интернет излиза само едно: когато сканираш баркод или търсиш храна онлайн в дневника, изпращаме цифрите на баркода или думите за търсене до Open Food Facts (openfoodfacts.org), за да намерим продукта. Нищо друго.</p><h2>Камерата</h2><p>Баркодът се разчита на самото устройство. Кадрите не се записват и не се изпращат никъде; изпращат се само цифрите, за да намерим продукта.</p><h2>Open Food Facts</h2><p>Продуктите по баркод и при търсене онлайн идват от Open Food Facts, открита база с лиценз ODbL. Данните са въведени от хора и може да се различават от етикета.</p><h2>Резервно копие</h2><p>Изтегли копие от „Още“, ако чистиш браузъра или сменяш телефона. Файлът е твой и стои там, където го запазиш.</p><h2>Изтриване</h2><p>„Още“ → „Изтрий всички данни“ маха всичко от това устройство. Действието не може да се върне.</p><h2>Цени и хранителни стойности</h2><p>Цените са снимка към ${PRICE_SOURCE.shown}: най-ниската цена за продукта във всяка верига по ${PRICE_SOURCE.name} (${PRICE_SOURCE.place}), а за продуктите извън кошницата на портала — от онлайн магазин. Не са оферти и се менят всеки ден. Хранителните стойности са по стандартни таблици и важат за ядливата част на продукта. Проверявай етикетите за алергени.</p></div>`;
+  return `${head('Поверителност', 'Как работи „На маса“ на това устройство.', '', '', backLink('#more', 'Още'))}<div class="prose"><h2>Всичко остава тук</h2><p>Менюто, покупките, дневникът и настройките се пазят само в този браузър. Нямаш акаунт. Към интернет излизат само две неща. Приложението изтегля от собствения си адрес файла с днешните цени за избраното населено място: в заявката няма нищо за теб, само кой файл е поискан. И когато сканираш баркод или търсиш храна онлайн в дневника, изпращаме цифрите на баркода или думите за търсене до Open Food Facts (openfoodfacts.org), за да намерим продукта. Нищо друго.</p><h2>Камерата</h2><p>Баркодът се разчита на самото устройство. Кадрите не се записват и не се изпращат никъде; изпращат се само цифрите, за да намерим продукта.</p><h2>Open Food Facts</h2><p>Продуктите по баркод и при търсене онлайн идват от Open Food Facts, открита база с лиценз ODbL. Данните са въведени от хора и може да се различават от етикета.</p><h2>Резервно копие</h2><p>Изтегли копие от „Още“, ако чистиш браузъра или сменяш телефона. Файлът е твой и стои там, където го запазиш.</p><h2>Изтриване</h2><p>„Още“ → „Изтрий всички данни“ маха всичко от това устройство. Действието не може да се върне.</p><h2>Цени и хранителни стойности</h2><p>Цените идват от отворените данни на ${priceSource().name}: веригите са длъжни по закон да подават там цените си всеки ден, за всеки свой магазин. Всяка сутрин взимаме новите данни и за всяка верига показваме цената на най-евтиния подходящ продукт в типичния ѝ магазин в твоето населено място, преизчислена за нашата опаковка. Сега виждаш цените ${esc(inPlace(priceSource().place))} от ${priceSource().shown}. „В 41 от 43 магазина“ значи, че продуктът е в ценоразписа на толкова обекта на веригата, а не че е на рафта в момента. За продуктите извън кошницата на портала цената е ориентировъчна, от онлайн магазин. Цените не са оферти. Хранителните стойности са по стандартни таблици и важат за ядливата част на продукта. Проверявай етикетите за алергени.</p></div>`;
 }
 
 export const REMINDER_DAYS = ['Понеделник', 'Вторник', 'Сряда', 'Четвъртък', 'Петък', 'Събота', 'Неделя'];

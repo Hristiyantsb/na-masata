@@ -1,6 +1,6 @@
 import { RECIPES, PRODUCTS, MEAT, SEAFOOD, STORES, EQUIPMENT, ALLERGENS } from './catalog.js';
 import { LARGE_STORES, LARGE_ONLY } from './products-more.js';
-import { STORE_PRICES } from './prices.js';
+import { chainPrice, referencePrice, coverage, marketVersion, DEFAULT_CITY } from './market.js';
 import { nutrition, nutritionMatches } from './nutrition.js';
 export { generatePlan, explainEntry, mainProtein } from './planner.js';
 export const recipe = (id) => RECIPES.find((r) => r.id === id);
@@ -26,9 +26,11 @@ export const NEEDS = {
   sensory: ['Сензорно щадящо', 'При АДХД и аутизъм: предвидими текстури, части поотделно'],
   lowcarb: ['По-малко въглехидрати', 'До 35 г нетни въглехидрати на порция'],
 };
+// The menu, the shopping list and the recipes are free for good; the diary side is the one
+// paid plan. Payments are not switched on yet, so these are the prices of the future launch.
 export const PLANS = Object.freeze({
-  menu: { name: 'Меню', monthly: 9, yearly: 90 },
-  plus: { name: 'Меню Плюс', monthly: 29, yearly: 290 },
+  free: { name: 'Безплатно', monthly: 0, yearly: 0 },
+  plus: { name: 'Плюс', monthly: 4.99, yearly: 39.99 },
 });
 export const MEALS = ['Закуска', 'Обяд', 'Вечеря', 'Междинно'];
 // Meals the weekly menu can plan, in the order of the day. Breakfast uses breakfast recipes only.
@@ -65,6 +67,8 @@ export function defaults() {
       needs: [],
       stores: ['Lidl', 'Kaufland'],
       slots: ['Вечеря'],
+      // The town whose prices are shown, by its EKATTE code. София until the person chooses.
+      city: DEFAULT_CITY,
     },
     plan: [],
     locked: false,
@@ -171,6 +175,8 @@ export function settingsErrors(s) {
     errors.push('Лимитът е от 100 до 2000 ккал или без лимит.');
   if (![0, 20, 30, 45, 60, 120].includes(s.maxTime))
     errors.push('Избери валидно време за готвене.');
+  if (!Number.isInteger(s.city) || s.city < 1 || s.city > 99999)
+    errors.push('Избери населено място.');
   for (const [key, values, required] of [
     ['stores', STORES, true],
     ['slots', SLOTS, true],
@@ -244,28 +250,38 @@ export function fitsTheme(r, theme) {
   return true;
 }
 // Where a product is bought: the person's own choice; otherwise the chosen chain with the lowest
-// known price; otherwise the first chosen chain that stocks it.
-const storeMemo = new Map();
+// known price; otherwise the first chosen chain that stocks it. A chain where the product is on
+// the list of fewer than half of its stores in town is used only when no other chain has it:
+// a low price is no use in a store that does not sell the product.
+export const WIDELY_SOLD = 0.5;
+let storeMemo = new Map();
+let memoVersion = -1;
 export function storeOf(k, state) {
   const stores = state.settings.stores;
   const own = state.storeFor[k];
   if (stores.includes(own)) return own;
+  if (memoVersion !== marketVersion()) {
+    storeMemo = new Map();
+    memoVersion = marketVersion();
+  }
   const memoKey = stores.join('|');
   let byProduct = storeMemo.get(memoKey);
   if (!byProduct) storeMemo.set(memoKey, (byProduct = new Map()));
   if (!byProduct.has(k)) {
     const carrying = stores.filter((store) => storesCarry(k, [store]));
-    const known = STORE_PRICES[k] || {};
+    const priced = carrying.filter((store) => chainPrice(k, store) != null);
+    const widely = priced.filter((store) => coverage(k, store) >= WIDELY_SOLD);
     let best = carrying[0] ?? stores[0];
-    for (const store of carrying)
-      if (known[store] != null && (known[best] == null || known[store] < known[best])) best = store;
+    const from = widely.length ? widely : priced;
+    if (from.length) best = from.reduce((a, b) => (chainPrice(k, b) < chainPrice(k, a) ? b : a));
     byProduct.set(k, best);
   }
   return byProduct.get(k);
 }
+/** The price of a pack in one chain: the chain's own figure, else the reference price. */
+export const priceIn = (k, store) => chainPrice(k, store) ?? referencePrice(k);
 /** Pack price: the person's own price, else the price in the chain it is bought from, else the reference. */
-export const packPrice = (k, state) =>
-  state.prices[k] ?? STORE_PRICES[k]?.[storeOf(k, state)] ?? PRODUCTS[k][3];
+export const packPrice = (k, state) => state.prices[k] ?? priceIn(k, storeOf(k, state));
 export const packSize = (k, state) => state.packSizes[k] ?? PRODUCTS[k][1];
 export function recipeCost(r, people, state) {
   return Object.entries(r.ing).reduce(
@@ -700,8 +716,7 @@ export function shoppingSummary(state) {
   const single = state.settings.stores.map((store) => ({
     store,
     cost: rows.reduce(
-      (sum, row) =>
-        sum + row.packs * (state.prices[row.k] ?? STORE_PRICES[row.k]?.[store] ?? PRODUCTS[row.k][3]),
+      (sum, row) => sum + row.packs * (state.prices[row.k] ?? priceIn(row.k, store)),
       0,
     ),
   }));

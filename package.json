@@ -11,7 +11,9 @@
     "test": "node --test tests/*.test.js",
     "check": "node scripts/check.mjs && node scripts/build-sw.mjs --check",
     "dev": "node scripts/serve.mjs",
-    "build:offline": "node scripts/build-sw.mjs"
+    "build:offline": "node scripts/build-sw.mjs",
+    "prices": "node scripts/fetch-prices.mjs",
+    "prices:snapshot": "node scripts/build-prices.mjs --apply"
   },
   "devDependencies": {
     "linkedom": "0.18.14",

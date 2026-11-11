@@ -233,10 +233,11 @@ test('barcode validation includes checksum; escaping prevents HTML injection', (
   assert.equal(isValidBarcode('<script>'), false);
   assert.equal(esc('<img src=x onerror="a">'), '&lt;img src=x onerror=&quot;a&quot;&gt;');
 });
-test('billing amounts match requested monthly and annual totals', () => {
+test('the core is free and the one paid plan costs what was decided', () => {
+  assert.deepEqual(Object.keys(PLANS), ['free', 'plus']);
   assert.deepEqual(
-    [PLANS.menu.monthly, PLANS.menu.yearly, PLANS.plus.monthly, PLANS.plus.yearly],
-    [9, 90, 29, 290],
+    [PLANS.free.monthly, PLANS.free.yearly, PLANS.plus.monthly, PLANS.plus.yearly],
+    [0, 0, 4.99, 39.99],
   );
 });
 test('calendar helpers use local calendar dates and cross month boundaries', () => {

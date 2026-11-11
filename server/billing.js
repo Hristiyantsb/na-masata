@@ -1,9 +1,10 @@
-/** Server-only price allowlist. Amounts are cents, not values accepted from the client. */
+/**
+ * Server-only price allowlist. Amounts are cents, not values accepted from the client.
+ * The menu, the shopping list and the recipes are free; the one paid plan is „Плюс“.
+ */
 export const BILLING = {
-  menu_monthly: { plan: 'menu', interval: 'month', amount: 900, key: 'STRIPE_MENU_MONTHLY' },
-  menu_yearly: { plan: 'menu', interval: 'year', amount: 9000, key: 'STRIPE_MENU_YEARLY' },
-  plus_monthly: { plan: 'plus', interval: 'month', amount: 2900, key: 'STRIPE_PLUS_MONTHLY' },
-  plus_yearly: { plan: 'plus', interval: 'year', amount: 29000, key: 'STRIPE_PLUS_YEARLY' },
+  plus_monthly: { plan: 'plus', interval: 'month', amount: 499, key: 'STRIPE_PLUS_MONTHLY' },
+  plus_yearly: { plan: 'plus', interval: 'year', amount: 3999, key: 'STRIPE_PLUS_YEARLY' },
 };
 export function priceChoice(plan, interval, env) {
   const key = `${plan}_${interval}`,
@@ -26,7 +27,7 @@ export function entitlement(row, now = Math.floor(Date.now() / 1000)) {
     !!row &&
     ['active', 'trialing'].includes(row.status) &&
     Number(row.period_end) > now &&
-    ['menu', 'plus'].includes(row.plan)
+    row.plan === 'plus'
   );
 }
 export function subscriptionRecord(sub, env) {

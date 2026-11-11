@@ -1,0 +1,61 @@
+name: Daily prices
+
+# Every morning: download the newest open-data archive of the public price portal
+# (kolkostruva.bg, Consumer Protection Commission), rebuild docs/data/prices and publish it.
+# The app reads these files at start. Only the price files change; the app code and the
+# service worker are never touched here. No secrets are used.
+on:
+  schedule:
+    # 05:40 in Sofia in winter, 06:40 in summer. The archive of a day appears late that evening.
+    - cron: '40 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: daily-prices
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # Writes nothing when a chain is missing or too few products can be read:
+      # yesterday's prices then stay in place, with yesterday's date.
+      - name: Rebuild the price files
+        run: node scripts/fetch-prices.mjs
+
+      - name: Check that the app can read them
+        run: node --test tests/market.test.js
+
+      - name: Publish
+        id: publish
+        run: |
+          if [ -z "$(git status --porcelain -- docs/data/prices)" ]; then
+            echo "Prices are unchanged."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/prices
+          git commit -m "Prices: $(jq -r .date docs/data/prices/index.json)"
+          git pull --rebase origin "${GITHUB_REF_NAME}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      # A push made by a workflow does not always start the Pages build of a branch site,
+      # so the build is asked for by name. A second request for the same commit is harmless.
+      - name: Ask GitHub Pages to publish
+        if: steps.publish.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api --method POST "repos/${{ github.repository }}/pages/builds" || true

@@ -16,6 +16,11 @@ export const plural = (n, one, many, bare = false) => {
   const word = Math.abs(n) === 1 ? one : many;
   return bare ? word : `${n} ${word}`;
 };
+/** „Lidl“, „Lidl и BILLA“, „Lidl, BILLA и METRO“. */
+export const listJoin = (items) =>
+  items.length < 2 ? items.join('') : `${items.slice(0, -1).join(', ')} и ${items.at(-1)}`;
+/** In a town: „в София“, „във Варна“. */
+export const inPlace = (name) => `${/^[ВвФф]/.test(name) ? 'във' : 'в'} ${name}`;
 
 // One icon family: 24 px grid, 1.8 px rounded strokes.
 const PATHS = {

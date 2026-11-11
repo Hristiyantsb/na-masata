@@ -132,10 +132,18 @@ test('notes, food names and extra products stay text', () => {
 test('the local edition shows plan prices honestly and never a checkout', () => {
   const monthly = views.plansView('monthly');
   const yearly = views.plansView('yearly');
-  assert.match(monthly, new RegExp(`${PLANS.menu.monthly} €`));
-  assert.match(monthly, new RegExp(`${PLANS.plus.monthly} €`));
-  assert.match(yearly, new RegExp(`${PLANS.menu.yearly} €`));
-  assert.match(yearly, new RegExp(`${PLANS.plus.yearly} €`));
+  const flat = (html) => html.replace(/\s|&nbsp;/g, ' ');
+  // The menu, the list and the recipes are free; the paid plan shows the price from PLANS.
+  for (const html of [monthly, yearly]) {
+    assert.match(flat(html), /Безплатно.*0 €.*завинаги/);
+    assert.match(html, /Менюто, покупките и рецептите остават безплатни/);
+  }
+  assert.equal(PLANS.plus.monthly, 4.99);
+  assert.match(flat(monthly), /Плюс.*4,99 €.*\/ месец/);
+  assert.match(flat(yearly), /Плюс.*39,99 €.*\/ година/);
+  // A year is 3,33 € a month: a third less than twelve single months, worked out, not claimed.
+  assert.match(flat(yearly), /3,33 € на месец, платени наведнъж\. С 33% по-малко/);
+  assert.doesNotMatch(flat(monthly), /по-малко от дванайсет/);
   for (const html of [monthly, yearly, views.moreView(defaults())]) {
     assert.match(html, /не са включени|Демо|демо/);
     assert.doesNotMatch(html, /data-action="(checkout|buy|subscribe|login)"/);

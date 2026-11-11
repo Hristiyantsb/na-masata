@@ -3,11 +3,13 @@
 import { parseHTML } from 'linkedom';
 import { STORAGE_KEY } from '../../docs/src/storage.js';
 
-export async function boot({ state = null, hash = '#menu', reducedMotion = true } = {}) {
+// `seed` puts other saved keys in place before the app starts (a downloaded price file, the list of towns).
+export async function boot({ state = null, hash = '#menu', reducedMotion = true, seed = {} } = {}) {
   const { document, window } = parseHTML(
     '<html><body><div id="app"></div><dialog id="sheet"></dialog><div id="toast"></div></body></html>',
   );
   const data = new Map(state ? [[STORAGE_KEY, JSON.stringify(state)]] : []);
+  for (const [key, value] of Object.entries(seed)) data.set(key, typeof value === 'string' ? value : JSON.stringify(value));
   const localStorage = {
     getItem: (k) => data.get(k) ?? null,
     setItem: (k, v) => data.set(k, String(v)),

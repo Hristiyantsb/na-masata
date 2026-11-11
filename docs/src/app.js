@@ -57,6 +57,8 @@ import {
   shoppingView,
   shopModeView,
   grocerySheet,
+  citySheet,
+  cityRows,
   extraForm,
   pantryView,
   moreView,
@@ -98,9 +100,18 @@ import {
   dislikeGroups,
   STORY,
 } from './onboarding.js';
-import { PRICE_SOURCE } from './prices.js';
+import {
+  market,
+  setMarket,
+  priceSource,
+  cachedMarket,
+  downloadMarket,
+  storeMarket,
+  cachedPlaces,
+  downloadPlaces,
+} from './market.js';
 import { applyScene, react, startIdle, lookAt } from './table.js';
-import { esc, icon, money, num, dayName } from './ui.js';
+import { esc, icon, money, num, dayName, inPlace, listJoin } from './ui.js';
 import { Scanner } from './scanner.js';
 import { copiesForDates, parseAdiosExport, NUTRIENTS, macroEnergyShares } from './fitness.js';
 import { lookupBarcode, searchOnline } from './foods.js';
@@ -128,6 +139,8 @@ const loaded = loadState(storage);
 let state = loaded.state;
 // A menu laid out before weeks were counted starts counting from today.
 if (state.plan.length && !state.weekStart) state.weekStart = localDate();
+// Prices: the last file downloaded for the person's town, until today's one arrives.
+setMarket(cachedMarket(state.settings.city, storage)?.market ?? null);
 
 const ui = {
   wizard: null,
@@ -144,6 +157,9 @@ const ui = {
   sheetRecipe: null,
   dislikeQuery: '',
   beat: 0,
+  // The towns that have prices (loaded when the picker opens) and what is typed in its search.
+  places: null,
+  cityQuery: '',
 };
 let cookTimer = null,
   cookTick = null,
@@ -270,6 +286,54 @@ function refresh() {
   }
   render();
   if (selector) root.querySelector(selector)?.focus({ preventScroll: true });
+}
+
+/* ---------- prices for the person's town ---------- */
+
+// Files are fetched only from a real page: not from a test, not from a file opened from disk.
+const canFetch = () => /^https?:$/.test(globalThis.location?.protocol || '');
+
+/**
+ * Brings the prices for the chosen town: the saved file at once, then today's from the site.
+ * Returns true when the prices on screen changed. Offline, or when the town has no file, the
+ * app keeps what it has; the date beside every price says how old it is.
+ */
+async function refreshMarket({ force = false } = {}) {
+  const city = state.settings.city;
+  const cached = cachedMarket(city, storage);
+  let changed = false;
+  if (market()?.city !== city) {
+    changed = Boolean(market()) || Boolean(cached);
+    setMarket(cached?.market ?? null);
+  }
+  if (!canFetch() || (!force && cached?.fetched === localDate())) return changed;
+  try {
+    const fresh = await downloadMarket(city);
+    if (state.settings.city !== city) return changed;
+    storeMarket(fresh.raw, storage, localDate());
+    if (market()?.city !== city || market()?.date !== fresh.market.date) changed = true;
+    setMarket(fresh.market);
+  } catch {
+    // No connection or no file for this town: nothing to do until the next start.
+  }
+  return changed;
+}
+
+/** Redraws the screen for new prices, unless the person is in the middle of something. */
+function showNewPrices(changed) {
+  if (changed && !ui.wizard && !sheet.open && !ui.building) render();
+}
+
+/** The list of towns for the picker: the saved one at once, a fresh one when there is a network. */
+async function loadPlaces() {
+  ui.places ||= cachedPlaces(storage);
+  if (!canFetch()) return ui.places;
+  try {
+    ui.places = await downloadPlaces(storage);
+  } catch {
+    // Keep the saved list, if there is one.
+  }
+  return ui.places;
 }
 
 /* ---------- sheets ---------- */
@@ -481,7 +545,7 @@ function shoppingText() {
   const summary = shoppingSummary(state);
   return [
     'На маса · списък за пазаруване',
-    `Цели опаковки по най-ниските цени във веригите към ${PRICE_SOURCE.shown}.`,
+    `Цели опаковки по най-ниските цени във веригите ${inPlace(priceSource().place)} към ${priceSource().shown}.`,
     '',
     ...state.settings.stores.flatMap((s) => {
       const list = rows.filter((r) => r.store === s);
@@ -864,6 +928,52 @@ const actions = {
       `На маса · менюто\n\n${state.plan.map((e) => `${dayName(e.day)}, ${e.slot.toLocaleLowerCase('bg')}: ${recipe(e.id).name} (${e.people} порции)`).join('\n')}\n\n${shoppingText()}`,
     ),
   reminder: () => openSheet(reminderSheet()),
+
+  // the town whose prices are shown
+  city: async () => {
+    ui.cityQuery = '';
+    ui.places ||= cachedPlaces(storage);
+    const isOpen = () => sheet.open && sheet.querySelector('[data-city-sheet]');
+    const draw = () =>
+      openSheet(citySheet(ui.places, state.settings.city, ui.cityQuery, !canFetch()), { keepScroll: true });
+    draw();
+    const before = ui.places;
+    await loadPlaces();
+    if (!isOpen()) return;
+    if (ui.places !== before) draw();
+    else if (!ui.places) openSheet(citySheet(null, state.settings.city, '', true));
+  },
+  'choose-city': async (el) => {
+    const code = Number(el.dataset.code);
+    const place = (ui.places || []).find((p) => p.code === code);
+    if (!place) return;
+    // A chain with no store in that town cannot be shopped at. When none of the chosen chains
+    // is there, start from the two with the most stores.
+    const here = (list) => {
+      const kept = list.filter((store) => place.stores[store]);
+      if (kept.length) return kept;
+      return Object.keys(place.stores)
+        .sort((a, b) => place.stores[b] - place.stores[a])
+        .slice(0, 2);
+    };
+    const gone = state.settings.stores.filter((store) => !place.stores[store]);
+    state.settings = { ...state.settings, city: code, stores: here(state.settings.stores) };
+    if (ui.wizard) {
+      ui.wizard.draft = { ...ui.wizard.draft, city: code, stores: here(ui.wizard.draft.stores) };
+      if (!state.onboarded) saveDraft(storage, ui.wizard);
+    }
+    persist();
+    closeSheet();
+    await refreshMarket({ force: true });
+    render();
+    const missing = gone.length ? ` Там няма ${listJoin(gone)}.` : '';
+    // Without a connection the town's file cannot come: say whose prices stay on screen.
+    toast(
+      market()?.city === code
+        ? `Цените вече са за ${place.name}.${missing}`
+        : `Цените за ${place.name} ще се заредят при връзка с интернет. Дотогава виждаш тези за ${priceSource().place}.${missing}`,
+    );
+  },
 
   // recipe and cooking
   favorite: (el) => {
@@ -1619,6 +1729,12 @@ document.addEventListener('input', (event) => {
     if (groups) groups.innerHTML = dislikeGroups(w.draft, ui.dislikeQuery);
     return;
   }
+  if (el.dataset.input === 'city-search') {
+    ui.cityQuery = el.value.slice(0, 60);
+    const list = sheet.querySelector('[data-city-list]');
+    if (list && ui.places) list.innerHTML = cityRows(ui.places, state.settings.city, ui.cityQuery);
+    return;
+  }
   if (el.dataset.input === 'recipe-search') {
     ui.query = el.value.slice(0, 80);
     clearTimeout(searchTimer);
@@ -1682,8 +1798,10 @@ window.addEventListener?.('pointermove', (event) => {
 
 window.addEventListener('pagehide', () => scanner.stop());
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) scanner.stop();
-  else if (ui.shopMode || ui.cook) keepAwake(true);
+  if (document.hidden) return scanner.stop();
+  if (ui.shopMode || ui.cook) keepAwake(true);
+  // Back the next morning with the app still open: bring the new day's prices.
+  refreshMarket().then(showNewPrices);
 });
 window.addEventListener('storage', (event) => {
   if (event.key === STORAGE_KEY) toast('Данните са променени в друг раздел. Презареди, преди да продължиш.');
@@ -1709,4 +1827,5 @@ document.addEventListener('pwa-state', () => {
 if (!state.onboarded && !state.plan.length) startWizard();
 else render();
 if (loaded.warning) toast(loaded.warning, { error: true });
+refreshMarket().then(showNewPrices);
 if (window.self === window.top) initPwa();

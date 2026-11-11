@@ -9,20 +9,21 @@ import {
   verifySignature,
 } from '../server/billing.js';
 const env = {
-  STRIPE_MENU_MONTHLY: 'price_menu_month',
-  STRIPE_MENU_YEARLY: 'price_menu_year',
   STRIPE_PLUS_MONTHLY: 'price_plus_month',
   STRIPE_PLUS_YEARLY: 'price_plus_year',
 };
 test('server allowlist cannot accept arbitrary price or amount', () => {
   const c = priceChoice('plus', 'yearly', env);
-  assert.equal(c.amount, 29000);
+  assert.equal(c.amount, 3999);
+  assert.equal(priceChoice('plus', 'monthly', env).amount, 499);
   assert.throws(() => priceChoice('plus', 'weekly', env));
   assert.throws(() => priceChoice('free', 'monthly', env));
+  // The menu itself is free: there is nothing to buy under that name.
+  assert.throws(() => priceChoice('menu', 'monthly', env));
   const valid = {
     active: true,
     currency: 'eur',
-    unit_amount: 29000,
+    unit_amount: 3999,
     type: 'recurring',
     recurring: { interval: 'year', interval_count: 1 },
   };
