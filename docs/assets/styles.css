@@ -1406,6 +1406,10 @@ input[type='range']::-moz-range-thumb {
   gap: 10px;
   margin-top: 14px;
 }
+/* The cards come a page at a time; this brings the next page (it also loads by itself on scroll). */
+.more-recipes {
+  margin-top: 14px;
+}
 @media (min-width: 700px) {
   .recipe-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

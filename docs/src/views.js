@@ -314,7 +314,17 @@ export function filterRecipes(state, query = '', filter = 'all') {
   );
 }
 
-export function recipesView(state, query = '', filter = 'all') {
+/** How many recipe cards are drawn at once in the app; the rest come as the person scrolls. */
+export const RECIPE_PAGE = 60;
+
+/** The control that brings the next cards, or nothing when every card is on screen. */
+export function moreRecipes(total, shown) {
+  if (shown >= total) return '';
+  return `<button type="button" class="btn btn-secondary btn-block more-recipes" data-action="more-recipes">Още рецепти · ${total - shown}</button>`;
+}
+
+// `shown` limits how many cards are drawn (the app pages them; by default all are returned).
+export function recipesView(state, query = '', filter = 'all', shown = Infinity) {
   const allowed = candidates(state.settings);
   const list = filterRecipes(state, query, filter);
   const cuisines = Object.entries(CUISINES).filter(([k]) => allowed.some((r) => r.cuisine === k));
@@ -330,7 +340,7 @@ export function recipesView(state, query = '', filter = 'all') {
       : filter === 'fav' && !query
       ? empty('curious', 'Още нямаш любими', 'Докосни сърцето на рецепта и тя ще се появява тук. Любимите влизат по-често в менюто.')
       : empty('sleepy', 'Няма такава рецепта', 'Опитай с друга дума или махни филтъра.');
-  return `${head('Рецепти', `${plural(allowed.length, 'рецепта пасва', 'рецепти пасват')} на правилата ти`)}<label class="search">${icon('search', 18)}<input type="search" data-input="recipe-search" value="${esc(query)}" placeholder="Търси ястие или продукт" aria-label="Търси рецепта" autocomplete="off"></label><div class="chips-scroll" role="group" aria-label="Филтър">${chips}</div>${filter === 'have' && list.length ? `<p class="fine have-note">Подредени по това колко от продуктите вече имаш. Солта, олиото и подправките не се броят. <a href="#pantry">Промени какво имам</a></p>` : ''}<div class="recipe-grid" data-recipe-grid>${list.map((r) => recipeCard(r, state, { have: filter === 'have' })).join('')}</div>${list.length ? '' : emptyState}`;
+  return `${head('Рецепти', `${plural(allowed.length, 'рецепта пасва', 'рецепти пасват')} на правилата ти`)}<label class="search">${icon('search', 18)}<input type="search" data-input="recipe-search" value="${esc(query)}" placeholder="Търси ястие или продукт" aria-label="Търси рецепта" autocomplete="off"></label><div class="chips-scroll" role="group" aria-label="Филтър">${chips}</div>${filter === 'have' && list.length ? `<p class="fine have-note">Подредени по това колко от продуктите вече имаш. Солта, олиото и подправките не се броят. <a href="#pantry">Промени какво имам</a></p>` : ''}<div class="recipe-grid" data-recipe-grid>${list.slice(0, shown).map((r) => recipeCard(r, state, { have: filter === 'have' })).join('')}</div><div data-more-slot>${moreRecipes(list.length, shown)}</div>${list.length ? '' : emptyState}`;
 }
 
 /* ---------- recipe detail ---------- */

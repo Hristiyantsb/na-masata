@@ -52,6 +52,8 @@ import {
   recipesView,
   recipeCard,
   filterRecipes,
+  moreRecipes,
+  RECIPE_PAGE,
   recipeSheet,
   cookView,
   shoppingView,
@@ -157,6 +159,8 @@ const ui = {
   sheetRecipe: null,
   dislikeQuery: '',
   beat: 0,
+  // How many recipe cards are on screen; more are added as the person scrolls.
+  shown: RECIPE_PAGE,
   // The towns that have prices (loaded when the picker opens) and what is typed in its search.
   places: null,
   cityQuery: '',
@@ -262,7 +266,7 @@ function render() {
   if (r !== 'menu') ui.keep = null;
   const views = {
     menu: () => menuView(state, ui),
-    recipes: () => recipesView(state, ui.query, ui.filter),
+    recipes: () => recipesView(state, ui.query, ui.filter, ui.shown),
     shopping: () => shoppingView(state),
     pantry: () => pantryView(state),
     diary: () => diaryView(state, ui.date, localDate()),
@@ -271,6 +275,22 @@ function render() {
     privacy: privacyView,
   };
   root.innerHTML = shell(r, views[r](), pwaState());
+  if (r === 'recipes') watchMoreRecipes();
+}
+
+// The next cards are added a little before the person reaches the end of the list.
+let moreWatcher = null;
+function watchMoreRecipes() {
+  moreWatcher?.disconnect();
+  const button = root.querySelector('[data-action="more-recipes"]');
+  if (!button || typeof IntersectionObserver !== 'function') return;
+  moreWatcher = new IntersectionObserver(
+    (entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) actions['more-recipes']();
+    },
+    { rootMargin: '700px 0px' },
+  );
+  moreWatcher.observe(button);
 }
 
 /** Re-render and put focus back on the same control, so a tap never loses your place. */
@@ -1052,7 +1072,25 @@ const actions = {
   // recipes
   'recipe-filter': (el) => {
     ui.filter = el.dataset.filter;
+    ui.shown = RECIPE_PAGE;
     render();
+  },
+  'more-recipes': () => {
+    const grid = root.querySelector('[data-recipe-grid]');
+    if (!grid) return;
+    const list = filterRecipes(state, ui.query, ui.filter);
+    const from = ui.shown;
+    ui.shown = Math.min(list.length, ui.shown + RECIPE_PAGE);
+    grid.insertAdjacentHTML(
+      'beforeend',
+      list
+        .slice(from, ui.shown)
+        .map((r) => recipeCard(r, state, { have: ui.filter === 'have' }))
+        .join(''),
+    );
+    const slot = root.querySelector('[data-more-slot]');
+    if (slot) slot.innerHTML = moreRecipes(list.length, ui.shown);
+    watchMoreRecipes();
   },
 
   // shopping
@@ -1737,13 +1775,20 @@ document.addEventListener('input', (event) => {
   }
   if (el.dataset.input === 'recipe-search') {
     ui.query = el.value.slice(0, 80);
+    ui.shown = RECIPE_PAGE;
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       const grid = root.querySelector('[data-recipe-grid]');
       if (!grid) return;
       const list = filterRecipes(state, ui.query, ui.filter);
       if (list.length) {
-        grid.innerHTML = list.map((r) => recipeCard(r, state, { have: ui.filter === 'have' })).join('');
+        grid.innerHTML = list
+          .slice(0, ui.shown)
+          .map((r) => recipeCard(r, state, { have: ui.filter === 'have' }))
+          .join('');
+        const slot = root.querySelector('[data-more-slot]');
+        if (slot) slot.innerHTML = moreRecipes(list.length, ui.shown);
+        watchMoreRecipes();
         root.querySelector('.empty')?.remove();
       } else {
         const caret = el.selectionStart;
@@ -1774,6 +1819,8 @@ sheet.addEventListener('click', (event) => {
 
 window.addEventListener('hashchange', () => {
   closeSheet();
+  // Every visit to the recipes starts from the top with the first page of cards.
+  ui.shown = RECIPE_PAGE;
   if (ui.wizard?.editing && !ui.building) ui.wizard = null;
   if (ui.shopMode && route() !== 'shopping') {
     ui.shopMode = false;

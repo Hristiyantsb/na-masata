@@ -156,7 +156,13 @@ test('when nothing fits we suggest loosening only optional choices', () => {
     assert.ok(h.gain > 0);
     assert.doesNotMatch(h.label, /алерг|кето|веган|вегетариан/i);
   }
-  const stuck = { ...draft(), diet: 'keto', needs: ['sensory'], maxTime: 20, equipment: ['microwave'] };
+  // With 500 recipes there are keto dishes that need no cooking at all, so dropping one optional
+  // choice would be enough here. A milk allergy is a hard rule that takes them away again, and
+  // a hint never touches a hard rule.
+  const almost = { ...draft(), diet: 'keto', needs: ['sensory'], maxTime: 20, equipment: ['microwave'] };
+  assert.ok(relaxHints(almost).every((h) => h.gain > 0 && !/алерг|кето/i.test(h.label)));
+  const stuck = { ...almost, allergens: ['dairy'] };
+  assert.equal(candidates(stuck).length, 0);
   assert.deepEqual(relaxHints(stuck), [], 'no fake hint when one change is not enough');
   assert.match(onboardingView(stuck, LAST_STEP), /Върни се и промени/);
 });

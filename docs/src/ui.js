@@ -517,6 +517,52 @@ function breakfastArt(r, rand) {
   return null;
 }
 
+/**
+ * A coiled banitsa seen from above: a golden spiral of phyllo, browned in places, with the
+ * filling showing between the turns (green for spinach or leek, white for cheese).
+ */
+function banitsaArt(r, rand) {
+  let spiral = '';
+  const turns = 3.25;
+  for (let i = 0; i <= 110; i++) {
+    const t = (i / 110) * Math.PI * 2 * turns;
+    const radius = 2 + (i / 110) * 15.5;
+    spiral += `${i ? 'L' : 'M'}${f1(32 + Math.cos(t) * radius)} ${f1(32 + Math.sin(t) * radius)}`;
+  }
+  let out = `<circle cx="32" cy="32" r="20" fill="#d99a48"/>`;
+  out += `<path d="${spiral}" fill="none" stroke="#f1c577" stroke-width="4.4" stroke-linecap="round"/>`;
+  out += `<path d="${spiral}" fill="none" stroke="#fae3ad" stroke-width="1.5" stroke-linecap="round" opacity=".85"/>`;
+  const filling = has(r, 'spinach') ? '#4f8a3a' : has(r, 'leek') ? '#9cc27a' : '';
+  for (let i = 0; i < 9; i++) {
+    const a = rand() * Math.PI * 2,
+      d = 4 + rand() * 13,
+      x = 32 + Math.cos(a) * d,
+      y = 32 + Math.sin(a) * d;
+    if (filling && i % 3 === 0) out += leafShape(x, y, rand() * 180, 0.5, filling);
+    else if (i % 3 === 1)
+      out += `<rect x="${f1(x - 1.3)}" y="${f1(y - 1.3)}" width="2.6" height="2.6" rx=".7" fill="#fffaf0" opacity=".9" transform="rotate(${Math.round(rand() * 90)} ${f1(x)} ${f1(y)})"/>`;
+    else
+      out += `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="2.6" ry="1.2" fill="#b06f24" opacity=".32" transform="rotate(${Math.round(rand() * 180)} ${f1(x)} ${f1(y)})"/>`;
+  }
+  return out;
+}
+
+/** Flatbreads straight from a dry pan: two pale rounds with scorched spots and crumbled cheese. */
+function flatbreadArt(rand) {
+  let out = '';
+  for (const [cx, cy, radius] of [[27, 29, 13], [37, 36, 13]]) {
+    out += `<circle cx="${cx}" cy="${cy}" r="${radius}" fill="#f3dcae" stroke="#dcb673" stroke-width="1"/>`;
+    for (let i = 0; i < 6; i++) {
+      const a = rand() * Math.PI * 2,
+        d = rand() * (radius - 3.5);
+      out += `<ellipse cx="${f1(cx + Math.cos(a) * d)}" cy="${f1(cy + Math.sin(a) * d)}" rx="${f1(1.4 + rand() * 1.4)}" ry="${f1(0.9 + rand())}" fill="#a8672a" opacity=".5" transform="rotate(${Math.round(rand() * 180)} ${cx} ${cy})"/>`;
+    }
+  }
+  for (const [x, y] of [[34, 33], [39, 38], [41, 32], [35, 40]])
+    out += `<rect x="${x - 1.5}" y="${y - 1.5}" width="3" height="3" rx=".8" fill="#fffaf0" stroke="#e8dcc0" stroke-width=".5"/>`;
+  return out;
+}
+
 /** Dish illustration for a recipe. `size` is the rendered square size in px. */
 export function foodArt(r, size = 56) {
   const rand = rng(hashOf(r.id));
@@ -524,8 +570,14 @@ export function foodArt(r, size = 56) {
   const herb = has(r, 'parsley', 'dill', 'mint', 'greenonion', 'savory');
   let food = '';
   let bowl = false;
-  const morning = r.meal === 'breakfast' ? breakfastArt(r, rand) : null;
-  if (morning) {
+  const pastry = has(r, 'phyllo');
+  const flatbread = /пърленк/i.test(r.name);
+  const morning = r.meal === 'breakfast' && !pastry && !flatbread ? breakfastArt(r, rand) : null;
+  if (pastry) {
+    food = banitsaArt(r, rand);
+  } else if (flatbread) {
+    food = flatbreadArt(rand);
+  } else if (morning) {
     food = morning.food;
     bowl = !!morning.bowl;
   } else if (SOUP.test(r.name) && !SALAD.test(r.name) && !/кюфте/i.test(r.name)) {

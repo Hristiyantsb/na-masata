@@ -11,7 +11,19 @@ import {
 } from './market.js';
 import { nutrition, nutritionMatches } from './nutrition.js';
 export { generatePlan, explainEntry, mainProtein } from './planner.js';
-export const recipe = (id) => RECIPES.find((r) => r.id === id);
+// Recipes by id. The list can grow while the app runs (an imported catalog), so the index is
+// rebuilt whenever its length changes. With hundreds of recipes a scan per lookup is what made
+// building a week slow.
+let recipeIndex = new Map();
+let recipesIndexed = -1;
+export const recipe = (id) => {
+  if (recipesIndexed !== RECIPES.length) {
+    recipeIndex = new Map();
+    for (const r of RECIPES) if (!recipeIndex.has(r.id)) recipeIndex.set(r.id, r);
+    recipesIndexed = RECIPES.length;
+  }
+  return recipeIndex.get(id);
+};
 export const GOALS = {
   balanced: ['Балансирано', 'Разнообразни домашни ястия'],
   protein: ['Повече протеин', 'Поне 25 г на порция'],

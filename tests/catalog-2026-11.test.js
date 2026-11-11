@@ -33,19 +33,19 @@ const stateWith = (extra) => {
 };
 
 test('the catalog is large and every course has a real choice', () => {
-  assert.ok(RECIPES.length >= 350, `${RECIPES.length} recipes`);
+  assert.ok(RECIPES.length >= 500, `${RECIPES.length} recipes`);
   assert.equal(new Set(RECIPES.map((r) => r.name)).size, RECIPES.length, 'no two dishes share a name');
   assert.equal(new Set(RECIPES.map((r) => r.id)).size, RECIPES.length, 'no two dishes share an id');
-  assert.ok(RECIPES.filter(isBreakfast).length >= 57);
-  assert.ok(RECIPES.filter(isSoup).length >= 40);
-  assert.ok(RECIPES.filter(isSalad).length >= 39);
+  assert.ok(RECIPES.filter(isBreakfast).length >= 78);
+  assert.ok(RECIPES.filter(isSoup).length >= 54);
+  assert.ok(RECIPES.filter(isSalad).length >= 54);
   for (const r of RECIPES) {
     assert.ok(!(isSoup(r) && isSalad(r)), `${r.id} is both a soup and a salad`);
     assert.ok(r.steps.length >= 2 && r.steps.every((step) => step.length >= 12), `${r.id}: steps`);
     assert.match(foodArt(r), /<svg/, `${r.id} has a drawing`);
   }
   // Every way of eating keeps a wide choice of main dishes and of breakfasts.
-  const least = { all: [290, 57], pescatarian: [175, 53], veggie: [145, 52], vegan: [79, 13], keto: [50, 13] };
+  const least = { all: [422, 78], pescatarian: [250, 72], veggie: [208, 71], vegan: [119, 18], keto: [85, 18] };
   for (const diet of Object.keys(DIETS)) {
     const list = candidates(settings({ diet }));
     const mains = list.filter((r) => !isBreakfast(r)).length;
@@ -164,4 +164,73 @@ test('the plant, keto and family batches keep the promises in their names', asyn
   // And a keto household has soups and salads, not only meat on a plate.
   const low = candidates(settings({ diet: 'keto' }));
   assert.ok(low.filter(isSoup).length >= 4 && low.filter(isSalad).length >= 11);
+});
+
+test('the batches that bring the catalog to 500 keep their promises too', async () => {
+  const { BG_2026_11 } = await import('../docs/src/recipes-2026-11-bg.js');
+  const { PLANT_2026_11_B } = await import('../docs/src/recipes-2026-11-plant-b.js');
+  const { PLANT_2026_11_C } = await import('../docs/src/recipes-2026-11-plant-c.js');
+  const { KETO_2026_11_B } = await import('../docs/src/recipes-2026-11-keto-b.js');
+  const { HOME_2026_11 } = await import('../docs/src/recipes-2026-11-home.js');
+  const added = [...BG_2026_11, ...PLANT_2026_11_B, ...PLANT_2026_11_C, ...KETO_2026_11_B, ...HOME_2026_11];
+  assert.equal(added.length, 150);
+  assert.equal(RECIPES.length, 500);
+
+  const vegan = new Set(candidates(settings({ diet: 'vegan' })).map((r) => r.id));
+  for (const r of [...PLANT_2026_11_B, ...PLANT_2026_11_C]) assert.ok(vegan.has(r.id), `${r.id} is not plant-only`);
+  const keto = new Set(candidates(settings({ diet: 'keto' })).map((r) => r.id));
+  for (const r of KETO_2026_11_B) {
+    assert.ok(keto.has(r.id), `${r.id} is not keto`);
+    assert.ok(nutrition(r).netCarbs <= 15, `${r.id}: ${nutrition(r).netCarbs} g net carbohydrates`);
+  }
+  // Bulgarian cooking leads: the classics batch is Bulgarian almost to the last dish, and so
+  // is the biggest share of the whole catalog.
+  assert.ok(BG_2026_11.filter((r) => r.cuisine === 'bg').length >= 20);
+  assert.ok(RECIPES.filter((r) => r.cuisine === 'bg').length >= 200);
+
+  const gentle = HOME_2026_11.filter((r) => r.tags?.includes('sensory'));
+  assert.equal(gentle.length, 6);
+  for (const r of gentle) {
+    assert.ok(Object.keys(r.ing).length <= 8, `${r.id}: too many products`);
+    for (const k of ['garlic', 'onion', 'chili', 'peppercorn', 'paprika'])
+      assert.equal(r.ing[k], undefined, `${r.id} uses ${k}`);
+  }
+  for (const r of added) {
+    const n = nutrition(r);
+    const breakfast = isBreakfast(r);
+    assert.ok(n.kcal >= 250 && n.kcal <= (breakfast ? 650 : 900), `${r.id}: ${n.kcal} kcal`);
+    if (breakfast) assert.ok(r.time <= 30, `${r.id}: a slow breakfast`);
+    assert.ok(r.steps.length >= 3 && r.steps.every((step) => /[.!]$/.test(step)), `${r.id}: steps`);
+    // A step never asks for something the shopping list does not have.
+    for (const word of ['дафинов', 'босилек', 'майонеза', 'вино', 'бакпулвер', 'сода', 'мая'])
+      assert.ok(!r.steps.some((step) => step.toLocaleLowerCase('bg').includes(word)), `${r.id} mentions ${word}`);
+  }
+  // A keto week of three meals a day is now a week of different dishes.
+  const state = stateWith({ diet: 'keto', days: 7, slots: ['Закуска', 'Обяд', 'Вечеря'], budget: 600 });
+  const { plan } = generatePlan(state, seeded(9));
+  assert.equal(plan.length, 21);
+  assert.ok(new Set(plan.filter((e) => e.slot === 'Закуска').map((e) => e.id)).size >= 6);
+  assert.equal(new Set(plan.filter((e) => e.slot !== 'Закуска').map((e) => e.id)).size, 14);
+});
+
+test('pastry is drawn as pastry', () => {
+  for (const id of ['banitsa', 'zelnik', 'leekbanitsa', 'panbanitsaphyllo']) {
+    const art = foodArt(RECIPES.find((r) => r.id === id));
+    assert.match(art, /stroke="#f1c577" stroke-width="4.4"/, `${id}: a coiled banitsa`);
+  }
+  assert.match(foodArt(RECIPES.find((r) => r.id === 'parlenkicheese')), /fill="#f3dcae" stroke="#dcb673"/);
+  // Everything else keeps its own drawing.
+  assert.doesNotMatch(foodArt(RECIPES.find((r) => r.id === 'shopska')), /#f1c577/);
+});
+
+test('a full week is searched quickly, however large the catalog', () => {
+  // Seven days of three meals from 500 recipes: the heaviest search there is. Before the
+  // lookups were indexed it took seconds; the bound is generous so that a slow machine passes.
+  const state = stateWith({ days: 7, slots: ['Закуска', 'Обяд', 'Вечеря'], budget: 300 });
+  generatePlan(state, seeded(1));
+  const started = performance.now();
+  const { plan } = generatePlan(state, seeded(2));
+  const took = performance.now() - started;
+  assert.equal(plan.length, 21);
+  assert.ok(took < 1500, `the week took ${Math.round(took)} ms`);
 });

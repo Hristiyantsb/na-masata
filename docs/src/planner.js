@@ -54,6 +54,17 @@ export function mainProtein(r) {
   return best;
 }
 
+// What the search asks about a dish tens of thousands of times: worked out once per recipe.
+const FACTS = new WeakMap();
+function factsOf(r) {
+  let facts = FACTS.get(r);
+  if (!facts) {
+    facts = { family: mainProtein(r), breakfast: isBreakfast(r), ing: Object.entries(r.ing) };
+    FACTS.set(r, facts);
+  }
+  return facts;
+}
+
 const PERISHABLE = new Set(['produce', 'meat', 'fish', 'dairy', 'bakery']);
 const perishable = (k) => PERISHABLE.has(AISLE[k]);
 
@@ -69,25 +80,58 @@ export function seeded(seed) {
   };
 }
 
+// The shop as numbers, for one search: every product gets a place in a row of plain arrays
+// (pack size, price, what is at home, whether it spoils), and every dish becomes two short
+// arrays, which product and how much. Nothing of this changes while a week is being searched.
+function shopOf(state) {
+  const keys = Object.keys(PRODUCTS);
+  const count = keys.length;
+  const shop = {
+    place: new Map(keys.map((k, i) => [k, i])),
+    need: new Float64Array(count),
+    size: new Float64Array(count),
+    price: new Float64Array(count),
+    home: new Float64Array(count),
+    spoils: new Uint8Array(count),
+    dishes: new Map(),
+  };
+  keys.forEach((k, i) => {
+    shop.size[i] = packSize(k, state);
+    shop.price[i] = packPrice(k, state);
+    shop.home[i] = state.pantry[k] || 0;
+    shop.spoils[i] = perishable(k) ? 1 : 0;
+  });
+  return shop;
+}
+function dishOf(shop, id) {
+  let dish = shop.dishes.get(id);
+  if (!dish) {
+    const ing = factsOf(recipe(id)).ing;
+    dish = { at: Int16Array.from(ing, ([k]) => shop.place.get(k)), grams: Float64Array.from(ing, ([, v]) => v) };
+    shop.dishes.set(id, dish);
+  }
+  return dish;
+}
+
 // Lean version of `total(groceries(...))`: same whole-package arithmetic, no sorting or labels.
-function bill(state, plan) {
-  const need = {};
+// It runs tens of thousands of times per week built, so it works on the arrays of `shopOf`.
+function bill(state, plan, ctx) {
+  const shop = (ctx.shop ||= shopOf(state));
+  const { need, size, price, home, spoils } = shop;
+  need.fill(0);
   for (const e of plan) {
-    const r = recipe(e.id);
-    for (const [k, v] of Object.entries(r.ing)) need[k] = (need[k] || 0) + (v * e.people) / 2;
+    const { at, grams } = dishOf(shop, e.id);
+    for (let j = 0; j < at.length; j++) need[at[j]] += (grams[j] * e.people) / 2;
   }
   let cost = 0,
     waste = 0;
-  for (const [k, amount] of Object.entries(need)) {
-    const size = packSize(k, state),
-      missing = Math.max(0, amount - (state.pantry[k] || 0)),
-      packs = Math.ceil(Math.max(0, missing - 1e-8) / size),
-      price = packPrice(k, state);
-    cost += packs * price;
-    if (packs && perishable(k)) {
-      const left = (state.pantry[k] || 0) + packs * size - amount;
-      waste += (left / size) * price;
-    }
+  for (let i = 0; i < need.length; i++) {
+    const amount = need[i];
+    if (!amount) continue;
+    const missing = Math.max(0, amount - home[i]),
+      packs = Math.ceil(Math.max(0, missing - 1e-8) / size[i]);
+    cost += packs * price[i];
+    if (packs && spoils[i]) waste += ((home[i] + packs * size[i] - amount) / size[i]) * price[i];
   }
   return { cost, waste };
 }
@@ -122,7 +166,7 @@ function dishScore(state, r, ctx) {
 
 /** Total score of a week; lower is better. */
 export function planScore(state, plan, ctx = context(state)) {
-  const { cost, waste } = bill(state, plan);
+  const { cost, waste } = bill(state, plan, ctx);
   // The budget is a limit, not the goal: under it, price only breaks ties between similar weeks.
   let score = cost * 0.35 + Math.max(0, cost - state.settings.budget) * 8 + waste * 0.2;
   const seen = new Map(),
@@ -133,9 +177,10 @@ export function planScore(state, plan, ctx = context(state)) {
     const r = recipe(e.id);
     score += ctx.dish.get(e.id) ?? dishScore(state, r, ctx);
     seen.set(e.id, (seen.get(e.id) || 0) + 1);
-    if (isBreakfast(r)) continue;
+    const facts = factsOf(r);
+    if (facts.breakfast) continue;
     mains++;
-    const family = mainProtein(r);
+    const family = facts.family;
     families.set(family, (families.get(family) || 0) + 1);
     if (prev) {
       if (prev.family === family && family !== 'veg') score += 8;
@@ -158,6 +203,7 @@ function context(state) {
     breakfastTarget: mealTarget(state, true),
     previous: new Set(state.plan.map((e) => e.id)),
     dish: new Map(),
+    shop: null,
   };
 }
 
