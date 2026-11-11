@@ -4,12 +4,16 @@
 
 Ключ `na-masata-v3`. `version:3`. `normalizeState` създава нов обект само от разрешени полета; не слива произволен backup чрез Object.assign. Старият `na-masata-v1` се чете само като fallback и не се изтрива при миграция. Невалиден файл се отхвърля целият.
 
-- `settings`: people 1–12, days 1–7, slots, budget, diet, goal, allergens, dislikes, equipment, stores, maxCalories, maxTime.
+- `settings`: people 1–12, days 1–7, slots, budget, diet, goal, allergens, dislikes, equipment, stores, maxCalories, maxTime, city (код по ЕКАТТЕ на населеното място за цените; по подразбиране 68134, София; стар backup без това поле получава София).
 - `plan`: id на рецептата, day index, slot, people. До 14 уникални day/slot записа.
 - `prices`, `packSizes`, `pantry`: стойности по product key.
 - `favorites`, `notes`, `checked`, `cooked`: потребителско състояние.
 - `diary`: id, date (локална календарна дата), meal, name, amount, unit, basis, kcal, protein, source, barcode.
 - `dailyTarget`: потребителски избор, 0 означава без цел.
+
+## Цени за деня (извън състоянието)
+
+Файлът с цени за населеното място и списъкът с населени места не са част от `na-masata-v3` и не влизат в резервното копие: пазят се отделно в `na-masata-market-v1` (`{fetched: дата на сваляне, data: суровият файл}`) и `na-masata-places-v1`. Четат се само през `readMarket` и `readPlaces` в `docs/src/market.js`, които пускат единствено познати продукти и вериги, крайни числа в разумни граници и подрязани текстове. Повреден или чужд запис се пренебрегва и приложението пада към вградената снимка `docs/src/prices.js`. Цената на продукт е: личната цена на човека → цената във веригата, от която се купува → медианата между веригите в града → ориентировъчната цена в каталога.
 
 ## Единици
 

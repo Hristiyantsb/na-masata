@@ -181,7 +181,7 @@ export function generatePlan(state, random = Math.random, { keep = [], theme = '
   if (theme === 'cheap')
     state = { ...state, settings: { ...state.settings, budget: Math.max(1, Math.round(state.settings.budget * 0.8)) } };
   const themed = theme !== 'usual' && theme !== 'cheap';
-  const all = offered(state).filter((r) => fitsTheme(r, theme));
+  const all = offered(state).filter((r) => fitsTheme(r, theme, state));
   const breakfasts = all.filter(isBreakfast),
     mainsPool = all.filter((r) => !isBreakfast(r));
   const wantsBreakfast = state.settings.slots.includes('Закуска'),

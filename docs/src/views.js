@@ -22,6 +22,7 @@ import {
   weekOver,
   progress,
   WIDELY_SOLD,
+  themesNow,
 } from './domain.js';
 import { AISLE, AISLES } from './products-more.js';
 import { priceSource, chainOffer, hasChainPrices, chainInTown } from './market.js';
@@ -170,11 +171,12 @@ function row(ic, title, sub, action, attrs = '', danger = false) {
 }
 
 export function newMenuSheet(state, theme = 'usual') {
-  const themes = Object.entries(THEMES)
-    .map(
-      ([key, [name, sub]]) =>
-        `<button type="button" class="theme-chip" data-action="theme" data-value="${key}" aria-pressed="${key === theme}"><b>${esc(name)}</b><small>${esc(sub)}</small></button>`,
-    )
+  // A week of promotions is offered only while today's prices show some in the chosen chains.
+  const themes = themesNow(state)
+    .map((key) => {
+      const [name, sub] = THEMES[key];
+      return `<button type="button" class="theme-chip ${key === 'deals' ? 'theme-chip-wide' : ''}" data-action="theme" data-value="${key}" aria-pressed="${key === theme}"><b>${esc(name)}</b><small>${esc(sub)}</small></button>`;
+    })
     .join('');
   return `<h2 class="sheet-title">${weekOver(state) ? 'Нова седмица' : 'Ново меню'}</h2><p class="sheet-sub">Правилата ти остават същите. Старото меню може да се върне.</p><fieldset class="themes"><legend>Тази седмица искам</legend><div class="theme-grid">${themes}</div></fieldset><div class="list">
 ${row('refresh', 'Смени всичко', `Нови ${plural(state.plan.length, 'ястие', 'ястия')} за седмицата`, 'regenerate')}
@@ -448,7 +450,6 @@ export function soldIn(offer) {
 
 /** The chain's offer behind a row of the list, unless the person keeps a price of their own. */
 const offerOf = (r, state) => (state.prices[r.k] == null ? chainOffer(r.k, r.store) : null);
-const onDeal = (r, state) => Boolean(offerOf(r, state)?.was);
 
 function offerTags(r, state) {
   const offer = offerOf(r, state);
@@ -519,12 +520,13 @@ export function shoppingView(state) {
     ? `<section class="cart-card" role="group" aria-label="Напредък"><div class="cart-top"><b>${done} от ${toBuy.length}</b><span>в количката</span><strong>${money(summary.knownTotal)}</strong></div><span class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}" aria-label="В количката"><i style="width:${pct}%"></i></span><p class="fine">За цели опаковки по цените ${inPlace(source.place)} от ${source.shown}${summary.unknownPrices ? `, плюс ${plural(summary.unknownPrices, 'продукт', 'продукта')} без цена` : ''}.</p></section>`
     : '';
   // What the split and today's promotions do for this list, in one calm line.
-  const deals = toBuy.filter((r) => onDeal(r, state)).length;
   const gains = [
     summary.saving >= 0.2
       ? `По-евтино с <b>${money(summary.saving)}</b>, отколкото ако купиш всичко само от ${esc(summary.savingAgainst)}: всеки продукт е от веригата, в която струва най-малко.`
       : '',
-    deals ? `${plural(deals, 'продукт е', 'продукта са')} в промоция днес.` : '',
+    summary.deals
+      ? `${plural(summary.deals, 'продукт е', 'продукта са')} в промоция днес${summary.dealSaving >= 0.05 ? `: с <b>${money(summary.dealSaving)}</b> под редовните им цени` : ''}.`
+      : '',
   ].filter(Boolean);
   const saving = gains.length
     ? `<p class="saving">${icon('check', 16)}<span>${gains.join(' ')}</span></p>`
@@ -640,7 +642,7 @@ export function pantryView(state) {
     const p = PRODUCTS[k];
     const enough = Math.max(Math.ceil(need[k] || 0), p[2] === 'бр.' ? 1 : p[1]);
     const on = (state.pantry[k] || 0) > 0;
-    return `<div class="prow"><label for="pantry-${k}">${esc(p[0])}</label><span class="prow-in"><button type="button" class="pill pill-sm ${on ? 'is-on' : ''}" data-action="pantry-have" data-id="${k}" data-amount="${enough}" aria-pressed="${on}">${icon('check', 16)} Имам</button><input id="pantry-${k}" name="${k}" type="number" inputmode="decimal" min="0" max="100000" step="${p[2] === 'бр.' ? 1 : 0.1}" value="${state.pantry[k] || ''}" placeholder="0"><small>${p[2]}</small></span></div>`;
+    return `<div class="prow"><label for="pantry-${k}">${esc(p[0])}</label><span class="prow-in"><button type="button" class="pill pill-sm pill-toggle ${on ? 'is-on' : ''}" data-action="pantry-have" data-id="${k}" data-amount="${enough}" aria-pressed="${on}">${icon('check', 16)} Имам</button><input id="pantry-${k}" name="${k}" type="number" inputmode="decimal" min="0" max="100000" step="${p[2] === 'бр.' ? 1 : 0.1}" value="${state.pantry[k] || ''}" placeholder="0"><small>${p[2]}</small></span></div>`;
   };
   const inMenu = [...used].sort((a, b) => aisleIndex(a) - aisleIndex(b));
   const rest = Object.keys(PRODUCTS)

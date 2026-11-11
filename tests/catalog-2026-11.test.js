@@ -33,18 +33,19 @@ const stateWith = (extra) => {
 };
 
 test('the catalog is large and every course has a real choice', () => {
-  assert.ok(RECIPES.length >= 260, `${RECIPES.length} recipes`);
+  assert.ok(RECIPES.length >= 350, `${RECIPES.length} recipes`);
   assert.equal(new Set(RECIPES.map((r) => r.name)).size, RECIPES.length, 'no two dishes share a name');
-  assert.ok(RECIPES.filter(isBreakfast).length >= 39);
-  assert.ok(RECIPES.filter(isSoup).length >= 25);
-  assert.ok(RECIPES.filter(isSalad).length >= 15);
+  assert.equal(new Set(RECIPES.map((r) => r.id)).size, RECIPES.length, 'no two dishes share an id');
+  assert.ok(RECIPES.filter(isBreakfast).length >= 57);
+  assert.ok(RECIPES.filter(isSoup).length >= 40);
+  assert.ok(RECIPES.filter(isSalad).length >= 39);
   for (const r of RECIPES) {
     assert.ok(!(isSoup(r) && isSalad(r)), `${r.id} is both a soup and a salad`);
     assert.ok(r.steps.length >= 2 && r.steps.every((step) => step.length >= 12), `${r.id}: steps`);
     assert.match(foodArt(r), /<svg/, `${r.id} has a drawing`);
   }
   // Every way of eating keeps a wide choice of main dishes and of breakfasts.
-  const least = { all: [220, 39], pescatarian: [120, 30], veggie: [90, 28], vegan: [50, 6], keto: [30, 8] };
+  const least = { all: [290, 57], pescatarian: [175, 53], veggie: [145, 52], vegan: [79, 13], keto: [50, 13] };
   for (const diet of Object.keys(DIETS)) {
     const list = candidates(settings({ diet }));
     const mains = list.filter((r) => !isBreakfast(r)).length;
@@ -122,4 +123,45 @@ test('a week of three meals a day keeps every rule for every way of eating', () 
     const mains = plan.filter((e) => e.slot !== 'Закуска').map((e) => e.id);
     assert.equal(new Set(mains).size, mains.length, `${diet}: no main dish twice in a week`);
   }
+});
+
+test('the plant, keto and family batches keep the promises in their names', async () => {
+  const { PLANT_2026_11 } = await import('../docs/src/recipes-2026-11-plant.js');
+  const { KETO_2026_11 } = await import('../docs/src/recipes-2026-11-keto.js');
+  const { FAMILY_2026_11 } = await import('../docs/src/recipes-2026-11-family.js');
+  assert.ok(PLANT_2026_11.length >= 30 && KETO_2026_11.length >= 23 && FAMILY_2026_11.length >= 31);
+  const vegan = new Set(candidates(settings({ diet: 'vegan' })).map((r) => r.id));
+  for (const r of PLANT_2026_11) assert.ok(vegan.has(r.id), `${r.id} is not plant-only`);
+  const keto = new Set(candidates(settings({ diet: 'keto' })).map((r) => r.id));
+  for (const r of KETO_2026_11) {
+    assert.ok(keto.has(r.id), `${r.id} is not keto`);
+    assert.ok(nutrition(r).netCarbs <= 15, `${r.id}: ${nutrition(r).netCarbs} g net carbohydrates`);
+  }
+  // A sensory-friendly plate is short and plain: few products, no garlic, onion or hot spice.
+  const gentle = FAMILY_2026_11.filter((r) => r.tags?.includes('sensory'));
+  assert.ok(gentle.length >= 4);
+  for (const r of gentle) {
+    assert.ok(Object.keys(r.ing).length <= 8, `${r.id}: too many products`);
+    for (const k of ['garlic', 'onion', 'chili', 'peppercorn', 'paprika'])
+      assert.equal(r.ing[k], undefined, `${r.id} uses ${k}`);
+  }
+  for (const r of [...PLANT_2026_11, ...KETO_2026_11, ...FAMILY_2026_11]) {
+    const n = nutrition(r);
+    const breakfast = isBreakfast(r);
+    assert.ok(n.kcal >= 250 && n.kcal <= (breakfast ? 650 : 900), `${r.id}: ${n.kcal} kcal`);
+    if (breakfast) assert.ok(r.time <= 30, `${r.id}: a slow breakfast`);
+    assert.ok(r.steps.every((step) => /[.!]$/.test(step)), `${r.id}: a step without an end`);
+  }
+  // A vegan household now gets a week of different breakfasts, soups and salads to choose from.
+  const plant = candidates(settings({ diet: 'vegan' }));
+  assert.ok(plant.filter(isBreakfast).length >= 13);
+  assert.ok(plant.filter(isSoup).length >= 11);
+  assert.ok(plant.filter(isSalad).length >= 12);
+  const state = stateWith({ diet: 'vegan', days: 7, slots: ['Закуска', 'Обяд', 'Вечеря'], budget: 500 });
+  const { plan } = generatePlan(state, seeded(4));
+  const breakfasts = plan.filter((e) => e.slot === 'Закуска').map((e) => e.id);
+  assert.ok(new Set(breakfasts).size >= 6, `${new Set(breakfasts).size} different vegan breakfasts in a week`);
+  // And a keto household has soups and salads, not only meat on a plate.
+  const low = candidates(settings({ diet: 'keto' }));
+  assert.ok(low.filter(isSoup).length >= 4 && low.filter(isSalad).length >= 11);
 });

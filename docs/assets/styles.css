@@ -649,9 +649,20 @@ input[type='radio'] {
   padding: 0 16px 12px;
 }
 .pill-sm {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 12px;
   font-size: 14px;
+}
+/* A pill that is a switch: plain when off, filled with a tick when on. */
+.pill-toggle .icon {
+  display: none;
+}
+.pill-toggle.is-on {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.pill-toggle.is-on .icon {
+  display: block;
 }
 .next-week {
   display: flex;
@@ -746,6 +757,10 @@ input[type='radio'] {
 .theme-chip[aria-pressed='true'] {
   border-color: var(--accent);
   background: var(--accent-soft, #e6f0e9);
+}
+/* The seventh theme, offered only while there are promotions: a row of its own. */
+.theme-chip-wide {
+  grid-column: 1 / -1;
 }
 .progress-tiles {
   grid-template-columns: repeat(3, minmax(0, 1fr));

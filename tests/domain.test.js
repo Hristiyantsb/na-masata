@@ -295,6 +295,8 @@ test('custom grocery rows preserve unknown prices, aggregate known costs and sur
     extraCost: 4.5,
     saving: 0,
     savingAgainst: '',
+    deals: 0,
+    dealSaving: 0,
     knownTotal: 4.5,
     unknownPrices: 1,
   });

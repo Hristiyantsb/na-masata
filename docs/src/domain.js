@@ -1,6 +1,14 @@
 import { RECIPES, PRODUCTS, MEAT, SEAFOOD, STORES, EQUIPMENT, ALLERGENS } from './catalog.js';
 import { LARGE_STORES, LARGE_ONLY } from './products-more.js';
-import { chainPrice, referencePrice, coverage, marketVersion, DEFAULT_CITY } from './market.js';
+import {
+  market,
+  chainPrice,
+  chainOffer,
+  referencePrice,
+  coverage,
+  marketVersion,
+  DEFAULT_CITY,
+} from './market.js';
 import { nutrition, nutritionMatches } from './nutrition.js';
 export { generatePlan, explainEntry, mainProtein } from './planner.js';
 export const recipe = (id) => RECIPES.find((r) => r.id === id);
@@ -238,15 +246,43 @@ export const THEMES = Object.freeze({
   fasting: ['Постно', 'Само растителни продукти'],
   protein: ['Повече протеин', 'Поне 25 г на порция'],
   light: ['По-леко', 'До 500 ккал на порция'],
+  deals: ['С промоциите', 'Ястия с продукти в промоция днес'],
 });
 const plantOnly = (r) => Object.keys(r.ing).every((k) => !PRODUCTS[k][5]);
-export function fitsTheme(r, theme) {
+/**
+ * What today's promotions take off a dish for two: for every product on promotion in the chain
+ * it would be bought from, the amount the dish uses, at the difference to the regular price.
+ */
+export function dealSaving(r, state) {
+  let saving = 0;
+  for (const [k, amount] of Object.entries(r.ing)) {
+    if (state.prices[k] != null) continue;
+    const offer = chainOffer(k, storeOf(k, state));
+    if (offer?.was) saving += (amount / packSize(k, state)) * (offer.was - offer.price);
+  }
+  return saving;
+}
+// A dish belongs to a week of promotions when they take at least this much off it, in euro.
+export const DEAL_WORTH = 0.25;
+/** True when today's prices show at least one promotion in the chosen chains. */
+export function hasDeals(state) {
+  if (!market()) return false;
+  return Object.keys(market().products).some((k) =>
+    state.settings.stores.some((store) => chainOffer(k, store)?.was),
+  );
+}
+/** The themes that can be offered now: a week of promotions needs today's prices. */
+export const themesNow = (state) =>
+  Object.keys(THEMES).filter((key) => key !== 'deals' || hasDeals(state));
+export function fitsTheme(r, theme, state = null) {
   const n = nutrition(r);
   const breakfast = isBreakfast(r);
   if (theme === 'quick') return r.time <= 30;
   if (theme === 'fasting') return plantOnly(r);
   if (theme === 'protein') return n.protein >= (breakfast ? 15 : 25);
   if (theme === 'light') return n.kcal <= (breakfast ? 400 : 500);
+  // Promotions shape the main dishes; breakfast stays as it is, so the week can still be filled.
+  if (theme === 'deals') return breakfast || (Boolean(state) && dealSaving(r, state) >= DEAL_WORTH);
   return true;
 }
 // Where a product is bought: the person's own choice; otherwise the chosen chain with the lowest
@@ -722,11 +758,20 @@ export function shoppingSummary(state) {
   }));
   const best = single.reduce((a, b) => (b.cost < a.cost ? b : a), single[0] || { store: '', cost: fromMenu });
   const saving = single.length > 1 ? Math.max(0, Math.round((best.cost - fromMenu) * 100) / 100) : 0;
+  // Today's promotions on this list: how many products and how much under their regular prices
+  // in the same chain. Products with a price of the person's own are left out.
+  const onDeal = rows
+    .filter((row) => state.prices[row.k] == null)
+    .map((row) => [row, chainOffer(row.k, row.store)])
+    .filter(([, offer]) => offer?.was);
+  const dealSaved = onDeal.reduce((sum, [row, offer]) => sum + row.packs * (offer.was - offer.price), 0);
   return {
     fromMenu,
     extraCost,
     saving,
     savingAgainst: saving ? best.store : '',
+    deals: onDeal.length,
+    dealSaving: Math.round(dealSaved * 100) / 100,
     knownTotal: fromMenu + extraCost,
     unknownPrices: extras.filter((e) => e.price === null).length,
   };

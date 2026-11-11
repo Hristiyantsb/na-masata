@@ -5,6 +5,9 @@ import { SOUPS_2026_11 } from './recipes-2026-11-soups.js';
 import { MAINS_2026_11_B } from './recipes-2026-11-mains.js';
 import { VEG_2026_11 } from './recipes-2026-11-veg.js';
 import { FISH_SALADS_2026_11, BREAKFASTS_2026_11_B } from './recipes-2026-11-more.js';
+import { PLANT_2026_11 } from './recipes-2026-11-plant.js';
+import { KETO_2026_11 } from './recipes-2026-11-keto.js';
+import { FAMILY_2026_11 } from './recipes-2026-11-family.js';
 ('use strict');
 // Original Bulgarian recipe catalogue; prices are editable examples, not retailer quotations.
 export const STORES = ['Lidl', 'Kaufland', 'BILLA', 'METRO', 'Фантастико', 'T MARKET'];
@@ -542,6 +545,9 @@ RECIPES.push(
   ...FISH_SALADS_2026_11,
   ...BREAKFASTS,
   ...BREAKFASTS_2026_11_B,
+  ...PLANT_2026_11,
+  ...KETO_2026_11,
+  ...FAMILY_2026_11,
 );
 
 // Kitchens for browsing. The first recipes were written before the field existed.

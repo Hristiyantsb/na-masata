@@ -12,11 +12,11 @@ Runtime: Cloudflare Worker + D1. Входът се проверява със Sup
 | GET   | /products/:ean    | active Plus                    | нормализирани OFF данни или явна липса |
 | POST  | /food/analyze     | verified user                  | 501, не е реализиран                   |
 
-Checkout body: `{ "plan": "menu" | "plus", "interval": "monthly" | "yearly" }`. Клиентът не подава сума, price ID, user ID, redirect URL или customer ID.
+Checkout body: `{ "plan": "plus", "interval": "monthly" | "yearly" }` (менюто, покупките и рецептите са безплатни; единственият платен план е „Плюс“: 4,99 €/месец или 39,99 €/година). Клиентът не подава сума, price ID, user ID, redirect URL или customer ID.
 
 ## Secret bindings
 
-`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_ANON_KEY`. Публична конфигурация: APP_ORIGIN, APP_URL, SUPABASE_URL, OFF_USER_AGENT, четирите Stripe price IDs. OFF_USER_AGENT трябва да идентифицира реалното приложение и контакт. Example config не е deployable без замяна на placeholders.
+`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_ANON_KEY`. Публична конфигурация: APP_ORIGIN, APP_URL, SUPABASE_URL, OFF_USER_AGENT, двата Stripe price IDs. OFF_USER_AGENT трябва да идентифицира реалното приложение и контакт. Example config не е deployable без замяна на placeholders.
 
 ## Поведение и граници
 

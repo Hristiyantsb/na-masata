@@ -103,7 +103,8 @@ test('a dish the household turned down never comes back by itself', () => {
 });
 
 test('a themed week only narrows the choice and never relaxes a rule', () => {
-  assert.deepEqual(Object.keys(THEMES), ['usual', 'cheap', 'quick', 'fasting', 'protein', 'light']);
+  // The seventh theme needs today's prices: without them it says so instead of building a week.
+  assert.deepEqual(Object.keys(THEMES), ['usual', 'cheap', 'quick', 'fasting', 'protein', 'light', 'deals']);
   for (const diet of ['all', 'veggie', 'keto']) {
     const state = stateWith({ diet, days: 5, slots: ['Закуска', 'Вечеря'], budget: 300 });
     const allowed = new Set(candidates(state.settings).map((r) => r.id));
@@ -116,7 +117,7 @@ test('a themed week only narrows the choice and never relaxes a rule', () => {
       for (const e of result.plan) {
         const r = RECIPES.find((x) => x.id === e.id);
         assert.ok(allowed.has(e.id), `${diet}/${theme}: ${e.id} breaks a rule`);
-        assert.ok(fitsTheme(r, theme), `${diet}/${theme}: ${e.id} is off theme`);
+        assert.ok(fitsTheme(r, theme, state), `${diet}/${theme}: ${e.id} is off theme`);
       }
       assert.equal(result.withinBudget, result.cost <= state.settings.budget, 'the real budget is the yardstick');
     }

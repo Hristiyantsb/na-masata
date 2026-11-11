@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { defaults, localDate } from '../docs/src/domain.js';
+import { defaults, localDate, recipe } from '../docs/src/domain.js';
 import { MARKET_KEY, PLACES_KEY } from '../docs/src/market.js';
 import { boot } from './helpers/boot.js';
 import { TOWN, SMALL_TOWN, TOWNS } from './helpers/market-fixture.js';
@@ -35,7 +35,7 @@ test('the real controller shows the town\'s prices, where a product is sold and 
   const tomato = [...app.querySelectorAll('.grow')].find((row) => row.querySelector('[data-id="tomato"]'));
   assert.equal(tomato.closest('.store-sec').querySelector('h2').textContent, 'Lidl');
   assert.equal(tomato.querySelector('.tag'), null);
-  assert.match(app.querySelector('.saving').textContent, /1 продукт е в промоция днес/);
+  assert.match(app.querySelector('.saving').textContent, /1 продукт е в промоция днес: с 1,24\s€ под редовните им цени/);
 
   // The product sheet: each chosen chain with its price, the product behind it and its reach.
   await click('grocery-edit', { id: 'tomato' });
@@ -55,6 +55,15 @@ test('the real controller shows the town\'s prices, where a product is sold and 
   await click('close-sheet');
   const moved = [...app.querySelectorAll('.grow')].find((row) => row.querySelector('[data-id="tomato"]'));
   assert.equal(moved.closest('.store-sec').querySelector('h2').textContent, 'T MARKET');
+
+  // With promotions in town, the new week can be built around them.
+  await click('new-menu');
+  assert.equal(sheet.querySelectorAll('[data-action="theme"]').length, 7);
+  await click('[data-action="theme"][data-value="deals"]');
+  await click('[data-action="regenerate"]');
+  assert.equal(saved().plan.length, 2);
+  assert.ok(saved().plan.every((e) => recipe(e.id).ing.chicken), 'both dinners use the chicken on promotion');
+  assert.equal(toast().replace(/Върни$/, ''), 'Готово: „С промоциите“ за тази седмица.');
 
   // „Още“ names the town; the picker lists the saved towns and searches them.
   location.hash = '#more';
